@@ -1,0 +1,79 @@
+/* Дизайн-токены «Мой ритм». Все цвета и размеры меняются только здесь. */
+
+:root {
+  /* — Розовая (основная) шкала — */
+  --pink-700: #d6117a;
+  --pink-600: #ec1e86;
+  --pink-500: #ff2d8e;
+  --pink-400: #ff5ca8;
+  --pink-200: #ffc2dd;
+  --pink-100: #ffe3f0;
+  --pink-50: #fff4f9;
+
+  /* — Оранжевая (акцентная) шкала — */
+  --orange-600: #f2600c;
+  --orange-500: #ff7a18;
+  --orange-400: #ff9838;
+  --orange-100: #ffe9d6;
+
+  /* — Красная (кнопка паузы) — */
+  --red-500: #fb3b21;
+  --red-400: #ff5a36;
+
+  /* — Дополнительные цвета потоков — */
+  --blue-500: #2f9bf5;
+  --blue-600: #1b7fd6;
+  --violet-500: #9b6cf0;
+  --violet-600: #7f4ee0;
+  --amber-500: #f5b322;
+  --amber-600: #e09708;
+  --green-500: #46c98b;
+  --green-600: #2fae72;
+
+  /* — Нейтральная шкала — */
+  --ink-900: #101114;
+  --ink-800: #1c1e23;
+  --ink-700: #2e3138;
+  --gray-600: #575c67;
+  --gray-500: #6e7480;
+  --gray-400: #9aa0ac;
+  --gray-300: #c7cbd3;
+  --gray-200: #e6e8ec;
+  --gray-100: #f2f3f5;
+  --white: #ffffff;
+
+  /* — Фоны — */
+  --bg: #ffffff;
+  --bg-warm: #fdfbfa;
+  --bg-panel: #fafafb;
+
+  /* — Градиенты — */
+  --grad-pink: linear-gradient(90deg, #f5157f 0%, #ff4d95 100%);
+  --grad-pink-diag: linear-gradient(135deg, #f5157f 0%, #ff5ca8 100%);
+  --grad-play: linear-gradient(140deg, #fb3b21 0%, #ff6a2c 100%);
+  --grad-star: linear-gradient(140deg, #ff4e00 0%, #ff9500 100%);
+  --grad-number: linear-gradient(150deg, #ffa01c 0%, #ff6a2c 45%, #ff2d8e 100%);
+
+  --grad-cardio: linear-gradient(115deg, #ff2d8e 0%, #ff6aa8 100%);
+  --grad-back: linear-gradient(115deg, #2f9bf5 0%, #6ec1ff 100%);
+  --grad-office: linear-gradient(115deg, #9b6cf0 0%, #c0a1ff 100%);
+  --grad-dance: linear-gradient(115deg, #f5b322 0%, #ffd166 100%);
+  --grad-senior: linear-gradient(115deg, #46c98b 0%, #8fe0b8 100%);
+
+  /* — Тени — */
+  --shadow-card: 0 2px 10px rgba(20, 22, 26, 0.05);
+  --shadow-soft: 0 8px 30px rgba(20, 22, 26, 0.07);
+  --shadow-pink: 0 10px 26px rgba(240, 23, 127, 0.32);
+  --shadow-play: 0 10px 26px rgba(251, 59, 33, 0.35);
+
+  /* — Радиусы — */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  /* — Типографика — */
+  --font-head: 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}

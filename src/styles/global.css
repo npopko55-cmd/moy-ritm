@@ -1,0 +1,87 @@
+@import './tokens.css';
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink-900);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4 { font-family: var(--font-head); margin: 0; letter-spacing: -0.02em; }
+p { margin: 0; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+a { color: inherit; text-decoration: none; }
+img, video { display: block; max-width: 100%; }
+ul { margin: 0; padding: 0; list-style: none; }
+
+/* — Общие кнопки — */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+.btn:active { transform: translateY(1px); }
+
+.btn--ghost {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  color: var(--ink-900);
+  padding: 11px 26px;
+  font-size: 15px;
+  box-shadow: var(--shadow-card);
+}
+.btn--ghost:hover { border-color: var(--gray-300); }
+
+.btn--pink {
+  background: var(--grad-pink);
+  color: var(--white);
+  padding: 12px 26px;
+  font-size: 15px;
+  box-shadow: 0 6px 16px rgba(240,23,127,.28);
+}
+.btn--pink:hover { box-shadow: 0 10px 22px rgba(240,23,127,.36); }
+
+.btn--pink-lg {
+  background: var(--grad-pink);
+  color: var(--white);
+  padding: 17px 24px 17px 34px;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: var(--shadow-pink);
+}
+.btn--pink-lg:hover { box-shadow: 0 14px 32px rgba(240,23,127,.42); }
+
+/* — Волнистый фон — */
+.wave-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wave-bg--bottom svg { top: auto; bottom: -6%; height: 66%; }
+
+.wave-bg svg {
+  position: absolute;
+  top: 0;
+  left: -20%;
+  width: 140%;
+  height: 100%;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

@@ -1,0 +1,114 @@
+.countdown {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 34px 24px 40px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.countdown > *:not(.wave-bg) { position: relative; z-index: 1; }
+
+.countdown__title {
+  margin-top: 30px;
+  font-size: clamp(26px, 3.3vw, 41px);
+  font-weight: 800;
+  line-height: 1.14;
+  text-align: center;
+  letter-spacing: -0.025em;
+  color: var(--ink-900);
+}
+
+/* ——— Кольцо из штрихов ——— */
+.countdown__ring {
+  position: relative;
+  width: min(372px, 72vw);
+  aspect-ratio: 1;
+  margin-top: 10px;
+  display: grid;
+  place-items: center;
+}
+
+.countdown__ticks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: ring-breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes ring-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.985); opacity: 0.92; }
+}
+
+.countdown__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.countdown__number {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: clamp(86px, 10.5vw, 124px);
+  line-height: 1;
+  background: var(--grad-number);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: number-pop 0.42s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+
+@keyframes number-pop {
+  0% { transform: scale(0.55); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.countdown__caption {
+  font-size: 14.5px;
+  color: var(--gray-500);
+}
+
+/* ——— Летящие ноты ——— */
+.countdown__note { position: absolute; color: var(--pink-200); }
+.countdown__note--a { top: 26%; right: -16%; color: #f9bfd6; animation: float-y 4.2s ease-in-out infinite; }
+.countdown__note--b { top: 41%; right: -22%; color: #f9bfd6; animation: float-y 3.4s ease-in-out infinite .5s; }
+.countdown__note--c { top: 20%; right: -6%; color: #ffd6c2; }
+.countdown__note--d { top: 52%; right: -9%; color: #ffd6c2; }
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-11px); }
+}
+
+/* ——— Нижняя карточка ——— */
+.countdown__card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 15px 26px 15px 18px;
+  background: var(--white);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid #f4f4f6;
+}
+
+.countdown__card-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-md);
+  background: var(--pink-50);
+  color: var(--pink-500);
+  flex: none;
+}
+
+.countdown__card-body { display: flex; flex-direction: column; gap: 3px; }
+.countdown__card-body strong { font-family: var(--font-head); font-size: 15px; font-weight: 700; }
+.countdown__card-body span { font-size: 13.5px; color: var(--gray-500); }
