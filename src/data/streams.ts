@@ -6,6 +6,7 @@
  * public/streams/<id>.png (человек, вырезанный по контуру, вертикальный кадр).
  */
 
+import { asset } from '../lib/asset'
 import { LOOPS, type Loop } from './loops'
 
 export type Stream = {
@@ -25,7 +26,7 @@ export const STREAMS: Stream[] = [
     title: 'Кардио',
     subtitle: 'энергия и жиросжигание',
     theme: 'cardio',
-    cover: '/streams/cardio.png',
+    cover: asset('streams/cardio.png'),
     loops: pick('high-knees', 'jumping-jacks', 'punches', 'run-in-place', 'jumps-arms-up', 'jog'),
   },
   {
@@ -33,7 +34,7 @@ export const STREAMS: Stream[] = [
     title: 'Спина',
     subtitle: 'здоровая осанка и сильная спина',
     theme: 'back',
-    cover: '/streams/back.png',
+    cover: asset('streams/back.png'),
     loops: pick('arms-to-sides', 'arms-up', 'arm-swings', 'arms-to-shoulders'),
   },
   {
@@ -41,7 +42,7 @@ export const STREAMS: Stream[] = [
     title: 'Офис',
     subtitle: 'разминка для работы',
     theme: 'office',
-    cover: '/streams/office.png',
+    cover: asset('streams/office.png'),
     loops: pick('arms-to-shoulders', 'arms-to-sides', 'arm-swings', 'steps-with-arms'),
   },
   {
@@ -49,7 +50,7 @@ export const STREAMS: Stream[] = [
     title: 'Танцы',
     subtitle: 'движение в удовольствие',
     theme: 'dance',
-    cover: '/streams/dance.png',
+    cover: asset('streams/dance.png'),
     loops: pick('dance-steps', 'side-steps', 'steps-with-arms', 'arms-up'),
   },
   {
@@ -57,7 +58,7 @@ export const STREAMS: Stream[] = [
     title: '60+',
     subtitle: 'мягкие тренировки для здоровья',
     theme: 'senior',
-    cover: '/streams/60plus.png',
+    cover: asset('streams/60plus.png'),
     loops: pick('steps-with-arms', 'arms-to-shoulders', 'arm-swings', 'side-steps'),
   },
 ]

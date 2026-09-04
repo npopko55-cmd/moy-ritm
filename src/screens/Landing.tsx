@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
+import { asset } from '../lib/asset'
 import { STREAMS } from '../data/streams'
 import '../components/Logo.css'
 import './Landing.css'
@@ -95,7 +96,7 @@ export default function Landing() {
           <span className="hero__dot hero__dot--d" />
           <img
             className="hero__photo"
-            src="/hero/hero.png"
+            src={asset("hero/hero.png")}
             alt="Девушка двигается под музыку"
             onError={(e) => {
               e.currentTarget.style.visibility = 'hidden'

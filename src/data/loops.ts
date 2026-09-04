@@ -9,6 +9,8 @@
  * взята из ffprobe исходника.
  */
 
+import { asset } from '../lib/asset'
+
 export type Loop = {
   id: string
   title: string
@@ -41,5 +43,5 @@ const isSafari =
   /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent)
 
 export function loopSrc(id: string): string {
-  return isSafari ? `/loops/${id}.mp4` : `/loops/${id}.webm`
+  return asset(isSafari ? `loops/${id}.mp4` : `loops/${id}.webm`)
 }
