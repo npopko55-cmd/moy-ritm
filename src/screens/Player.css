@@ -1,11 +1,15 @@
+/*
+ * Все размеры плеера привязаны к высоте окна (vh): на ноутбуке 1440×900
+ * и на мониторе 2000×1235 экран заполняется одинаково, без пустого низа.
+ */
 .player {
   position: relative;
   height: 100vh;
   min-height: 620px;
   display: grid;
-  grid-template-columns: 258px minmax(0, 1fr) 268px;
-  gap: 26px;
-  padding: 22px 26px 24px;
+  grid-template-columns: clamp(250px, 16vw, 330px) minmax(0, 1fr) clamp(262px, 16vw, 330px);
+  gap: clamp(20px, 1.6vw, 34px);
+  padding: clamp(18px, 2vh, 28px) clamp(20px, 1.8vw, 36px);
   background: var(--bg-warm);
   overflow: hidden;
 }
@@ -13,7 +17,7 @@
 .player > *:not(.wave-bg) { position: relative; z-index: 1; }
 
 /* ═══════ Левая колонка ═══════ */
-.player__side { display: flex; flex-direction: column; gap: 16px; min-height: 0; overflow: hidden; }
+.player__side { display: flex; flex-direction: column; gap: clamp(12px, 1.4vh, 18px); min-height: 0; overflow: hidden; }
 
 .side__label {
   margin-top: 4px;
@@ -25,13 +29,16 @@
 }
 
 .side__streams {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: clamp(8px, 1vh, 14px);
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
 }
+
+.side__streams > li { flex: 1 1 0; min-height: 0; display: flex; }
 
 .side__streams::-webkit-scrollbar { display: none; }
 
@@ -41,7 +48,9 @@
   align-items: center;
   justify-content: flex-end;
   width: 100%;
-  height: 108px;
+  height: 100%;
+  min-height: 84px;
+  max-height: 160px;
   padding: 0 14px 0 0;
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -105,8 +114,8 @@
   z-index: 1;
 }
 
-.stream-card__title { font-family: var(--font-head); font-weight: 800; font-size: 17px; }
-.stream-card__sub { font-size: 11.5px; line-height: 1.3; opacity: .95; }
+.stream-card__title { font-family: var(--font-head); font-weight: 800; font-size: clamp(16px, 1.7vh, 23px); }
+.stream-card__sub { font-size: clamp(11px, 1.1vh, 14.5px); line-height: 1.3; opacity: .95; }
 
 .stream-card--cardio { --card-grad: linear-gradient(100deg, #ff2d8e 0%, #f9552f 100%); }
 .stream-card--back   { --card-grad: linear-gradient(100deg, #2f9bf5 0%, #7ec8ff 100%); }
@@ -114,16 +123,16 @@
 .stream-card--dance  { --card-grad: linear-gradient(100deg, #f5b322 0%, #ffd76a 100%); }
 .stream-card--senior { --card-grad: linear-gradient(100deg, #46c98b 0%, #93e2bd 100%); }
 
-.side__menu { display: flex; flex-direction: column; gap: 1px; margin-top: auto; padding-top: 14px; }
+.side__menu { display: flex; flex-direction: column; gap: 1px; padding-top: clamp(8px, 1vh, 14px); }
 
 .side__menu-item {
   display: flex;
   align-items: center;
   gap: 11px;
   width: 100%;
-  padding: 7px 6px;
+  padding: clamp(6px, .8vh, 11px) 6px;
   border-radius: var(--r-sm);
-  font-size: 13.5px;
+  font-size: clamp(13px, 1.3vh, 16.5px);
   color: var(--gray-600);
   transition: background-color .15s ease, color .15s ease;
 }
@@ -135,8 +144,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  height: 100%;
   min-height: 0;
+  padding-bottom: 4px;
 }
 
 .stage__top {
@@ -147,7 +158,7 @@
 
 .stage__headline {
   text-align: center;
-  font-size: clamp(22px, 2.4vw, 33px);
+  font-size: clamp(24px, 3.1vh, 46px);
   font-weight: 800;
   letter-spacing: -0.025em;
   padding: 6px 0;
@@ -196,8 +207,8 @@
   white-space: nowrap;
 }
 
-.track__text strong { font-size: 13px; font-weight: 700; }
-.track__text span { font-size: 12px; color: var(--pink-500); }
+.track__text strong { font-size: clamp(13px, 1.3vh, 16px); font-weight: 700; }
+.track__text span { font-size: clamp(12px, 1.2vh, 14.5px); color: var(--pink-500); }
 
 .icon-btn {
   display: grid;
@@ -217,11 +228,12 @@
 /* ——— Персонаж в кольце ——— */
 .stage__figure {
   position: relative;
-  width: min(452px, 53vh);
+  /* Круг забирает всю высоту, что остаётся под заголовком и управлением. */
+  width: min(calc(100vh - 262px), 100%);
   aspect-ratio: 1;
+  flex: 0 0 auto;
   display: grid;
   place-items: center;
-  margin-top: 2px;
 }
 
 .stage__ring { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -256,8 +268,8 @@
 .controls {
   display: flex;
   align-items: flex-start;
-  gap: 40px;
-  margin-top: 20px;
+  gap: 44px;
+  margin-top: 0;
 }
 
 .controls__item {
@@ -265,7 +277,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: clamp(12px, 1.25vh, 16px);
   color: var(--gray-500);
 }
 
@@ -279,8 +291,8 @@
 .ctrl:active { transform: scale(0.95); }
 
 .ctrl--side {
-  width: 58px;
-  height: 58px;
+  width: clamp(54px, 5.6vh, 76px);
+  height: clamp(54px, 5.6vh, 76px);
   background: var(--white);
   border: 1px solid var(--gray-200);
   color: var(--ink-800);
@@ -290,8 +302,8 @@
 .ctrl--side:hover { border-color: var(--gray-300); }
 
 .ctrl--main {
-  width: 78px;
-  height: 78px;
+  width: clamp(72px, 7.6vh, 104px);
+  height: clamp(72px, 7.6vh, 104px);
   background: var(--grad-play);
   color: var(--white);
   box-shadow: var(--shadow-play);
@@ -300,13 +312,16 @@
 .ctrl--main:hover { box-shadow: 0 14px 32px rgba(251, 59, 33, 0.45); }
 
 /* ═══════ Правая колонка ═══════ */
-.player__stats { display: flex; flex-direction: column; gap: 14px; }
+.player__stats { display: flex; flex-direction: column; gap: clamp(12px, 1.3vh, 20px); min-height: 0; }
 
 .stat {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
   background: var(--white);
   border: 1px solid var(--gray-200);
   border-radius: var(--r-lg);
-  padding: 15px 16px;
+  padding: clamp(14px, 1.6vh, 22px) clamp(16px, 1.2vw, 22px);
   box-shadow: var(--shadow-card);
 }
 
@@ -317,7 +332,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 10.5px;
+  font-size: clamp(10.5px, 1.05vh, 13px);
   font-weight: 700;
   letter-spacing: 0.075em;
   text-transform: uppercase;
@@ -327,10 +342,10 @@
 .stat__big {
   display: block;
   font-family: var(--font-head);
-  font-size: 42px;
+  font-size: clamp(40px, 5vh, 68px);
   font-weight: 800;
   letter-spacing: -0.03em;
-  margin: 8px 0 12px;
+  margin: clamp(6px, .8vh, 12px) 0 clamp(10px, 1.2vh, 16px);
   font-variant-numeric: tabular-nums;
 }
 
@@ -340,7 +355,7 @@
   gap: 9px;
   padding-top: 11px;
   border-top: 1px solid var(--gray-100);
-  font-size: 11.5px;
+  font-size: clamp(11.5px, 1.15vh, 14.5px);
   line-height: 1.35;
   color: var(--gray-500);
 }
@@ -352,33 +367,36 @@
 
 .stat__mid {
   font-family: var(--font-head);
-  font-size: 30px;
+  font-size: clamp(30px, 3.6vh, 50px);
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
 .stat__today { display: flex; flex-direction: column; line-height: 1.25; }
-.stat__today strong { font-family: var(--font-head); font-size: 19px; font-weight: 800; }
-.stat__today span { font-size: 11.5px; color: var(--gray-500); }
+.stat__today strong { font-family: var(--font-head); font-size: clamp(19px, 2.2vh, 28px); font-weight: 800; }
+.stat__today span { font-size: clamp(11.5px, 1.15vh, 14.5px); color: var(--gray-500); }
 
-.donut { width: 46px; height: 46px; flex: none; }
-.donut--sm { width: 42px; height: 42px; }
+.donut { width: clamp(46px, 5vh, 66px); height: clamp(46px, 5vh, 66px); flex: none; }
+.donut--sm { width: clamp(42px, 4.6vh, 60px); height: clamp(42px, 4.6vh, 60px); }
 
 /* ——— Недельный график ——— */
+/* Карточка «Сегодня» намеренно компактная, колонка не растягивает её. */
+.stat--chart { flex: 0 0 auto; }
+
 .week {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
   align-items: end;
-  height: 74px;
-  margin-top: 14px;
+  height: clamp(74px, 9vh, 118px);
+  margin-top: clamp(12px, 1.4vh, 20px);
 }
 
 .week__col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
 
 .week__bar {
-  width: 8px;
+  width: clamp(8px, .8vh, 11px);
   min-height: 7px;
   border-radius: var(--r-pill);
   background: var(--gray-200);
@@ -386,11 +404,82 @@
 
 .week__bar.is-today { background: var(--grad-pink); }
 
-.week__col span { font-size: 9.5px; color: var(--gray-400); text-transform: uppercase; }
+.week__col span { font-size: clamp(9.5px, 1vh, 12.5px); color: var(--gray-400); text-transform: uppercase; }
 .week__col span.is-today { color: var(--pink-500); font-weight: 700; }
 
 @media (max-width: 1180px) {
   .player { grid-template-columns: 220px minmax(0, 1fr); }
   .player__stats { grid-column: 1 / -1; flex-direction: row; padding-top: 0; }
   .player__stats .stat { flex: 1; }
+}
+
+/* ═══════ Окно настроек ═══════ */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 22, 26, .38);
+  backdrop-filter: blur(6px);
+}
+
+.modal__card {
+  width: min(460px, calc(100vw - 40px));
+  padding: 26px 28px 30px;
+  background: var(--white);
+  border-radius: var(--r-xl);
+  box-shadow: 0 30px 70px rgba(20, 22, 26, .25);
+}
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.modal__head h2 { font-size: 22px; font-weight: 800; }
+
+.modal__close {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.modal__close:hover { background: var(--gray-200); }
+
+.modal__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+  margin-bottom: 12px;
+}
+
+.chips { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.chip {
+  padding: 11px 18px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-800);
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.chip:hover { border-color: var(--gray-300); }
+
+.chip.is-on {
+  background: var(--grad-pink);
+  border-color: transparent;
+  color: var(--white);
+  box-shadow: 0 6px 16px rgba(240, 23, 127, .28);
 }

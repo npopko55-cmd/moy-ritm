@@ -4,6 +4,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   padding: 34px 24px 40px;
   background: var(--bg);
   overflow: hidden;
@@ -12,8 +13,8 @@
 .countdown > *:not(.wave-bg) { position: relative; z-index: 1; }
 
 .countdown__title {
-  margin-top: 30px;
-  font-size: clamp(26px, 3.3vw, 41px);
+  margin-top: clamp(20px, 3vh, 44px);
+  font-size: clamp(26px, 3.8vh, 54px);
   font-weight: 800;
   line-height: 1.14;
   text-align: center;
@@ -24,9 +25,9 @@
 /* ——— Кольцо из штрихов ——— */
 .countdown__ring {
   position: relative;
-  width: min(372px, 72vw);
+  width: min(48vh, 72vw, 560px);
   aspect-ratio: 1;
-  margin-top: 10px;
+  margin-top: clamp(8px, 1.5vh, 24px);
   display: grid;
   place-items: center;
 }
@@ -54,7 +55,7 @@
 .countdown__number {
   font-family: var(--font-head);
   font-weight: 800;
-  font-size: clamp(86px, 10.5vw, 124px);
+  font-size: clamp(86px, 15vh, 170px);
   line-height: 1;
   background: var(--grad-number);
   -webkit-background-clip: text;
@@ -69,7 +70,7 @@
 }
 
 .countdown__caption {
-  font-size: 14.5px;
+  font-size: clamp(14px, 1.5vh, 19px);
   color: var(--gray-500);
 }
 
@@ -90,8 +91,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 20px;
-  padding: 15px 26px 15px 18px;
+  margin-top: clamp(18px, 3vh, 40px);
+  padding: clamp(14px, 1.6vh, 20px) clamp(24px, 2.4vh, 34px) clamp(14px, 1.6vh, 20px) clamp(18px, 1.8vh, 24px);
   background: var(--white);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-soft);
@@ -110,5 +111,5 @@
 }
 
 .countdown__card-body { display: flex; flex-direction: column; gap: 3px; }
-.countdown__card-body strong { font-family: var(--font-head); font-size: 15px; font-weight: 700; }
-.countdown__card-body span { font-size: 13.5px; color: var(--gray-500); }
+.countdown__card-body strong { font-family: var(--font-head); font-size: clamp(15px, 1.6vh, 20px); font-weight: 700; }
+.countdown__card-body span { font-size: clamp(13.5px, 1.4vh, 17px); color: var(--gray-500); }

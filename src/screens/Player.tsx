@@ -19,7 +19,8 @@ import {
   User,
 } from '../components/Icons'
 import { MOTIVATION, STREAMS, getStream } from '../data/streams'
-import { SECONDS_PER_MOVE, loopSrc } from '../data/loops'
+import { loopSrc } from '../data/loops'
+import { MOVE_INTERVALS, loadMoveInterval, saveMoveInterval } from '../lib/settings'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
 import './Player.css'
@@ -39,11 +40,11 @@ const WEEK = [
 ]
 
 const MENU = [
-  { icon: <Clock size={19} />, label: 'Мой прогресс' },
-  { icon: <User size={19} />, label: 'Профиль' },
-  { icon: <Gear size={19} />, label: 'Настройки' },
-  { icon: <Question size={19} />, label: 'Нужна помощь?' },
-]
+  { icon: <Clock size={19} />, label: 'Мой прогресс', action: null },
+  { icon: <User size={19} />, label: 'Профиль', action: null },
+  { icon: <Gear size={19} />, label: 'Настройки', action: 'settings' },
+  { icon: <Question size={19} />, label: 'Нужна помощь?', action: null },
+] as const
 
 export default function Player() {
   const { streamId } = useParams()
@@ -55,13 +56,15 @@ export default function Player() {
   const [playing, setPlaying] = useState(true)
   const [todaySeconds, setTodaySeconds] = useState(12 * 60 + 47)
   const [motivation, setMotivation] = useState(MOTIVATION[0])
+  const [moveInterval, setMoveInterval] = useState(loadMoveInterval)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const { track, blocked: soundBlocked, setPlaying: setMusicPlaying, next: nextTrack } = useMusic()
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const loop = stream.loops[moveIndex % stream.loops.length]
-  const untilSwitch = Math.max(0, SECONDS_PER_MOVE - inMove)
-  const moveProgress = Math.min(1, inMove / SECONDS_PER_MOVE)
+  const untilSwitch = Math.max(0, moveInterval - inMove)
+  const moveProgress = Math.min(1, inMove / moveInterval)
 
   const goToMove = useCallback(
     (delta: number) => {
@@ -79,7 +82,7 @@ export default function Player() {
     const id = setInterval(() => {
       setTodaySeconds((s) => s + 1)
       setInMove((s) => {
-        if (s + 1 >= SECONDS_PER_MOVE) {
+        if (s + 1 >= moveInterval) {
           goToMove(1)
           return 0
         }
@@ -87,7 +90,13 @@ export default function Player() {
       })
     }, 1000)
     return () => clearInterval(id)
-  }, [playing, goToMove])
+  }, [playing, goToMove, moveInterval])
+
+  const chooseInterval = useCallback((seconds: number) => {
+    setMoveInterval(seconds)
+    saveMoveInterval(seconds)
+    setInMove(0)
+  }, [])
 
   // Пауза останавливает и ролик, чтобы персонаж замирал вместе с таймером.
   useEffect(() => {
@@ -136,7 +145,10 @@ export default function Player() {
         <ul className="side__menu">
           {MENU.map((m) => (
             <li key={m.label}>
-              <button className="side__menu-item">
+              <button
+                className="side__menu-item"
+                onClick={m.action === 'settings' ? () => setSettingsOpen(true) : undefined}
+              >
                 {m.icon}
                 <span>{m.label}</span>
               </button>
@@ -271,7 +283,7 @@ export default function Player() {
           </div>
         </section>
 
-        <section className="stat">
+        <section className="stat stat--chart">
           <header className="stat__head">
             <span>Сегодня</span>
           </header>
@@ -295,6 +307,32 @@ export default function Player() {
           </div>
         </section>
       </aside>
+
+      {settingsOpen && (
+        <div className="modal" onClick={() => setSettingsOpen(false)} role="dialog" aria-modal="true">
+          <div className="modal__card" onClick={(e) => e.stopPropagation()}>
+            <header className="modal__head">
+              <h2>Настройки</h2>
+              <button className="modal__close" onClick={() => setSettingsOpen(false)} aria-label="Закрыть">
+                ×
+              </button>
+            </header>
+
+            <p className="modal__label">Менять упражнение каждые</p>
+            <div className="chips">
+              {MOVE_INTERVALS.map((i) => (
+                <button
+                  key={i.seconds}
+                  className={`chip ${i.seconds === moveInterval ? 'is-on' : ''}`}
+                  onClick={() => chooseInterval(i.seconds)}
+                >
+                  {i.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
