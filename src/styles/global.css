@@ -68,8 +68,14 @@ ul { margin: 0; padding: 0; list-style: none; }
   .btn--pink-lg:hover { box-shadow: 0 14px 32px rgba(240,23,127,.42); }
 }
 
-/* Палец меньше курсора: на планшете и телефоне у кнопок гарантированные 44 px. */
-@media (max-width: 1023.98px), (pointer: coarse) {
+/*
+ * Палец меньше курсора: на планшете и телефоне у кнопок гарантированные 44 px.
+ * Третье условие — планшет стоймя (iPad Pro 1024×1366): по ширине он
+ * не проходит, но раскладка там уже планшетная.
+ */
+@media (max-width: 1023.98px),
+       (pointer: coarse),
+       (max-width: 1179.98px) and (orientation: portrait) {
   .btn { min-height: 44px; }
 }
 

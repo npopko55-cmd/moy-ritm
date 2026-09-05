@@ -1,12 +1,18 @@
 .countdown {
   position: relative;
-  min-height: 100%;
+  /* Раньше высота бралась от #root в процентах. Явные vh/dvh надёжнее:
+     на десктопе значение то же, а на телефоне не прыгает от адресной строки. */
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 34px 24px 40px;
+  padding:
+    calc(34px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right))
+    calc(40px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left));
   background: var(--bg);
+  /* Ноты по бокам кольца заходят за край — их подрезает, боковой прокрутки нет. */
   overflow: hidden;
 }
 
@@ -26,6 +32,7 @@
 .countdown__ring {
   position: relative;
   width: min(48vh, 72vw, 560px);
+  width: min(48dvh, 72vw, 560px);
   aspect-ratio: 1;
   margin-top: clamp(8px, 1.5vh, 24px);
   display: grid;
@@ -113,3 +120,43 @@
 .countdown__card-body { display: flex; flex-direction: column; gap: 3px; }
 .countdown__card-body strong { font-family: var(--font-head); font-size: clamp(15px, 1.6vh, 20px); font-weight: 700; }
 .countdown__card-body span { font-size: clamp(13.5px, 1.4vh, 17px); color: var(--gray-500); }
+
+/* ═══════════════════════════════════════════════════════════════
+   Телефон: ноты придвигаются к кольцу, чтобы их не срезало краем.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+  .countdown { padding-top: calc(22px + env(safe-area-inset-top)); }
+  .countdown__note--a { right: -8%; }
+  .countdown__note--b { right: -13%; }
+  .countdown__note--c { right: -2%; }
+  .countdown__note--d { right: -5%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Телефон в ландшафте: 390 px высоты. Всё ужимается, чтобы логотип
+   и подпись не наехали на кольцо.
+   ═══════════════════════════════════════════════════════════════ */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  .countdown {
+    padding:
+      calc(8px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+      calc(8px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  }
+
+  .countdown .logo__tagline { display: none; }
+
+  .countdown__title { margin-top: 4px; font-size: 16px; }
+  .countdown__ring { width: min(52dvh, 36vw, 220px); margin-top: 4px; }
+  .countdown__number { font-size: 60px; }
+  .countdown__caption { font-size: 12px; }
+
+  .countdown__card {
+    margin-top: 6px;
+    gap: 10px;
+    padding: 8px 16px 8px 10px;
+  }
+
+  .countdown__card-icon { width: 32px; height: 32px; }
+  .countdown__card-body strong { font-size: 14px; }
+  .countdown__card-body span { font-size: 12.5px; }
+}

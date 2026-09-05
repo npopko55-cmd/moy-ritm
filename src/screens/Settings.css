@@ -4,6 +4,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   overflow: hidden;
 }
@@ -18,7 +19,9 @@
   width: 100%;
   max-width: 1720px;
   margin: 0 auto;
-  padding: 26px clamp(44px, 3.5vw, 72px) 0;
+  padding:
+    calc(26px + env(safe-area-inset-top)) calc(clamp(44px, 3.5vw, 72px) + env(safe-area-inset-right)) 0
+    calc(clamp(44px, 3.5vw, 72px) + env(safe-area-inset-left));
 }
 
 .settings__header .btn { margin-top: 4px; }
@@ -76,7 +79,9 @@
   transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 
-.chip:hover { border-color: var(--gray-300); }
+@media (hover: hover) {
+  .chip:hover { border-color: var(--gray-300); }
+}
 
 .chip.is-on {
   background: var(--grad-pink);
@@ -96,7 +101,43 @@
   background: rgba(255, 255, 255, .22);
 }
 
+/* Палец: чипы тоже от 44 px. */
+@media (max-width: 1023.98px),
+       (pointer: coarse),
+       (max-width: 1179.98px) and (orientation: portrait) {
+  .chip { min-height: 44px; }
+}
+
+/* Телефон: поля 44 px по бокам съедали бы треть экрана. */
+@media (max-width: 767.98px) {
+  .settings__header {
+    padding:
+      calc(18px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 0
+      calc(16px + env(safe-area-inset-left));
+  }
+
+  .settings__main {
+    width: min(760px, calc(100% - 32px));
+    padding-bottom: calc(48px + env(safe-area-inset-bottom));
+  }
+
+  .settings__card { padding: 20px 18px; }
+  /* Два чипа в ряд: 4 варианта складываются в аккуратные 2×2. */
+  .chip { flex: 1 1 calc(50% - 6px); }
+}
+
 @media (max-width: 640px) {
   .settings__header { flex-direction: column; align-items: flex-start; }
   .settings__actions .btn { width: 100%; }
+}
+
+/* Телефон в ландшафте: экран низкий, отступы сверху и снизу лишние. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  .settings__header { padding-top: calc(12px + env(safe-area-inset-top)); }
+  .settings__main { padding-top: 10px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  .settings__title { font-size: 24px; }
+  .settings__lead { margin-top: 6px; }
+  .settings__card { margin-top: 12px; padding: 14px 18px; }
+  .settings__actions { margin-top: 14px; }
+  .settings .btn--pink-lg { padding: 13px 20px 13px 26px; font-size: 16px; }
 }
