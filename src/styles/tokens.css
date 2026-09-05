@@ -76,4 +76,6 @@
   /* — Типографика — */
   --font-head: 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif;
   --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Рукописные подписи — пока только на странице тарифов. */
+  --font-hand: 'Caveat', 'Segoe Script', cursive;
 }
