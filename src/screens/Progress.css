@@ -1,0 +1,181 @@
+/* ═══════ «Мой прогресс» ═══════
+   Оболочка — Page.css. Здесь календарь месяца, график минут по неделям и
+   рекорды. Столбики нарочно такие же, как в недельном графике плеера. */
+
+/* — Шапка календаря — */
+.calendar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.calendar__month {
+  font-size: clamp(18px, 2.2vh, 24px);
+  font-weight: 800;
+  text-align: center;
+  flex: 1;
+}
+
+.calendar__arrow {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  font-size: 18px;
+  color: var(--ink-800);
+  box-shadow: var(--shadow-card);
+}
+
+.calendar__arrow:disabled { opacity: .35; cursor: default; box-shadow: none; }
+
+@media (hover: hover) {
+  .calendar__arrow:not(:disabled):hover { border-color: var(--gray-300); }
+}
+
+/* — Сетка месяца — */
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: clamp(4px, .8vw, 8px);
+  margin-top: 18px;
+}
+
+.calendar__wd {
+  padding-bottom: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--gray-400);
+}
+
+.calendar__pad { aspect-ratio: 1; }
+
+.calendar__day {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--r-md);
+  background: var(--gray-100);
+  font-size: clamp(12px, 1.5vw, 15px);
+  font-weight: 600;
+  color: var(--gray-500);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Четыре ступени плотности: чем больше минут, тем гуще розовый. */
+.calendar__day.is-l1 { background: var(--pink-50); color: var(--pink-700); }
+.calendar__day.is-l2 { background: var(--pink-100); color: var(--pink-700); }
+.calendar__day.is-l3 { background: var(--pink-200); color: var(--pink-700); }
+.calendar__day.is-l4 { background: var(--grad-pink); color: var(--white); }
+
+.calendar__day.is-today { outline: 2px solid var(--pink-500); outline-offset: 1px; }
+
+/* — Итоги месяца — */
+.month-totals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.month-totals li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--bg-panel);
+}
+
+.month-totals strong {
+  font-family: var(--font-head);
+  font-size: clamp(22px, 2.6vh, 30px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-totals span { font-size: 13px; line-height: 1.35; color: var(--gray-500); }
+
+/* — Минуты по неделям — */
+.bars {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: clamp(4px, .8vw, 10px);
+  align-items: end;
+  height: clamp(120px, 18vh, 170px);
+  margin-top: 20px;
+}
+
+.bars__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.bars__value {
+  font-size: 11px;
+  color: var(--gray-400);
+  font-variant-numeric: tabular-nums;
+}
+
+.bars__bar {
+  width: clamp(8px, 1.4vw, 14px);
+  min-height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--gray-200);
+}
+
+.bars__bar.is-now { background: var(--grad-pink); }
+
+.bars__label {
+  font-size: 10.5px;
+  color: var(--gray-400);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* — Рекорды — */
+.records {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.records__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
+  background: var(--bg-panel);
+}
+
+.records__item strong {
+  font-family: var(--font-head);
+  font-size: clamp(20px, 2.4vh, 26px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.records__item span { font-size: 13.5px; line-height: 1.4; color: var(--gray-500); }
+
+/* — Телефон — */
+@media (max-width: 767.98px) {
+  .month-totals { grid-template-columns: 1fr; }
+  .records { grid-template-columns: 1fr; }
+  /* Двенадцать подписей в ряд на 320 px не читаются — оставляем каждую вторую. */
+  .bars__col:nth-child(even) .bars__label { visibility: hidden; }
+  .bars__value { display: none; }
+  .calendar__month { font-size: 18px; }
+}
