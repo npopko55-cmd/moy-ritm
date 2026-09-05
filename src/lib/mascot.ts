@@ -13,8 +13,17 @@ import { asset } from './asset'
 
 type Connection = { saveData?: boolean; effectiveType?: string }
 
-/** Сети, на которых мегабайт видео ради украшения — плохая сделка. */
-const SLOW = ['slow-2g', '2g', '3g']
+/**
+ * Сети, на которых мегабайт видео ради украшения — плохая сделка.
+ *
+ * '3g' сюда не входит намеренно: Chrome вешает эту метку на любое соединение с
+ * откликом дольше ~270 мс, а у нашей аудитории через VPN так почти всегда.
+ * Ролик и без того грузится лениво и последним, до его прихода стоит постер.
+ */
+const SLOW = ['slow-2g', '2g']
+
+/** Потолок повторных запусков — свой на каждый повод, чтобы не закольцеваться. */
+const TRIES = 5
 
 /** Случаи, когда ролик не нужен вовсе: остаёмся на постере. */
 function skip(): boolean {
@@ -56,8 +65,45 @@ export function useMascotVideo(ref: RefObject<HTMLVideoElement>): boolean {
     }
     let idleId = 0
     let timerId = 0
+    let dataTries = 0
+    let visibleTries = 0
 
-    const onPlaying = () => setLive(true)
+    // Автовоспроизведение могут запретить, файл может не скачаться — оба
+    // случая просто оставляют постер на месте, ругаться в консоль незачем.
+    const start = () => void video.play().catch(() => undefined)
+
+    /**
+     * play() сразу после load() часто отклоняется: данных ещё нет. Пробуем
+     * снова, когда они подъехали, и снимаем слушатели, как только заиграло.
+     */
+    const onData = () => {
+      if (dataTries >= TRIES || !video.paused) return
+      dataTries += 1
+      start()
+    }
+
+    /**
+     * В фоновой вкладке Chrome ролик без звука либо не запускает вовсе, либо
+     * ставит на паузу сразу после playing. Единственный надёжный момент — когда
+     * вкладку открыли, так что слушатель живёт до размонтирования; счётчик не
+     * даёт ему закольцеваться, а уже играющий ролик мы не трогаем.
+     */
+    const onVisible = () => {
+      if (visibleTries >= TRIES) return
+      if (document.visibilityState !== 'visible' || !video.paused) return
+      visibleTries += 1
+      start()
+    }
+
+    const stopData = () => {
+      video.removeEventListener('loadeddata', onData)
+      video.removeEventListener('canplay', onData)
+    }
+
+    const onPlaying = () => {
+      setLive(true)
+      stopData()
+    }
     video.addEventListener('playing', onPlaying)
 
     const load = () => {
@@ -67,10 +113,11 @@ export function useMascotVideo(ref: RefObject<HTMLVideoElement>): boolean {
         source.type = type
         video.appendChild(source)
       }
+      video.addEventListener('loadeddata', onData)
+      video.addEventListener('canplay', onData)
+      document.addEventListener('visibilitychange', onVisible)
       video.load()
-      // Автовоспроизведение могут запретить, файл может не скачаться — оба
-      // случая просто оставляют постер на месте, ругаться в консоль незачем.
-      void video.play().catch(() => undefined)
+      start()
     }
 
     const schedule = () => {
@@ -86,6 +133,8 @@ export function useMascotVideo(ref: RefObject<HTMLVideoElement>): boolean {
       if (idleId) w.cancelIdleCallback?.(idleId)
       if (timerId) window.clearTimeout(timerId)
       video.removeEventListener('playing', onPlaying)
+      stopData()
+      document.removeEventListener('visibilitychange', onVisible)
       video.pause()
       video.removeAttribute('src')
       while (video.firstChild) video.removeChild(video.firstChild)
