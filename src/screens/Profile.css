@@ -1,0 +1,144 @@
+/* ═══════ Профиль ═══════
+   Оболочка — Page.css, поля форм — Account.css. Здесь только итоги,
+   список устройств и блок удаления аккаунта. */
+
+/* — Имя правится прямо в строке — */
+.profile__name {
+  width: clamp(160px, 30vw, 260px);
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  background: var(--white);
+  font-family: inherit;
+  /* 16px — иначе iOS зумит страницу при фокусе на поле. */
+  font-size: 16px;
+  color: var(--ink-900);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.profile__name:focus {
+  outline: none;
+  border-color: var(--pink-400);
+  box-shadow: 0 0 0 3px var(--pink-100);
+}
+
+/* — Итоги — */
+.totals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 16px 0 4px;
+}
+
+.totals__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--bg-panel);
+}
+
+.totals__item strong {
+  font-family: var(--font-head);
+  font-size: clamp(22px, 2.6vh, 30px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.totals__item span {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--gray-500);
+}
+
+/* — Устройства — */
+.devices { margin-top: 14px; }
+
+.devices__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-top: 1px solid var(--gray-100);
+}
+
+.devices__row:first-child { border-top: none; padding-top: 0; }
+
+.devices__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.devices__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.devices__badge {
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--pink-100);
+  color: var(--pink-700);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.devices__meta { font-size: 13px; color: var(--gray-500); }
+
+/* — Ряды кнопок — */
+.profile__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* — Удаление аккаунта — */
+.profile__danger {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border: 1px solid #ffd9d2;
+  border-radius: var(--r-lg);
+  background: #fff8f6;
+}
+
+.profile__warn {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--gray-600);
+}
+
+.profile__danger .form { margin-top: 14px; }
+
+/* Подпись про демо-режим — мелко и без нажима: это не ошибка. */
+.profile__demo {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gray-400);
+}
+
+.profile__demo .page__link { min-height: 0; font-size: inherit; }
+
+/* — Планшет и телефон — */
+@media (max-width: 900px) {
+  .totals { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 767.98px) {
+  .profile__name { width: 100%; }
+  .profile__buttons .page__btn { flex: 1 1 100%; }
+  .devices__row .page__btn { flex: none; }
+}
+
+@media (max-width: 360px) {
+  .totals { grid-template-columns: 1fr; }
+}

@@ -329,6 +329,9 @@ export function createDemoApi(): Api {
         throw new ApiError(401, 'UNAUTHORIZED', 'Неверная почта или пароль')
       }
       write('session', key)
+      // Когда вошли — чтобы список устройств в профиле показывал настоящее
+      // время входа, а не «прямо сейчас» на каждое открытие страницы.
+      write('session.at', Date.now())
       return token(user)
     },
 
@@ -381,14 +384,16 @@ export function createDemoApi(): Api {
 
     async getSessions() {
       const user = requireUser()
+      // Устройство в демо всегда одно — это самое, из которого смотрят.
+      const at = read<number>('session.at', Date.now())
       return {
         items: [
           {
             id: user.id,
             user_agent: navigator.userAgent,
             ip: null,
-            issued_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 30 * DAY_MS).toISOString(),
+            issued_at: new Date(at).toISOString(),
+            expires_at: new Date(at + 30 * DAY_MS).toISOString(),
             current: true,
           },
         ],
@@ -409,6 +414,7 @@ export function createDemoApi(): Api {
         drop(`settings.${email}`)
         drop(`pending.${email}`)
         drop('session')
+        drop('session.at')
       }
       return { message: 'Аккаунт удалён' }
     },

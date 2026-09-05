@@ -88,8 +88,7 @@ export default function Landing() {
         <div className="landing__actions">
           {me ? (
             <>
-              {/* Профиль появится в следующей части; пока ведём в настройки. */}
-              <Link className="landing__who" to="/settings" title={me.user.email}>
+              <Link className="landing__who" to="/profile" title={me.user.email}>
                 {me.user.name || me.user.email}
               </Link>
               <button className="btn btn--ghost" onClick={() => void signOut()}>
