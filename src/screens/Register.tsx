@@ -129,9 +129,10 @@ export default function Register() {
           </p>
         )}
 
+        {/* Кнопка «Войти» выше — здесь только боковые дороги. */}
         <nav className="account__links">
-          <Link to={`/login${loginNext}`}>Войти</Link>
           <Link to="/tariffs">К тарифам</Link>
+          <Link to="/forgot-password">Забыли пароль?</Link>
         </nav>
       </AccountShell>
     )
