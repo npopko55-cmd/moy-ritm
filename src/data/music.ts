@@ -43,7 +43,7 @@ export const TRACKS: Track[] = [
   { id: 'radwulf-no-stopping', title: "No Stopping", artist: "Radwulf", duration: 248.1, startAt: 83.5 },
   { id: 'ryan-blyth-show-me', title: "Show Me", artist: "Ryan Blyth", duration: 179.5, startAt: 32.5 },
   { id: 'ship-wrek-stimulate', title: "Stimulate", artist: "Ship Wrek", duration: 182.9, startAt: 45.5 },
-  { id: 'tony-dark-eyes-games', title: "Games", artist: "Tony Dark Eyes", duration: 129.8, startAt: 13 },
+  { id: 'tony-dark-eyes-games', title: "Games", artist: "Tony Dark Eyes", duration: 129.9, startAt: 13 },
 ]
 
 export function trackSrc(id: string): string {
