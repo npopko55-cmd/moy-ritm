@@ -18,8 +18,9 @@ import {
   Sparkle,
   User,
 } from '../components/Icons'
-import { CURRENT_TRACK, MOTIVATION, STREAMS, getStream } from '../data/streams'
+import { MOTIVATION, STREAMS, getStream } from '../data/streams'
 import { SECONDS_PER_MOVE, loopSrc } from '../data/loops'
+import { TRACKS, shuffled, trackSrc } from '../data/music'
 import '../components/Logo.css'
 import './Player.css'
 
@@ -55,7 +56,14 @@ export default function Player() {
   const [todaySeconds, setTodaySeconds] = useState(12 * 60 + 47)
   const [motivation, setMotivation] = useState(MOTIVATION[0])
 
+  // Плейлист перемешивается один раз на заход.
+  const playlist = useMemo(() => shuffled(TRACKS), [])
+  const [trackIndex, setTrackIndex] = useState(0)
+  const [soundBlocked, setSoundBlocked] = useState(false)
+  const track = playlist[trackIndex % playlist.length]
+
   const videoRef = useRef<HTMLVideoElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
   const loop = stream.loops[moveIndex % stream.loops.length]
   const untilSwitch = Math.max(0, SECONDS_PER_MOVE - inMove)
   const moveProgress = Math.min(1, inMove / SECONDS_PER_MOVE)
@@ -93,6 +101,26 @@ export default function Player() {
     if (playing) void v.play().catch(() => undefined)
     else v.pause()
   }, [playing, loop.id])
+
+  // Музыка идёт вместе с тренировкой. Браузер может отклонить автозапуск
+  // со звуком — тогда показываем подсказку в карточке трека.
+  useEffect(() => {
+    const a = audioRef.current
+    if (!a) return
+    if (!playing) {
+      a.pause()
+      return
+    }
+    a.play().then(
+      () => setSoundBlocked(false),
+      () => setSoundBlocked(true),
+    )
+  }, [playing, trackIndex])
+
+  const nextTrack = useCallback(() => {
+    setTrackIndex((i) => (i + 1) % playlist.length)
+    setSoundBlocked(false)
+  }, [playlist.length])
 
   const src = useMemo(() => loopSrc(loop.id), [loop.id])
 
@@ -148,15 +176,19 @@ export default function Player() {
           <h1 className="stage__headline">{motivation}</h1>
 
           <div className="stage__top-right">
-            <div className="track">
+            <button
+              className={`track ${soundBlocked ? 'track--muted' : ''}`}
+              onClick={nextTrack}
+              title="Следующий трек"
+            >
               <span className="track__icon">
                 <MusicNote size={19} />
               </span>
               <span className="track__text">
-                <strong>{CURRENT_TRACK.title}</strong>
-                <span>{CURRENT_TRACK.artist}</span>
+                <strong>{track.title}</strong>
+                <span>{soundBlocked ? 'нажмите, чтобы включить звук' : track.artist}</span>
               </span>
-            </div>
+            </button>
             <button className="icon-btn" title="На весь экран">
               <Fullscreen size={19} />
             </button>
@@ -187,15 +219,25 @@ export default function Player() {
             />
           </svg>
 
-          <video
-            ref={videoRef}
-            key={loop.id}
-            className="stage__video"
-            src={src}
-            autoPlay
-            loop
-            muted
-            playsInline
+          <div className="stage__disc">
+            <video
+              ref={videoRef}
+              key={loop.id}
+              className="stage__video"
+              src={src}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+            />
+          </div>
+
+          <audio
+            ref={audioRef}
+            key={track.id}
+            src={trackSrc(track.id)}
+            onEnded={nextTrack}
             preload="auto"
           />
 

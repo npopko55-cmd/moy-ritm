@@ -2,8 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
-import { asset } from '../lib/asset'
 import { STREAMS } from '../data/streams'
+import { loopSrc } from '../data/loops'
 import '../components/Logo.css'
 import './Landing.css'
 
@@ -94,14 +94,18 @@ export default function Landing() {
           <span className="hero__dot hero__dot--b" />
           <span className="hero__dot hero__dot--c" />
           <span className="hero__dot hero__dot--d" />
-          <img
-            className="hero__photo"
-            src={asset("hero/hero.png")}
-            alt="Девушка двигается под музыку"
-            onError={(e) => {
-              e.currentTarget.style.visibility = 'hidden'
-            }}
-          />
+          <div className="hero__disc">
+            <video
+              className="hero__video"
+              src={loopSrc('dance-steps')}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              aria-label="Девушка двигается под музыку"
+            />
+          </div>
         </div>
       </main>
     </div>

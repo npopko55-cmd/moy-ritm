@@ -1,12 +1,11 @@
 /**
  * Каталог зацикленных роликов с движениями.
  *
- * Файлы лежат в public/loops/ в двух форматах с прозрачным фоном:
- *   <id>.webm — VP9 + альфа (Chrome, Firefox, Edge)
- *   <id>.mp4  — HEVC + альфа (Safari)
- * Оба собираются скриптом scripts/build-loops.sh из исходников в
- * «ЛУПЫ ГОТОВЫЕ/Один цикл». duration — длительность одного цикла в секундах,
- * взята из ffprobe исходника.
+ * Файлы лежат в public/loops/ как <id>.mp4 (H.264, 640×640, без звука).
+ * Фон у роликов не вырезается: на светлом фоне сайта было видно обводку
+ * по контуру, поэтому ролик целиком показывается в круглой рамке.
+ * Пересборка: scripts/build-loops.sh
+ * duration — длительность одного цикла в секундах.
  */
 
 import { asset } from '../lib/asset'
@@ -37,11 +36,6 @@ export const LOOPS: Record<string, Loop> = {
 /** Сколько секунд крутится одно движение, прежде чем сменится следующим. */
 export const SECONDS_PER_MOVE = 30
 
-/** Safari не умеет альфу в WebM, поэтому ему отдаём HEVC в mp4. */
-const isSafari =
-  typeof navigator !== 'undefined' &&
-  /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent)
-
 export function loopSrc(id: string): string {
-  return asset(isSafari ? `loops/${id}.mp4` : `loops/${id}.webm`)
+  return asset(`loops/${id}.mp4`)
 }

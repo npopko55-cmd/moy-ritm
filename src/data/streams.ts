@@ -76,6 +76,3 @@ export const MOTIVATION = [
   'Ритм твоей жизни — в твоих руках!',
   'Прекрасная тренировка! 💪',
 ]
-
-/** Трек, который показывается в шапке плеера. */
-export const CURRENT_TRACK = { title: 'Good Vibes', artist: 'The Motion' }
