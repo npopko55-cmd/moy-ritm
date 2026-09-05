@@ -12,7 +12,7 @@ import ForgotPassword from './screens/ForgotPassword'
 import ResetPassword from './screens/ResetPassword'
 import PaymentSuccess from './screens/PaymentSuccess'
 import { SessionProvider } from './auth/SessionProvider'
-import { RequireAuth } from './auth/guards'
+import { RequireAccess, RequireAuth } from './auth/guards'
 import { MusicProvider } from './music/MusicProvider'
 
 export default function App() {
@@ -41,9 +41,38 @@ export default function App() {
             }
           />
 
-          <Route path="/start/:streamId" element={<Countdown />} />
-          <Route path="/player/:streamId" element={<Player />} />
-          <Route path="/settings" element={<Settings />} />
+          {/* Тренировка закрыта оплатой. Обёртки решают, какой экран
+              показать; пускать или нет решает бэкенд — контентные ручки
+              отвечают 403 access_required. */}
+          <Route
+            path="/start/:streamId"
+            element={
+              <RequireAuth>
+                <RequireAccess>
+                  <Countdown />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/player/:streamId"
+            element={
+              <RequireAuth>
+                <RequireAccess>
+                  <Player />
+                </RequireAccess>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <RequireAuth>
+                <Settings />
+              </RequireAuth>
+            }
+          />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </MusicProvider>

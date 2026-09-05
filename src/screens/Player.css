@@ -38,6 +38,33 @@
   color: var(--gray-400);
 }
 
+/*
+ * Плашка «доступ заканчивается». Обычная строка в колонке, а не всплывающее
+ * окно: окон на сайте нет. Появляется только при статусах expiring и grace,
+ * поэтому раскладку без неё ничем не двигает.
+ */
+.access-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: none;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--orange-100);
+  color: var(--orange-600);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.access-note__cta { flex: none; text-decoration: underline; }
+
+@media (hover: hover) {
+  .access-note:hover { background: #ffdcbe; }
+}
+
 .side__streams {
   flex: 1;
   display: flex;
@@ -639,6 +666,21 @@
     line-height: 1.15;
     text-align: center;
   }
+
+  /* Колонки распущены в сетку, поэтому плашке нужен свой ряд. Он заводится
+     только вместе с ней: без неё сетка та же, что была. */
+  .player--notice {
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "top     top     top"
+      "note    note    note"
+      "streams streams streams"
+      "stage   stage   stage"
+      "s1      s2      s3"
+      "menu    menu    menu";
+  }
+
+  .access-note { grid-area: note; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -705,6 +747,19 @@
     font-size: clamp(10px, 2.8vw, 11px);
     gap: 2px;
   }
+
+  /* Тот же ряд «note», но сетка здесь в две колонки. */
+  .player--notice {
+    grid-template-areas:
+      "top     top"
+      "note    note"
+      "streams streams"
+      "stage   stage"
+      "s1      s2"
+      "s3      s3";
+  }
+
+  .access-note { font-size: 12px; padding: 8px 10px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -783,5 +838,9 @@
 
   /* Остаются только иконки: подписи в ландшафте негде разместить. */
   .side__menu-item > span { display: none; }
+
+  /* В ландшафте на 390 px высоты плашке места нет: круг важнее. Про конец
+     доступа человек уже узнал из письма, а на тарифах его встретит строка. */
+  .access-note { display: none; }
 }
 

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useSession } from '../auth/SessionProvider'
+import { days } from '../lib/date'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import {
@@ -58,6 +60,15 @@ export default function Player() {
   const { streamId } = useParams()
   const navigate = useNavigate()
   const stream = getStream(streamId)
+  const { access } = useSession()
+
+  // Плашка о конце доступа: строкой в колонке, а не всплывающим окном.
+  const notice =
+    access?.status === 'expiring'
+      ? `Доступ заканчивается через ${days(access.days_left)}`
+      : access?.status === 'grace'
+        ? 'Доступ закончился — продлите, чтобы продолжить завтра'
+        : ''
 
   // Счётчик смен движения. Не заворачивается по кругу нарочно: по его
   // чётности выбирается, какой из двух <video> сейчас на виду.
@@ -180,12 +191,21 @@ export default function Player() {
   }, [afterNext.id])
 
   return (
-    <div className="player">
+    <div className={`player ${notice ? 'player--notice' : ''}`}>
       <WaveBg opacity={0.28} />
 
       {/* ——— Левая колонка ——— */}
       <aside className="player__side">
         <Logo size="sm" />
+
+        {/* Плашка живёт внутри колонки: на телефоне .player__side
+            распускается в сетку, и ей выделен отдельный ряд «note». */}
+        {notice && (
+          <Link className="access-note" to="/tariffs">
+            <span>{notice}</span>
+            <span className="access-note__cta">Продлить</span>
+          </Link>
+        )}
 
         <p className="side__label">Потоки</p>
 
