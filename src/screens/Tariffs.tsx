@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
@@ -17,9 +17,14 @@ import {
   Star,
   Bolt,
 } from '../components/Icons'
+import { api } from '../api/client'
+import { ApiError, hasAccess, type AccessStatus, type Tariff } from '../api/types'
+import { useSession } from '../auth/SessionProvider'
+import { nextParam } from '../auth/guards'
 import { asset } from '../lib/asset'
-import { STREAMS } from '../data/streams'
-import { TARIFFS, rub } from '../data/tariffs'
+import { formatDate } from '../lib/date'
+import { rub } from '../data/tariffs'
+import { errorText } from './Account'
 import '../components/Logo.css'
 import './Tariffs.css'
 
@@ -45,9 +50,23 @@ const FACTS = [
   },
 ] as const
 
+/** Почему человека сюда привели: это ставит защита маршрутов. */
+type FromGuard = { accessReason?: AccessStatus } | null
+
+/** Что показать под кнопками. `verify` рисует ещё и кнопку повторного письма. */
+type Note = { kind: 'error' | 'verify'; text: string } | null
+
 export default function Tariffs() {
   const navigate = useNavigate()
-  const { key } = useLocation()
+  const { key, state } = useLocation() as { key: string; state: FromGuard }
+  const { me, access } = useSession()
+
+  // null — ещё грузим: в это время в карточках стоит скелетон.
+  const [tariffs, setTariffs] = useState<Tariff[] | null>(null)
+  const [loadError, setLoadError] = useState('')
+  const [busyCode, setBusyCode] = useState<string | null>(null)
+  const [note, setNote] = useState<Note>(null)
+  const [resend, setResend] = useState({ busy: false, ok: '', error: '' })
 
   // Владелец не хочет всплывающих окон, поэтому это страница, а не модалка.
   // Крестик и Escape ведут туда, откуда пришли; при прямом заходе истории
@@ -62,9 +81,75 @@ export default function Tariffs() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  // TODO: после подключения бэкенда — POST /api/v1/payments/link и переход
-  // на оффер GetCourse. Пока ни оплаты, ни входа нет — ведём в поток.
-  const choose = () => navigate(`/start/${STREAMS[0].id}`)
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const list = await api.getTariffs()
+        if (alive) setTariffs(list)
+      } catch (e) {
+        if (alive) {
+          setTariffs([])
+          setLoadError(errorText(e, 'Не получилось загрузить тарифы'))
+        }
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  /**
+   * Оплата: ссылка на оффер GetCourse выдаётся персонально, с подставленной
+   * почтой и меткой человека, поэтому её нельзя зашить в разметку.
+   */
+  const choose = async (code: string) => {
+    if (!me) {
+      navigate(`/login${nextParam('/tariffs')}`)
+      return
+    }
+    if (!me.user.email_verified) {
+      setNote({
+        kind: 'verify',
+        text: 'Сначала подтвердите почту — иначе оплата уедет на несуществующий адрес.',
+      })
+      return
+    }
+
+    setNote(null)
+    setBusyCode(code)
+    try {
+      const { url } = await api.paymentLink(code)
+      // Обычный переход на сторону GetCourse, без всплывающих окон.
+      window.location.assign(url)
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'EMAIL_NOT_VERIFIED') {
+        setNote({
+          kind: 'verify',
+          text: 'Сначала подтвердите почту — иначе оплата уедет на несуществующий адрес.',
+        })
+      } else if (e instanceof ApiError && e.code === 'OFFER_NOT_CONFIGURED') {
+        setNote({ kind: 'error', text: 'Оплата пока недоступна, напишите в поддержку.' })
+      } else {
+        setNote({ kind: 'error', text: errorText(e) })
+      }
+      setBusyCode(null)
+    }
+  }
+
+  const sendAgain = async () => {
+    setResend({ busy: true, ok: '', error: '' })
+    try {
+      const res = await api.resendConfirmation()
+      setResend({ busy: false, ok: res.message, error: '' })
+    } catch (e) {
+      setResend({ busy: false, ok: '', error: errorText(e) })
+    }
+  }
+
+  const paid = hasAccess(access)
+  const ctaLabel = paid ? 'Продлить' : 'Выбрать'
+  const support = me?.support.email
 
   return (
     <div className="tariffs">
@@ -74,6 +159,23 @@ export default function Tariffs() {
         <button className="tariffs__close" onClick={close} aria-label="Закрыть и вернуться">
           <Close size={20} />
         </button>
+
+        {/* Строка состояния доступа. Её нет у того, кто ни разу не платил и
+            пришёл сюда сам: показывать нечего. */}
+        {paid && access?.paid_until && (
+          <p className="tariffs__access">
+            Доступ до {formatDate(access.paid_until)}
+            {access.tariff && ` · тариф ${access.tariff.name}`}
+          </p>
+        )}
+        {!paid && state?.accessReason === 'expired' && (
+          <p className="tariffs__access tariffs__access--warn">
+            Доступ закончился. Выберите тариф, чтобы вернуться в поток.
+          </p>
+        )}
+        {!paid && state?.accessReason === 'none' && (
+          <p className="tariffs__access">Чтобы влиться в поток, выберите тариф.</p>
+        )}
 
         <header className="tariffs__head">
           <div className="tariffs__intro">
@@ -116,34 +218,73 @@ export default function Tariffs() {
         </ul>
 
         <ul className="tariffs__plans">
-          {TARIFFS.map((t) => (
-            <li key={t.code} className={`plan plan--${t.code} ${t.is_recommended ? 'is-top' : ''}`}>
-              {t.is_recommended && (
-                <span className="plan__crown">
-                  <Crown size={13} />
-                  Популярный выбор
-                </span>
-              )}
-              {t.discount_label && <span className="plan__badge">{t.discount_label}</span>}
+          {tariffs === null
+            ? [0, 1, 2, 3].map((i) => <PlanSkeleton key={i} />)
+            : tariffs.map((t) => (
+                <li
+                  key={t.code}
+                  className={`plan plan--${t.code} ${t.is_recommended ? 'is-top' : ''}`}
+                >
+                  {t.is_recommended && (
+                    <span className="plan__crown">
+                      <Crown size={13} />
+                      Популярный выбор
+                    </span>
+                  )}
+                  {t.discount_label && <span className="plan__badge">{t.discount_label}</span>}
 
-              <h2 className="plan__name">{t.name}</h2>
-              <p className="plan__price">{rub(t.price)}</p>
-              <p className="plan__per">{rub(t.per_month)} / месяц</p>
+                  <h2 className="plan__name">{t.name}</h2>
+                  <p className="plan__price">{rub(t.price)}</p>
+                  <p className="plan__per">{rub(t.per_month)} / месяц</p>
 
-              {t.savings ? (
-                <span className="plan__save">Экономия {rub(t.savings)}</span>
-              ) : (
-                <span className="plan__rule" aria-hidden="true" />
-              )}
+                  {t.savings ? (
+                    <span className="plan__save">Экономия {rub(t.savings)}</span>
+                  ) : (
+                    <span className="plan__rule" aria-hidden="true" />
+                  )}
 
-              <p className="plan__note">{t.note}</p>
+                  <p className="plan__note">{t.note}</p>
 
-              <button className="plan__cta" data-tariff={t.code} onClick={choose}>
-                Выбрать
-              </button>
-            </li>
-          ))}
+                  <button
+                    className="plan__cta"
+                    data-tariff={t.code}
+                    onClick={() => void choose(t.code)}
+                    disabled={busyCode !== null}
+                  >
+                    {busyCode === t.code ? 'Открываем оплату…' : ctaLabel}
+                  </button>
+                </li>
+              ))}
         </ul>
+
+        {/* Всё, что нужно сказать про оплату, говорим здесь строкой —
+            всплывающих панелей на сайте нет. */}
+        {(note || loadError) && (
+          <div className={`tariffs__msg ${note?.kind === 'error' || loadError ? 'is-bad' : ''}`}>
+            <p>{loadError || note?.text}</p>
+
+            {note?.kind === 'verify' && (
+              <>
+                <button
+                  className="tariffs__msg-btn"
+                  type="button"
+                  onClick={() => void sendAgain()}
+                  disabled={resend.busy}
+                >
+                  {resend.busy ? 'Отправляем…' : 'Отправить письмо ещё раз'}
+                </button>
+                {resend.ok && <p className="tariffs__msg-ok">{resend.ok}</p>}
+                {resend.error && <p className="tariffs__msg-bad">{resend.error}</p>}
+              </>
+            )}
+
+            {note?.kind === 'error' && support && (
+              <a className="tariffs__msg-btn" href={`mailto:${support}`}>
+                Написать в поддержку
+              </a>
+            )}
+          </div>
+        )}
 
         <ul className="tariffs__facts">
           {FACTS.map((f) => (
@@ -160,5 +301,34 @@ export default function Tariffs() {
         <p className="tariffs__hand tariffs__hand--footer">Движение — это забота о себе ♡</p>
       </div>
     </div>
+  )
+}
+
+/**
+ * Карточка на время загрузки. Разметка та же, что у настоящей, а текст
+ * заменён полосками той же высоты — поэтому раскладка не прыгает, когда
+ * приходят цены.
+ */
+function PlanSkeleton() {
+  return (
+    <li className="plan is-skeleton" aria-hidden="true">
+      <h2 className="plan__name">
+        <span className="sk sk--sm" />
+      </h2>
+      <p className="plan__price">
+        <span className="sk sk--md" />
+      </p>
+      <p className="plan__per">
+        <span className="sk sk--sm" />
+      </p>
+      <span className="plan__rule" />
+      <p className="plan__note">
+        <span className="sk sk--lg" />
+        <span className="sk sk--md" />
+      </p>
+      <button className="plan__cta" type="button" disabled>
+        <span className="sk sk--sm" />
+      </button>
+    </li>
   )
 }

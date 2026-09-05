@@ -44,6 +44,27 @@
   padding-top: 4px;
 }
 
+/* Кто вошёл: имя, а если его нет — почта. Ведёт в профиль (пока в настройки).
+   Высоту не задаём — растяжка флексом равняет её по соседним кнопкам, и
+   шапка вышедшего остаётся ровно такой же, как была. */
+.landing__who {
+  display: inline-flex;
+  align-items: center;
+  max-width: 220px;
+  padding: 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color .15s ease;
+}
+
+@media (hover: hover) {
+  .landing__who:hover { color: var(--pink-600); }
+}
+
 /* ——— Герой ——— */
 .landing__hero {
   flex: 1;
@@ -265,6 +286,9 @@
 
   /* Большая кнопка есть в самом герое — в шапке она лишняя. */
   .landing__actions .btn--pink { display: none; }
+
+  /* Почта целиком не влезет — обрезаем, полный адрес остаётся в title. */
+  .landing__who { max-width: 42vw; font-size: 14px; }
 
   /* С .landing — чтобы правило не легло на логотип плеера и отсчёта. */
   .landing .logo__word { font-size: 17px; }

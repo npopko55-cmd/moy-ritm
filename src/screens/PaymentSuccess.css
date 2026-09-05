@@ -1,0 +1,36 @@
+/* ═══════ Экран «Проверяем оплату» ═══════
+   Живёт внутри карточки .account__card, поэтому здесь только кольцо
+   и подпись под ним. */
+
+.pay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: clamp(20px, 3vh, 30px);
+  text-align: center;
+}
+
+.pay__ring {
+  width: 80px;
+  height: 80px;
+  animation: pay-spin 1.4s linear infinite;
+}
+
+/* Оплачено — кольцо замирает полным. */
+.pay__ring.is-done { animation: none; }
+
+@keyframes pay-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pay__hint {
+  max-width: 34ch;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--gray-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pay__ring { animation: none; }
+}

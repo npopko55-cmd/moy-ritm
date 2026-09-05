@@ -349,6 +349,87 @@
   .plan--half .plan__cta:hover { background: var(--grad-warm); box-shadow: 0 12px 28px rgba(242, 96, 12, .40); }
 }
 
+/* ——— Строка состояния доступа ———
+   Стоит первой в карточке, поэтому справа оставлено место под крестик. */
+.tariffs__access {
+  margin-bottom: clamp(10px, 1.4vw, 16px);
+  padding: 10px 14px;
+  padding-right: 56px;
+  border-radius: var(--r-md);
+  background: var(--pink-50);
+  color: var(--pink-700);
+  font-size: clamp(13px, 1.15vw, 15px);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Доступ закончился — тон тревожнее, но это всё та же строка, не окно. */
+.tariffs__access--warn { background: var(--orange-100); color: var(--orange-600); }
+
+/* ——— Сообщение под тарифами ———
+   Подтверждение почты, «оплата не настроена», ошибки загрузки. */
+.tariffs__msg {
+  margin-top: clamp(14px, 1.8vw, 22px);
+  padding: clamp(12px, 1.4vw, 18px) clamp(14px, 1.6vw, 20px);
+  border-radius: var(--r-lg);
+  background: var(--pink-50);
+  color: var(--pink-700);
+  font-size: clamp(13.5px, 1.15vw, 15px);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.tariffs__msg.is-bad { background: #fff1ee; color: var(--red-500); }
+
+.tariffs__msg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 10px 22px;
+  border: 1px solid currentColor;
+  border-radius: var(--r-pill);
+  background: var(--white);
+  color: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.tariffs__msg-btn:disabled { opacity: .6; cursor: default; }
+
+.tariffs__msg-ok { margin-top: 8px; color: var(--green-600); font-weight: 600; }
+.tariffs__msg-bad { margin-top: 8px; color: var(--red-500); font-weight: 600; }
+
+/* ——— Скелетон карточки ———
+   Разметка та же, что у настоящей: полоски стоят внутри реальных
+   .plan__name, .plan__price и прочих, поэтому высоты совпадают. */
+.plan.is-skeleton { border-color: var(--gray-100); box-shadow: none; }
+
+.sk {
+  display: block;
+  height: 1em;
+  margin: 0 auto;
+  border-radius: 6px;
+  background: var(--gray-100);
+}
+
+.sk + .sk { margin-top: .3em; }
+.sk--sm { width: 58%; }
+.sk--md { width: 76%; }
+.sk--lg { width: 92%; }
+
+.plan.is-skeleton .plan__cta { border-color: var(--gray-200); background: var(--gray-100); }
+.plan.is-skeleton .plan__cta .sk { background: var(--gray-200); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sk { animation: sk-pulse 1.3s ease-in-out infinite; }
+}
+
+@keyframes sk-pulse {
+  50% { opacity: .55; }
+}
+
 /* ——— Нижний ряд ——— */
 .tariffs__facts {
   display: grid;

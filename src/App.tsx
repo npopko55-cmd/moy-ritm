@@ -10,7 +10,9 @@ import ConfirmEmail from './screens/ConfirmEmail'
 import ConfirmNewEmail from './screens/ConfirmNewEmail'
 import ForgotPassword from './screens/ForgotPassword'
 import ResetPassword from './screens/ResetPassword'
+import PaymentSuccess from './screens/PaymentSuccess'
 import { SessionProvider } from './auth/SessionProvider'
+import { RequireAuth } from './auth/guards'
 import { MusicProvider } from './music/MusicProvider'
 
 export default function App() {
@@ -29,10 +31,19 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
+          <Route path="/tariffs" element={<Tariffs />} />
+          <Route
+            path="/payment/success"
+            element={
+              <RequireAuth>
+                <PaymentSuccess />
+              </RequireAuth>
+            }
+          />
+
           <Route path="/start/:streamId" element={<Countdown />} />
           <Route path="/player/:streamId" element={<Player />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/tariffs" element={<Tariffs />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </MusicProvider>

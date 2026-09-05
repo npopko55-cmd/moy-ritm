@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useSession } from '../auth/SessionProvider'
+import { flowTarget } from '../auth/guards'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
@@ -34,7 +36,10 @@ const FEATURES = [
 
 export default function Landing() {
   const navigate = useNavigate()
-  const start = () => navigate(`/start/${STREAMS[0].id}`)
+  const { me, access, signOut } = useSession()
+
+  // Не вошёл — на вход; вошёл без доступа — в тарифы; с доступом — в поток.
+  const start = () => navigate(flowTarget(Boolean(me), access))
 
   // Маскот: ролик подгружается сам, уже после того как страница открылась.
   const mascot = useRef<HTMLVideoElement>(null)
@@ -81,7 +86,21 @@ export default function Landing() {
         </nav>
 
         <div className="landing__actions">
-          <button className="btn btn--ghost">Войти</button>
+          {me ? (
+            <>
+              {/* Профиль появится в следующей части; пока ведём в настройки. */}
+              <Link className="landing__who" to="/settings" title={me.user.email}>
+                {me.user.name || me.user.email}
+              </Link>
+              <button className="btn btn--ghost" onClick={() => void signOut()}>
+                Выйти
+              </button>
+            </>
+          ) : (
+            <Link className="btn btn--ghost" to="/login">
+              Войти
+            </Link>
+          )}
           <button className="btn btn--pink" onClick={start}>
             Влиться в поток
           </button>
