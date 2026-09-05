@@ -150,18 +150,40 @@
   padding-bottom: 4px;
 }
 
+/*
+ * Высота блока с фразой ЖЁСТКАЯ — ровно две строки уменьшенного размера.
+ * Фразы разной длины меняются каждые несколько секунд, и без этого круг
+ * прыгал бы вверх-вниз. Короткая фраза просто центрируется внутри.
+ */
 .stage__top {
+  --headline-sm: clamp(17px, 2.17vh, 32px); /* ≈0,7 от обычного размера */
+  --headline-lh: 1.2;
   display: flex;
+  flex: none;
+  align-items: center;
   justify-content: center;
   width: 100%;
+  height: calc(2 * var(--headline-lh) * var(--headline-sm));
 }
 
 .stage__headline {
   text-align: center;
   font-size: clamp(24px, 3.1vh, 46px);
+  line-height: var(--headline-lh);
   font-weight: 800;
   letter-spacing: -0.025em;
-  padding: 6px 0;
+  /* Обычная фраза — всегда одна строка, третьей строки не бывает никогда. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
+
+/* Длинная фраза (больше 40 знаков) — мельче и до двух строк. */
+.stage__headline.is-long {
+  font-size: var(--headline-sm);
+  -webkit-line-clamp: 2;
+  text-wrap: balance;
 }
 
 .stats__top { display: flex; gap: 10px; }

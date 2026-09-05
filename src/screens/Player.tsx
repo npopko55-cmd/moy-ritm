@@ -18,8 +18,9 @@ import {
   Sparkle,
   User,
 } from '../components/Icons'
-import { MOTIVATION, STREAMS, getStream } from '../data/streams'
+import { STREAMS, getStream } from '../data/streams'
 import { loopPoster, loopSrc } from '../data/loops'
+import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { loadMoveInterval } from '../lib/settings'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { useMusic } from '../music/MusicProvider'
@@ -40,6 +41,12 @@ const WEEK = [
   { day: 'вс', value: 20 },
 ]
 
+/**
+ * Длинную фразу показываем мельче и в две строки. Считаем по код-поинтам,
+ * иначе эмодзи в конце тянет на два знака.
+ */
+const isLongPhrase = (text: string) => [...text].length > 40
+
 const MENU = [
   { icon: <Clock size={19} />, label: 'Мой прогресс', action: null },
   { icon: <User size={19} />, label: 'Профиль', action: null },
@@ -58,9 +65,28 @@ export default function Player() {
   const [inMove, setInMove] = useState(17) // на макете до смены остаётся 0:13
   const [playing, setPlaying] = useState(true)
   const [todaySeconds, setTodaySeconds] = useState(12 * 60 + 47)
-  const [motivation, setMotivation] = useState(MOTIVATION[0])
   // Интервал меняется на странице настроек; плеер читает его при открытии.
   const [moveInterval] = useState(loadMoveInterval)
+
+  // Колода фраз одна на всё время жизни экрана, иначе они пошли бы по кругу.
+  const picker = useRef(createMotivationPicker()).current
+  const [motivation, setMotivation] = useState(() => picker.next(0))
+
+  // Секунды В ДВИЖЕНИИ в этой тренировке: с нуля при открытии плеера, на
+  // паузе не растут. Тот же счётчик продублирован в ref, чтобы обработчики
+  // кнопок читали свежее значение и не пересоздавались каждую секунду.
+  const [sessionSeconds, setSessionSeconds] = useState(0)
+  const sessionRef = useRef(0)
+
+  // Фразу меняем не чаще раза в секунду: «Вперёд» можно нажать подряд
+  // несколько раз, а прочитать надо успеть.
+  const phraseAt = useRef(0)
+  const showPhrase = useCallback(() => {
+    const now = Date.now()
+    if (now - phraseAt.current < 1000) return
+    phraseAt.current = now
+    setMotivation(picker.next(sessionRef.current))
+  }, [picker])
 
   const { track, blocked: soundBlocked, setPlaying: setMusicPlaying, next: nextTrack } = useMusic()
 
@@ -83,17 +109,22 @@ export default function Player() {
   const untilSwitch = Math.max(0, moveInterval - inMove)
   const moveProgress = Math.min(1, inMove / moveInterval)
 
-  const goToMove = useCallback((delta: number) => {
-    setStep((s) => s + delta)
-    setInMove(0)
-    setMotivation(MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)])
-  }, [])
+  const goToMove = useCallback(
+    (delta: number) => {
+      setStep((s) => s + delta)
+      setInMove(0)
+      showPhrase()
+    },
+    [showPhrase],
+  )
 
   // Секундный тик: ведёт время тренировки и смену движения.
   useEffect(() => {
     if (!playing) return
     const id = setInterval(() => {
       setTodaySeconds((s) => s + 1)
+      sessionRef.current += 1
+      setSessionSeconds(sessionRef.current)
       setInMove((s) => {
         if (s + 1 >= moveInterval) {
           goToMove(1)
@@ -104,6 +135,17 @@ export default function Player() {
     }, 1000)
     return () => clearInterval(id)
   }, [playing, goToMove, moveInterval])
+
+  // Переход в новый ярус времени — сразу новая фраза, не дожидаясь смены
+  // движения. Сравниваем с показанным ярусом, а не с флагом первого рендера:
+  // в StrictMode эффекты прогоняются дважды.
+  const tier = tierIndex(sessionSeconds)
+  const shownTier = useRef(tier)
+  useEffect(() => {
+    if (shownTier.current === tier) return
+    shownTier.current = tier
+    showPhrase()
+  }, [tier, showPhrase])
 
   // Новое движение начинается с начала цикла — как раньше, когда элемент
   // пересоздавался заново.
@@ -188,8 +230,9 @@ export default function Player() {
       {/* ——— Центр ——— */}
       <main className="player__stage">
         <header className="stage__top">
-          <h1 className="stage__headline">{motivation}</h1>
-
+          <h1 className={`stage__headline ${isLongPhrase(motivation) ? 'is-long' : ''}`}>
+            {motivation}
+          </h1>
         </header>
 
         <div className="stage__figure">
