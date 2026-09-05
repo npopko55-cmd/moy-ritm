@@ -5,6 +5,10 @@
 # персонаж обведён по контуру. Вместо этого исходное видео целиком кладётся
 # в круглую рамку, а фон ролика становится частью картинки.
 #
+# Рядом с каждым роликом кладётся постер <id>.webp — первый кадр. Он весит
+# пару килобайт и закрывает круг, пока видео ещё качается: без него на
+# медленной сети круг пустеет на несколько секунд при каждой смене движения.
+#
 # Запуск: bash scripts/build-loops.sh "/путь/к/ЛУПЫ ГОТОВЫЕ/Один цикл"
 
 set -euo pipefail
@@ -13,6 +17,9 @@ SRC_DIR="${1:-$HOME/Downloads/ЛУПЫ ГОТОВЫЕ/Один цикл}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/public/loops"
 SIZE=640
+POSTER_SIZE=320
+TMP="$(mktemp -d)"
+trap 'rm -f "$TMP"/*.png; rmdir "$TMP"' EXIT
 
 mkdir -p "$OUT"
 
@@ -47,7 +54,13 @@ for f in "$SRC_DIR"/*.mp4; do
     -pix_fmt yuv420p -movflags +faststart -an \
     "$OUT/$slug.mp4"
 
-  printf '▸ %-20s %s\n' "$slug" "$(du -h "$OUT/$slug.mp4" | cut -f1)"
+  # Постер: первый кадр. ffmpeg собран без libwebp, поэтому через png и cwebp.
+  ffmpeg -v error -y -i "$OUT/$slug.mp4" -frames:v 1 \
+    -vf "scale=${POSTER_SIZE}:${POSTER_SIZE}:flags=lanczos" "$TMP/$slug.png"
+  cwebp -quiet -q 75 "$TMP/$slug.png" -o "$OUT/$slug.webp"
+
+  printf '▸ %-20s %6s + постер %s\n' "$slug" \
+    "$(du -h "$OUT/$slug.mp4" | cut -f1)" "$(du -h "$OUT/$slug.webp" | cut -f1)"
 done
 
-echo "Готово. Ролики в $OUT"
+echo "Готово. Ролики и постеры в $OUT"

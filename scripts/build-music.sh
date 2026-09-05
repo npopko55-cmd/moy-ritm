@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Сжимает музыку для плеера.
 #
-# Исходники — mp3 128 кбит/с (~41 МБ на 13 треков). На выходе AAC 64 кбит/с
-# в .m4a через кодировщик Apple AudioToolbox: он заметно лучше встроенного
-# на низком битрейте, а формат понимают все браузеры без исключений.
+# Исходники — mp3 128 кбит/с (~41 МБ на 13 треков). На выходе HE-AAC v1
+# 40 кбит/с в .m4a через кодировщик Apple AudioToolbox: SBR достраивает верх
+# спектра, поэтому на слух это примерно как обычный AAC 64 кбит/с, а весит
+# в полтора раза меньше. Формат понимают все браузеры, а декодеры без SBR
+# играют базовый слой — тишины не будет.
 #
 # Запуск: bash scripts/build-music.sh "/путь/к/Архив 2"
 
@@ -12,15 +14,18 @@ set -euo pipefail
 SRC_DIR="${1:-$HOME/Downloads/Архив 2}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/public/music"
-BITRATE=64k
+BITRATE=40k
+# aac_at не понимает имя профиля словом, только номер: 4 — это HE-AAC v1.
+HE_PROFILE=4
 
 mkdir -p "$OUT"
 
-# Кодировщик Apple, если доступен, иначе встроенный.
+# Кодировщик Apple, если доступен, иначе встроенный (тот SBR не умеет,
+# поэтому ему поднимаем битрейт, чтобы звук не развалился).
 if ffmpeg -hide_banner -encoders 2>/dev/null | grep -q aac_at; then
-  ENC=(-c:a aac_at -b:a "$BITRATE")
+  ENC=(-c:a aac_at -profile:a "$HE_PROFILE" -b:a "$BITRATE")
 else
-  ENC=(-c:a aac -b:a "$BITRATE")
+  ENC=(-c:a aac -b:a 64k)
 fi
 
 slug_for() {

@@ -1,3 +1,4 @@
+@import './fonts.css';
 @import './tokens.css';
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -84,4 +85,14 @@ ul { margin: 0; padding: 0; list-style: none; }
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Бесконечные ноты и дыхание кольца заметно греют слабые телефоны, а тем,
+   кто просил меньше движения, ещё и мешают. Разовые появления оставляем. */
+@media (prefers-reduced-motion: reduce) {
+  .countdown__ticks,
+  .countdown__note,
+  .stage__note {
+    animation: none !important;
+  }
 }

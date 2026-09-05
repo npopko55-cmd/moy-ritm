@@ -248,11 +248,18 @@
   box-shadow: inset 0 0 0 1px rgba(20, 22, 26, 0.04);
 }
 
+/* Два ролика лежат друг на друге: верхний играет, нижний докачивает
+   следующее движение. Смена движения — это смена того, кто наверху. */
 .stage__video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0;
 }
+
+.stage__video.is-on { opacity: 1; z-index: 1; }
 
 .stage__note { position: absolute; }
 .stage__note--a { top: 16%; right: -6%; color: #ffc9de; animation: note-float 4s ease-in-out infinite; }

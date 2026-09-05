@@ -1,8 +1,11 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
 import { asset } from '../lib/asset'
+import { loopPoster, loopSrc } from '../data/loops'
+import { prefetchFiles, prefetchImages, whenIdle } from '../lib/prefetch'
 import { STREAMS } from '../data/streams'
 import '../components/Logo.css'
 import './Landing.css'
@@ -31,6 +34,29 @@ const FEATURES = [
 export default function Landing() {
   const navigate = useNavigate()
   const start = () => navigate(`/start/${STREAMS[0].id}`)
+
+  // Пока человек читает лендинг, канал свободен: тянем то, что понадобится
+  // в плеере. До Pages 0,4–0,85 с на запрос, так что фора решает больше,
+  // чем экономия байтов.
+  useEffect(() => {
+    let stopIdle: (() => void) | undefined
+    const warmUp = () => {
+      stopIdle = whenIdle(() => {
+        const first = STREAMS[0]
+        prefetchImages([
+          ...STREAMS.map((s) => s.cover),
+          ...first.loops.map((l) => loopPoster(l.id)),
+        ])
+        prefetchFiles(first.loops.slice(0, 2).map((l) => loopSrc(l.id)))
+      })
+    }
+    if (document.readyState === 'complete') warmUp()
+    else window.addEventListener('load', warmUp, { once: true })
+    return () => {
+      window.removeEventListener('load', warmUp)
+      stopIdle?.()
+    }
+  }, [])
 
   return (
     <div className="landing">
@@ -98,6 +124,7 @@ export default function Landing() {
             className="hero__photo"
             src={asset('hero/hero.webp')}
             alt="Девушка двигается под музыку"
+            decoding="async"
           />
         </div>
       </main>

@@ -1,7 +1,8 @@
 /**
  * Каталог зацикленных роликов с движениями.
  *
- * Файлы лежат в public/loops/ как <id>.mp4 (H.264, 640×640, без звука).
+ * Файлы лежат в public/loops/ как <id>.mp4 (H.264, 640×640, без звука)
+ * и <id>.webp — постер первого кадра на время загрузки ролика.
  * Фон у роликов не вырезается: на светлом фоне сайта было видно обводку
  * по контуру, поэтому ролик целиком показывается в круглой рамке.
  * Пересборка: scripts/build-loops.sh
@@ -38,4 +39,9 @@ export const SECONDS_PER_MOVE = 30
 
 export function loopSrc(id: string): string {
   return asset(`loops/${id}.mp4`)
+}
+
+/** Первый кадр ролика: показывается, пока видео ещё не готово играть. */
+export function loopPoster(id: string): string {
+  return asset(`loops/${id}.webp`)
 }

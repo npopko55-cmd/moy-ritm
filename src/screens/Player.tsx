@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
@@ -19,8 +19,9 @@ import {
   User,
 } from '../components/Icons'
 import { MOTIVATION, STREAMS, getStream } from '../data/streams'
-import { loopSrc } from '../data/loops'
+import { loopPoster, loopSrc } from '../data/loops'
 import { loadMoveInterval } from '../lib/settings'
+import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
 import './Player.css'
@@ -51,7 +52,9 @@ export default function Player() {
   const navigate = useNavigate()
   const stream = getStream(streamId)
 
-  const [moveIndex, setMoveIndex] = useState(0)
+  // Счётчик смен движения. Не заворачивается по кругу нарочно: по его
+  // чётности выбирается, какой из двух <video> сейчас на виду.
+  const [step, setStep] = useState(0)
   const [inMove, setInMove] = useState(17) // на макете до смены остаётся 0:13
   const [playing, setPlaying] = useState(true)
   const [todaySeconds, setTodaySeconds] = useState(12 * 60 + 47)
@@ -61,20 +64,30 @@ export default function Player() {
 
   const { track, blocked: soundBlocked, setPlaying: setMusicPlaying, next: nextTrack } = useMusic()
 
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const loop = stream.loops[moveIndex % stream.loops.length]
+  // Два постоянных <video>: пока один играет, во второй уже качается
+  // следующий ролик. Раньше элемент пересоздавался, и на медленной сети
+  // круг пустел на несколько секунд при каждой смене движения.
+  const videoA = useRef<HTMLVideoElement>(null)
+  const videoB = useRef<HTMLVideoElement>(null)
+  const buffers = [videoA, videoB]
+
+  const at = (n: number) => {
+    const count = stream.loops.length
+    return stream.loops[((n % count) + count) % count]
+  }
+  const loop = at(step)
+  const nextLoop = at(step + 1)
+  const afterNext = at(step + 2)
+  const active = ((step % 2) + 2) % 2
+
   const untilSwitch = Math.max(0, moveInterval - inMove)
   const moveProgress = Math.min(1, inMove / moveInterval)
 
-  const goToMove = useCallback(
-    (delta: number) => {
-      const count = stream.loops.length
-      setMoveIndex((i) => (i + delta + count) % count)
-      setInMove(0)
-      setMotivation(MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)])
-    },
-    [stream.loops.length],
-  )
+  const goToMove = useCallback((delta: number) => {
+    setStep((s) => s + delta)
+    setInMove(0)
+    setMotivation(MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)])
+  }, [])
 
   // Секундный тик: ведёт время тренировки и смену движения.
   useEffect(() => {
@@ -92,20 +105,37 @@ export default function Player() {
     return () => clearInterval(id)
   }, [playing, goToMove, moveInterval])
 
-  // Пауза останавливает и ролик, чтобы персонаж замирал вместе с таймером.
+  // Новое движение начинается с начала цикла — как раньше, когда элемент
+  // пересоздавался заново.
   useEffect(() => {
-    const v = videoRef.current
-    if (!v) return
-    if (playing) void v.play().catch(() => undefined)
-    else v.pause()
-  }, [playing, loop.id])
+    const on = buffers[active].current
+    if (on) on.currentTime = 0
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, loop.id])
+
+  // Пауза останавливает ролик, чтобы персонаж замирал вместе с таймером.
+  // Скрытый элемент всегда на паузе: он в это время докачивает следующее.
+  useEffect(() => {
+    const on = buffers[active].current
+    const off = buffers[1 - active].current
+    off?.pause()
+    if (!on) return
+    if (playing) void on.play().catch(() => undefined)
+    else on.pause()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, active, loop.id])
 
   // Пауза тренировки останавливает и музыку.
   useEffect(() => {
     setMusicPlaying(playing)
   }, [playing, setMusicPlaying])
 
-  const src = useMemo(() => loopSrc(loop.id), [loop.id])
+  // Следующий ролик уже лежит во втором <video>, поэтому вперёд заглядываем
+  // через один: к его очереди файл успеет докачаться.
+  useEffect(() => {
+    prefetchImages([loopPoster(afterNext.id)])
+    prefetchFiles([loopSrc(afterNext.id)])
+  }, [afterNext.id])
 
   return (
     <div className="player">
@@ -124,7 +154,7 @@ export default function Player() {
                 className={`stream-card stream-card--${s.theme} ${s.id === stream.id ? 'is-active' : ''}`}
                 onClick={() => navigate(`/player/${s.id}`)}
               >
-                <img className="stream-card__photo" src={s.cover} alt="" />
+                <img className="stream-card__photo" src={s.cover} alt="" decoding="async" />
                 <span className="stream-card__tint" />
                 <span className="stream-card__fade" />
                 <span className="stream-card__text">
@@ -187,17 +217,19 @@ export default function Player() {
           </svg>
 
           <div className="stage__disc">
-            <video
-              ref={videoRef}
-              key={loop.id}
-              className="stage__video"
-              src={src}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-            />
+            {[active === 0 ? loop : nextLoop, active === 0 ? nextLoop : loop].map((l, i) => (
+              <video
+                key={i}
+                ref={buffers[i]}
+                className={`stage__video ${i === active ? 'is-on' : ''}`}
+                src={loopSrc(l.id)}
+                poster={loopPoster(l.id)}
+                loop
+                muted
+                playsInline
+                preload="auto"
+              />
+            ))}
           </div>
 
           <FloatNote size={30} className="stage__note stage__note--a" />

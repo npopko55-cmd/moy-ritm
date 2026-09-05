@@ -4,12 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Мой ритм — поток движений под музыку</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <meta name="theme-color" content="#ff2d8e" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Шрифты свои: без внешних доменов и без цепочки HTML → CSS → файл. -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/montserrat-var-cyrillic.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/montserrat-var-latin.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/inter-var-cyrillic.woff2" />
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/inter-var-latin.woff2" />
+    <!-- Главная картинка лендинга: пусть качается сразу, не дожидаясь React. -->
+    <link rel="preload" as="image" fetchpriority="high" href="/hero/hero.webp" />
   </head>
   <body>
     <div id="root"></div>

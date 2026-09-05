@@ -3,6 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { FloatNote, MusicNote, Sparkle } from '../components/Icons'
+import { STREAMS, getStream } from '../data/streams'
+import { loopPoster, loopSrc } from '../data/loops'
+import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
 import './Countdown.css'
@@ -38,6 +41,17 @@ export default function Countdown() {
 
   // Музыка включается сразу на отсчёте, а не при появлении плеера.
   useEffect(() => { start() }, [start])
+
+  // Три секунды отсчёта — единственная пауза, когда можно качать без спешки:
+  // к открытию плеера фото, постеры и первые два ролика уже в кэше.
+  useEffect(() => {
+    const stream = getStream(streamId)
+    prefetchImages([
+      ...STREAMS.map((s) => s.cover),
+      ...stream.loops.map((l) => loopPoster(l.id)),
+    ])
+    prefetchFiles(stream.loops.slice(0, 2).map((l) => loopSrc(l.id)))
+  }, [streamId])
 
   useEffect(() => {
     if (left <= 0) {
