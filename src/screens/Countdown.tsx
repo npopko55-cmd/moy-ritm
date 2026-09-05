@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { FloatNote, MusicNote, Sparkle } from '../components/Icons'
+import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
 import './Countdown.css'
 
@@ -33,6 +34,10 @@ export default function Countdown() {
   const navigate = useNavigate()
   const { streamId } = useParams()
   const [left, setLeft] = useState(START_FROM)
+  const { start } = useMusic()
+
+  // Музыка включается сразу на отсчёте, а не при появлении плеера.
+  useEffect(() => { start() }, [start])
 
   useEffect(() => {
     if (left <= 0) {
