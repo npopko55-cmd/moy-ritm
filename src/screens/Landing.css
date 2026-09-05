@@ -2,7 +2,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  /* vh первым — как фолбэк для браузеров без dvh. */
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   overflow: hidden;
 }
@@ -30,7 +32,10 @@
 }
 
 .landing__nav a { transition: color .15s ease; }
-.landing__nav a:hover { color: var(--pink-600); }
+
+@media (hover: hover) {
+  .landing__nav a:hover { color: var(--pink-600); }
+}
 
 .landing__actions {
   display: flex;
@@ -126,6 +131,7 @@
 /* ——— Визуал справа ——— */
 .hero__visual {
   --figure-h: min(780px, calc(100vh - 250px));
+  --figure-h: min(780px, calc(100dvh - 250px));
   position: relative;
   display: grid;
   place-items: end center;
@@ -152,10 +158,14 @@
  * Фигура вырезана по контуру: белая студийная подложка снимается чисто,
  * без ореола по краю, поэтому прозрачный PNG ложится прямо на цветное пятно.
  */
+/* Размер задаёт контейнер: max-* нужны, чтобы на место снимка можно было
+   поставить ролик-маскота, не переделывая сетку. */
 .hero__photo {
   position: relative;
   height: var(--figure-h);
   width: auto;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 22px 34px rgba(20, 22, 26, .16));
 }
@@ -166,9 +176,144 @@
 .hero__dot--c { width: 13px; height: 13px; background: #f9c3dd; bottom: 128px; left: 30px; }
 .hero__dot--d { width: 21px; height: 21px; background: #efa8d0; bottom: 62px; left: 122px; }
 
-@media (max-width: 1080px) {
+/* ═══════════════════════════════════════════════════════════════
+   До 1024: навигация прячется, шапка растягивается на всю ширину
+   (в десктопном виде она сжата по содержимому и стоит по центру).
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1023.98px) {
+  .landing__header {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding:
+      18px calc(24px + env(safe-area-inset-right)) 0
+      calc(24px + env(safe-area-inset-left));
+  }
+
   .landing__nav { display: none; }
-  .landing__hero { grid-template-columns: 1fr; }
-  .hero__visual { min-height: 420px; order: -1; }
-  .hero__features { grid-template-columns: 1fr; gap: 18px; }
+
+  /* На узком экране заголовок обязан переноситься. */
+  .hero__title { white-space: normal; }
+
+  /* Пятно шире своей колонки наезжало бы на текст. */
+  .hero__blob {
+    width: min(calc(var(--figure-h) * 0.86), 100%);
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  /* Ручные переносы рассчитаны на широкую колонку; тут текст льётся сам. */
+  .feature__text { white-space: normal; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   768–1023: планшет в портрете. Герой остаётся в две колонки,
+   фото занимает не больше 46 % ширины.
+   ═══════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  /* Герой перестаёт растягиваться на всю высоту и центрируется
+     автоотступами: иначе строка «1fr» съела бы весь остаток. */
+  .landing__hero {
+    flex: 0 1 auto;
+    margin: auto 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 46%);
+    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-areas:
+      "kicker visual"
+      "title  visual"
+      "lead   visual"
+      "cta    visual"
+      "feat   feat";
+    align-content: start;
+    gap: 0 20px;
+    padding:
+      16px calc(24px + env(safe-area-inset-right)) 32px
+      calc(24px + env(safe-area-inset-left));
+  }
+
+  /* Копия распускается, чтобы преимущества встали строкой под обе колонки:
+     в колонке шириной 370 px им тесно. Порядок в DOM не меняется. */
+  .hero__copy { display: contents; }
+  .hero__kicker { grid-area: kicker; }
+  .hero__title { grid-area: title; font-size: clamp(28px, 4.4vw, 40px); margin-bottom: 18px; }
+  .hero__lead { grid-area: lead; font-size: clamp(15px, 1.9vh, 19px); margin-bottom: 26px; }
+  /* align-self: start — лишняя высота от фото уходит вниз, а не под кнопку. */
+  .hero__cta { grid-area: cta; justify-self: start; align-self: start; }
+  .hero__visual { grid-area: visual; --figure-h: min(560px, calc(100dvh - 230px)); }
+
+  .hero__features {
+    grid-area: feat;
+    max-width: none;
+    gap: 20px;
+    margin-top: clamp(24px, 3.5vh, 40px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   До 768: телефон. Всё в столбик, визуал — между кнопкой
+   и преимуществами, поэтому .hero__copy распускается.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+  .landing__header {
+    gap: 12px;
+    padding:
+      14px calc(16px + env(safe-area-inset-right)) 0
+      calc(16px + env(safe-area-inset-left));
+  }
+
+  /* Большая кнопка есть в самом герое — в шапке она лишняя. */
+  .landing__actions .btn--pink { display: none; }
+
+  /* С .landing — чтобы правило не легло на логотип плеера и отсчёта. */
+  .landing .logo__word { font-size: 17px; }
+  .landing .logo__tagline { font-size: 11.5px; white-space: normal; }
+
+  .landing__hero {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 0;
+    padding:
+      18px calc(16px + env(safe-area-inset-right))
+      calc(32px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  }
+
+  /* Порядок в DOM не меняем — переставляем order'ом. */
+  .hero__copy { display: contents; }
+  .hero__kicker { order: 1; margin-bottom: 12px; font-size: 13px; }
+  .hero__title { order: 2; font-size: clamp(30px, 8.4vw, 40px); margin-bottom: 14px; }
+  .hero__lead { order: 3; font-size: clamp(15px, 4.2vw, 18px); margin-bottom: 20px; }
+
+  .hero__cta {
+    order: 4;
+    width: 100%;
+    min-height: 52px;
+    padding: 15px 22px;
+    font-size: 17px;
+  }
+
+  .hero__visual {
+    order: 5;
+    --figure-h: min(44dvh, 380px);
+    min-height: var(--figure-h);
+    margin: 18px 0 4px;
+  }
+
+  .hero__features {
+    order: 6;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 10px;
+    max-width: none;
+  }
+
+  /* drop-shadow на большой картинке дорог для слабого телефона. */
+  .hero__photo { filter: drop-shadow(0 8px 14px rgba(20, 22, 26, .14)); }
+  .hero__blob { filter: none; }
+
+  .hero__dot--a { top: 20px; right: 8px; }
+  .hero__dot--b { width: 18px; height: 18px; top: 92px; right: 0; }
+  .hero__dot--c { bottom: 52px; left: 6px; }
+  .hero__dot--d { width: 15px; height: 15px; bottom: 16px; left: 54px; }
 }
