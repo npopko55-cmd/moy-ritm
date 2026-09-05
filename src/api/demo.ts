@@ -32,6 +32,7 @@ import {
   type SupportTopic,
   type Tariff,
   type TokenResponse,
+  type Totals,
 } from './types'
 
 const PREFIX = 'moy-ritm.demo.'
@@ -110,11 +111,39 @@ const DEFAULT_SETTINGS: Settings = {
   email_reminders: false,
 }
 
-const EMPTY_STATS: DemoStats = {
+/**
+ * Пустая статистика — функцией, а не константой.
+ *
+ * Константу `sendChunks` менял бы прямо в ней: `statsOf` отдаёт fallback по
+ * ссылке, и первая же тренировка записывала бы дни в общий объект. Тогда
+ * следующий демо-пользователь в этой же вкладке получал бы чужие минуты, хотя
+ * в хранилище у него пусто.
+ */
+const emptyStats = (): DemoStats => ({
   days: {},
   seen: [],
   longest_workout_seconds: 0,
   current_workout_seconds: 0,
+})
+
+/**
+ * Буфер незакрытых кусков плеера (`src/lib/chunks.ts`) лежит в браузере и к
+ * человеку не привязан: настоящему бэкенду это и не нужно — там кусок примут
+ * по токену того, кто его шлёт. В демо же люди меняются в одной вкладке, и
+ * оставшийся хвост чужой (а то и ничьей) тренировки плеер показал бы новому
+ * пользователю как его «сегодня» — при нулях в профиле и прогрессе.
+ *
+ * Поэтому при каждой смене сессии буфер сбрасываем. Ключ продублирован
+ * намеренно: импорт из chunks.ts замкнул бы круг demo → chunks → client → demo.
+ */
+const CHUNK_BUFFER_KEY = 'moy-ritm.chunks'
+
+function dropChunkBuffer(): void {
+  try {
+    localStorage.removeItem(CHUNK_BUFFER_KEY)
+  } catch {
+    /* приватный режим или запрет хранилища — см. write() */
+  }
 }
 
 const normalize = (email: string) => email.trim().toLowerCase()
@@ -209,7 +238,16 @@ export function createDemoApi(): Api {
 
   /* ——— Статистика ——— */
 
-  const statsOf = (email: string) => read<DemoStats>(`stats.${email}`, EMPTY_STATS)
+  /** Накопленные куски этого человека. Своя копия на каждый вызов. */
+  function statsOf(email: string): DemoStats {
+    const saved = read<Partial<DemoStats> | null>(`stats.${email}`, null)
+    return {
+      ...emptyStats(),
+      ...(saved ?? {}),
+      days: saved?.days ?? {},
+      seen: saved?.seen ?? [],
+    }
+  }
 
   function streaks(days: Record<string, DemoDay>): { current: number; longest: number } {
     const active = Object.keys(days)
@@ -233,36 +271,108 @@ export function createDemoApi(): Api {
     return { current: last === today || last === yesterday ? run : 0, longest }
   }
 
-  function summaryOf(email: string): StatsSummary {
+  /**
+   * Единственный счётчик демо-режима.
+   *
+   * Все цифры на всех экранах выходят отсюда и считаются из одного и того же
+   * — накопленных кусков этого человека. Заготовленных значений в демо нет:
+   * новый пользователь начинает с нулей, и они растут согласованно везде —
+   * «сегодня» и недельный график в плеере, «Итоги» в профиле, календарь,
+   * недели и рекорды в «Моём прогрессе».
+   *
+   * Раньше сводку и прогресс считали два разных куска кода, и разойтись им
+   * было нечем помешать.
+   */
+  function aggregate(email: string): {
+    summary: StatsSummary
+    totals: Totals
+    progress(month?: string): StatsProgress
+  } {
     const stats = statsOf(email)
-    const today = localDate(Date.now())
-    const day = (d: string): DayStats => ({
-      local_date: d,
-      seconds: stats.days[d]?.seconds ?? 0,
-      steps: stats.days[d]?.steps ?? 0,
-      workouts: stats.days[d]?.workouts ?? 0,
+    const now = Date.now()
+    const today = localDate(now)
+    const { current: currentStreak, longest: longestStreak } = streaks(stats.days)
+
+    const day = (date: string): DayStats => ({
+      local_date: date,
+      seconds: stats.days[date]?.seconds ?? 0,
+      steps: stats.days[date]?.steps ?? 0,
+      workouts: stats.days[date]?.workouts ?? 0,
     })
-    const week = Array.from({ length: 7 }, (_, i) => day(localDate(Date.now() - (6 - i) * DAY_MS)))
-    const all = Object.values(stats.days)
-    const { current: currentStreak, longest } = streaks(stats.days)
-    return {
-      today_seconds: day(today).seconds,
-      yesterday_seconds: day(localDate(Date.now() - DAY_MS)).seconds,
-      week,
-      total_seconds: all.reduce((s, d) => s + d.seconds, 0),
-      total_workouts: all.reduce((s, d) => s + d.workouts, 0),
+
+    const everyDay = Object.values(stats.days)
+    const totals: Totals = {
+      total_seconds: everyDay.reduce((s, d) => s + d.seconds, 0),
+      total_workouts: everyDay.reduce((s, d) => s + d.workouts, 0),
       current_streak_days: currentStreak,
-      longest_streak_days: longest,
+      longest_streak_days: longestStreak,
+    }
+
+    // Итоги профиля попадают в сводку плеера как есть: разойтись они уже не
+    // могут даже случайно.
+    const summary: StatsSummary = {
+      today_seconds: day(today).seconds,
+      yesterday_seconds: day(localDate(now - DAY_MS)).seconds,
+      week: Array.from({ length: 7 }, (_, i) => day(localDate(now - (6 - i) * DAY_MS))),
+      ...totals,
       longest_workout_seconds: stats.longest_workout_seconds,
       timezone: timezone(),
       local_today: today,
     }
+
+    function progress(month?: string): StatsProgress {
+      const key = month ?? today.slice(0, 7)
+      const [year, mon] = key.split('-').map(Number)
+      const length = new Date(year, mon, 0).getDate()
+
+      const calendar = Array.from({ length }, (_, i) => {
+        const { local_date, seconds, workouts } = day(`${key}-${String(i + 1).padStart(2, '0')}`)
+        return { local_date, seconds, workouts }
+      })
+
+      // Двенадцать недель с понедельника, считая от текущей.
+      const monday = new Date(now)
+      monday.setHours(0, 0, 0, 0)
+      monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+      const weeks = Array.from({ length: 12 }, (_, i) => {
+        const start = monday.getTime() - (11 - i) * 7 * DAY_MS
+        let seconds = 0
+        for (let n = 0; n < 7; n += 1) seconds += day(localDate(start + n * DAY_MS)).seconds
+        return { week_start: localDate(start), seconds }
+      })
+
+      const bestDay = Object.entries(stats.days)
+        .filter(([, d]) => d.seconds > 0)
+        .sort((a, b) => b[1].seconds - a[1].seconds)[0]
+      const bestWeek = [...weeks].sort((a, b) => b.seconds - a.seconds)[0]
+      const active = calendar.filter((d) => d.seconds > 0)
+
+      return {
+        month: key,
+        days: calendar,
+        weeks,
+        records: {
+          longest_workout_seconds: summary.longest_workout_seconds,
+          longest_streak_days: totals.longest_streak_days,
+          best_day: bestDay ? { local_date: bestDay[0], seconds: bestDay[1].seconds } : null,
+          best_week: bestWeek && bestWeek.seconds > 0 ? bestWeek : null,
+        },
+        totals: {
+          seconds: active.reduce((s, d) => s + d.seconds, 0),
+          workouts: active.reduce((s, d) => s + d.workouts, 0),
+          days_active: active.length,
+        },
+      }
+    }
+
+    return { summary, totals, progress }
   }
+
+  const summaryOf = (email: string): StatsSummary => aggregate(email).summary
 
   /* ——— Профиль целиком ——— */
 
   function meOf(user: DemoUser): Me {
-    const stats = summaryOf(user.email)
     return {
       user: {
         id: user.id,
@@ -275,12 +385,7 @@ export function createDemoApi(): Api {
       },
       settings: read<Settings>(`settings.${user.email}`, DEFAULT_SETTINGS),
       access: accessInfo(user.email),
-      totals: {
-        total_seconds: stats.total_seconds,
-        total_workouts: stats.total_workouts,
-        current_streak_days: stats.current_streak_days,
-        longest_streak_days: stats.longest_streak_days,
-      },
+      totals: aggregate(user.email).totals,
       support: { email: 'support@ritmritm.ru', telegram_url: null },
     }
   }
@@ -313,6 +418,9 @@ export function createDemoApi(): Api {
           created_at: new Date().toISOString(),
         }
         write('users', all)
+        // Новый человек — и цифры у него с нуля: хвост чужой тренировки,
+        // оставшийся в буфере плеера, ему не принадлежит.
+        dropChunkBuffer()
       }
       return { message: 'Проверьте почту' }
     },
@@ -332,6 +440,10 @@ export function createDemoApi(): Api {
       // Когда вошли — чтобы список устройств в профиле показывал настоящее
       // время входа, а не «прямо сейчас» на каждое открытие страницы.
       write('session.at', Date.now())
+      // Явный вход начинает новую сессию: всё, что осталось в буфере плеера
+      // до него, — из чужой. Обновление токена (refresh) буфер не трогает,
+      // поэтому перезагрузка вкладки посреди тренировки минут не теряет.
+      dropChunkBuffer()
       return token(user)
     },
 
@@ -341,11 +453,13 @@ export function createDemoApi(): Api {
 
     async logout() {
       drop('session')
+      dropChunkBuffer()
       return { message: 'Вы вышли из аккаунта' }
     },
 
     async logoutAll() {
       drop('session')
+      dropChunkBuffer()
       return { message: 'Все сессии завершены' }
     },
 
@@ -415,6 +529,7 @@ export function createDemoApi(): Api {
         drop(`pending.${email}`)
         drop('session')
         drop('session.at')
+        dropChunkBuffer()
       }
       return { message: 'Аккаунт удалён' }
     },
@@ -519,57 +634,7 @@ export function createDemoApi(): Api {
     },
 
     async statsProgress(month) {
-      const user = requireUser()
-      const stats = statsOf(user.email)
-      const now = new Date()
-      const key = month ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      const [year, mon] = key.split('-').map(Number)
-      const total = new Date(year, mon, 0).getDate()
-
-      const days = Array.from({ length: total }, (_, i) => {
-        const date = `${key}-${String(i + 1).padStart(2, '0')}`
-        return {
-          local_date: date,
-          seconds: stats.days[date]?.seconds ?? 0,
-          workouts: stats.days[date]?.workouts ?? 0,
-        }
-      })
-
-      // Двенадцать недель с понедельника, считая от текущей.
-      const monday = new Date()
-      monday.setHours(0, 0, 0, 0)
-      monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
-      const weeks = Array.from({ length: 12 }, (_, i) => {
-        const start = new Date(monday.getTime() - (11 - i) * 7 * DAY_MS)
-        const startKey = localDate(start.getTime())
-        let seconds = 0
-        for (let d = 0; d < 7; d += 1) {
-          seconds += stats.days[localDate(start.getTime() + d * DAY_MS)]?.seconds ?? 0
-        }
-        return { week_start: startKey, seconds }
-      })
-
-      const active = Object.entries(stats.days).filter(([, d]) => d.seconds > 0)
-      const best = active.sort((a, b) => b[1].seconds - a[1].seconds)[0]
-      const bestWeek = [...weeks].sort((a, b) => b.seconds - a.seconds)[0]
-      const inMonth = days.filter((d) => d.seconds > 0)
-
-      return {
-        month: key,
-        days,
-        weeks,
-        records: {
-          longest_workout_seconds: stats.longest_workout_seconds,
-          longest_streak_days: streaks(stats.days).longest,
-          best_day: best ? { local_date: best[0], seconds: best[1].seconds } : null,
-          best_week: bestWeek && bestWeek.seconds > 0 ? bestWeek : null,
-        },
-        totals: {
-          seconds: inMonth.reduce((s, d) => s + d.seconds, 0),
-          workouts: inMonth.reduce((s, d) => s + d.workouts, 0),
-          days_active: inMonth.length,
-        },
-      } satisfies StatsProgress
+      return aggregate(requireUser().email).progress(month)
     },
 
     /* ——— Поддержка ——— */
