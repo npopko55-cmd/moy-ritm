@@ -27,6 +27,9 @@ jobs:
 
       - run: npm ci
 
+      # VITE_API_URL здесь не задаётся намеренно: на Pages бэкенда нет,
+      # и без этой переменной фронтенд собирается в демо-режиме
+      # (src/api/demo.ts) — данные живут в браузере посетителя.
       - run: npm run build
         env:
           GITHUB_PAGES: 'true'
