@@ -1,0 +1,102 @@
+/* ═══════ Страница настроек ═══════ */
+.settings {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.settings > *:not(.wave-bg) { position: relative; z-index: 1; }
+
+.settings__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 26px clamp(44px, 3.5vw, 72px) 0;
+}
+
+.settings__header .btn { margin-top: 4px; }
+
+/* Блок один и небольшой — держим его по центру экрана, как на отсчёте. */
+.settings__main {
+  width: min(760px, calc(100% - 2 * clamp(24px, 3.5vw, 72px)));
+  margin: auto;
+  padding: clamp(28px, 4vh, 48px) 0 clamp(60px, 12vh, 140px);
+}
+
+.settings__title {
+  font-size: clamp(32px, 4vh, 48px);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.settings__lead {
+  margin-top: 10px;
+  font-size: clamp(15px, 1.6vh, 18px);
+  color: var(--gray-500);
+}
+
+.settings__card {
+  margin-top: clamp(22px, 3.4vh, 40px);
+  padding: clamp(22px, 3vh, 34px) clamp(22px, 3vh, 36px);
+  background: var(--white);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-soft);
+}
+
+.settings__card-title {
+  font-size: clamp(18px, 2vh, 22px);
+  font-weight: 800;
+}
+
+.settings__card-text {
+  margin: 6px 0 18px;
+  font-size: clamp(14px, 1.45vh, 16px);
+  color: var(--gray-500);
+}
+
+/* — Варианты интервала — */
+.chips { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.chip {
+  flex: 1 1 120px;
+  padding: clamp(12px, 1.5vh, 16px) 18px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  font-size: clamp(15px, 1.5vh, 17px);
+  font-weight: 600;
+  color: var(--ink-800);
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.chip:hover { border-color: var(--gray-300); }
+
+.chip.is-on {
+  background: var(--grad-pink);
+  border-color: transparent;
+  color: var(--white);
+  box-shadow: 0 6px 16px rgba(240, 23, 127, .28);
+}
+
+.settings__actions { margin-top: clamp(22px, 3.4vh, 36px); }
+
+.settings__arrow {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .22);
+}
+
+@media (max-width: 640px) {
+  .settings__header { flex-direction: column; align-items: flex-start; }
+  .settings__actions .btn { width: 100%; }
+}

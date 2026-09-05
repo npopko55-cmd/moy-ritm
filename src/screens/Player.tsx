@@ -20,7 +20,7 @@ import {
 } from '../components/Icons'
 import { MOTIVATION, STREAMS, getStream } from '../data/streams'
 import { loopSrc } from '../data/loops'
-import { MOVE_INTERVALS, loadMoveInterval, saveMoveInterval } from '../lib/settings'
+import { loadMoveInterval } from '../lib/settings'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
 import './Player.css'
@@ -56,8 +56,8 @@ export default function Player() {
   const [playing, setPlaying] = useState(true)
   const [todaySeconds, setTodaySeconds] = useState(12 * 60 + 47)
   const [motivation, setMotivation] = useState(MOTIVATION[0])
-  const [moveInterval, setMoveInterval] = useState(loadMoveInterval)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  // Интервал меняется на странице настроек; плеер читает его при открытии.
+  const [moveInterval] = useState(loadMoveInterval)
 
   const { track, blocked: soundBlocked, setPlaying: setMusicPlaying, next: nextTrack } = useMusic()
 
@@ -91,12 +91,6 @@ export default function Player() {
     }, 1000)
     return () => clearInterval(id)
   }, [playing, goToMove, moveInterval])
-
-  const chooseInterval = useCallback((seconds: number) => {
-    setMoveInterval(seconds)
-    saveMoveInterval(seconds)
-    setInMove(0)
-  }, [])
 
   // Пауза останавливает и ролик, чтобы персонаж замирал вместе с таймером.
   useEffect(() => {
@@ -147,7 +141,11 @@ export default function Player() {
             <li key={m.label}>
               <button
                 className="side__menu-item"
-                onClick={m.action === 'settings' ? () => setSettingsOpen(true) : undefined}
+                onClick={
+                  m.action === 'settings'
+                    ? () => navigate('/settings', { state: { from: stream.id } })
+                    : undefined
+                }
               >
                 {m.icon}
                 <span>{m.label}</span>
@@ -308,31 +306,6 @@ export default function Player() {
         </section>
       </aside>
 
-      {settingsOpen && (
-        <div className="modal" onClick={() => setSettingsOpen(false)} role="dialog" aria-modal="true">
-          <div className="modal__card" onClick={(e) => e.stopPropagation()}>
-            <header className="modal__head">
-              <h2>Настройки</h2>
-              <button className="modal__close" onClick={() => setSettingsOpen(false)} aria-label="Закрыть">
-                ×
-              </button>
-            </header>
-
-            <p className="modal__label">Менять упражнение каждые</p>
-            <div className="chips">
-              {MOVE_INTERVALS.map((i) => (
-                <button
-                  key={i.seconds}
-                  className={`chip ${i.seconds === moveInterval ? 'is-on' : ''}`}
-                  onClick={() => chooseInterval(i.seconds)}
-                >
-                  {i.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
