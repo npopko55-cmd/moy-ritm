@@ -13,6 +13,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react'
 import { api } from '../api/client'
 import type { Access, Me } from '../api/types'
+import { saveMoveInterval } from '../lib/settings'
 
 type SessionValue = {
   /** null — не вошёл. */
@@ -92,6 +93,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setMe(null)
     }
   }, [])
+
+  // Источник истины по настройкам — сервер, но плеер стартует мгновенно и
+  // ждать профиля не может. Поэтому интервал смены движения дублируется в
+  // localStorage: свежий профиль всегда переписывает кэш.
+  useEffect(() => {
+    if (me) saveMoveInterval(me.settings.move_interval_seconds)
+  }, [me])
 
   const value = useMemo<SessionValue>(
     () => ({ me, access: me?.access ?? null, loading, reload, signIn, signOut, setMe }),

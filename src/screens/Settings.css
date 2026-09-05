@@ -1,96 +1,102 @@
-/* ═══════ Страница настроек ═══════ */
-.settings {
+/* ═══════ Органы управления на странице настроек ═══════
+   Оболочка страницы и чипы — в Page.css; здесь только то, чем крутят
+   настройки: переключатели, ползунок громкости и список поясов. */
+
+/* — Переключатель «да/нет» — */
+.switch {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: var(--bg);
-  overflow: hidden;
-}
-
-.settings > *:not(.wave-bg) { position: relative; z-index: 1; }
-
-.settings__header {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 24px;
-  width: 100%;
-  max-width: 1720px;
-  margin: 0 auto;
-  padding:
-    calc(26px + env(safe-area-inset-top)) calc(clamp(44px, 3.5vw, 72px) + env(safe-area-inset-right)) 0
-    calc(clamp(44px, 3.5vw, 72px) + env(safe-area-inset-left));
-}
-
-.settings__header .btn { margin-top: 4px; }
-
-/* Блок один и небольшой — держим его по центру экрана, как на отсчёте. */
-.settings__main {
-  width: min(760px, calc(100% - 2 * clamp(24px, 3.5vw, 72px)));
-  margin: auto;
-  padding: clamp(28px, 4vh, 48px) 0 clamp(60px, 12vh, 140px);
-}
-
-.settings__title {
-  font-size: clamp(32px, 4vh, 48px);
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.settings__lead {
-  margin-top: 10px;
-  font-size: clamp(15px, 1.6vh, 18px);
-  color: var(--gray-500);
-}
-
-.settings__card {
-  margin-top: clamp(22px, 3.4vh, 40px);
-  padding: clamp(22px, 3vh, 34px) clamp(22px, 3vh, 36px);
-  background: var(--white);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-soft);
-}
-
-.settings__card-title {
-  font-size: clamp(18px, 2vh, 22px);
-  font-weight: 800;
-}
-
-.settings__card-text {
-  margin: 6px 0 18px;
-  font-size: clamp(14px, 1.45vh, 16px);
-  color: var(--gray-500);
-}
-
-/* — Варианты интервала — */
-.chips { display: flex; gap: 12px; flex-wrap: wrap; }
-
-.chip {
-  flex: 1 1 120px;
-  padding: clamp(12px, 1.5vh, 16px) 18px;
+  flex: none;
+  width: 58px;
+  /* Дорожка 34 px, но нажимать надо во что-то от 44 px: разницу отдаём
+     полям, а фон рисуем только по содержимому. */
+  height: 44px;
+  padding: 5px 0;
   border-radius: var(--r-pill);
-  border: 1px solid var(--gray-200);
+  background: var(--gray-200);
+  background-clip: content-box;
+  transition: background-color .18s ease;
+}
+
+.switch.is-on { background: var(--grad-pink); background-clip: content-box; }
+
+.switch__dot {
+  position: absolute;
+  top: 13px;
+  left: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
   background: var(--white);
-  font-size: clamp(15px, 1.5vh, 17px);
-  font-weight: 600;
-  color: var(--ink-800);
-  transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+  box-shadow: 0 1px 3px rgba(20, 22, 26, .25);
+  transition: transform .18s ease;
 }
 
-@media (hover: hover) {
-  .chip:hover { border-color: var(--gray-300); }
+.switch.is-on .switch__dot { transform: translateX(24px); }
+
+/* — Ползунок громкости — */
+.range {
+  width: clamp(140px, 26vw, 220px);
+  height: 44px;
+  margin: 0;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
 }
 
-.chip.is-on {
-  background: var(--grad-pink);
-  border-color: transparent;
-  color: var(--white);
-  box-shadow: 0 6px 16px rgba(240, 23, 127, .28);
+.range:disabled { opacity: .45; cursor: default; }
+
+.range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--gray-200);
 }
 
-.settings__actions { margin-top: clamp(22px, 3.4vh, 36px); }
+.range::-moz-range-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--gray-200);
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: var(--pink-500);
+  box-shadow: 0 2px 8px rgba(240, 23, 127, .35);
+}
+
+.range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: var(--pink-500);
+  box-shadow: 0 2px 8px rgba(240, 23, 127, .35);
+}
+
+/* — Список часовых поясов — */
+.select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  background: var(--white);
+  font-family: inherit;
+  /* 16px — иначе iOS зумит страницу при открытии списка. */
+  font-size: 16px;
+  color: var(--ink-900);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--pink-400);
+  box-shadow: 0 0 0 3px var(--pink-100);
+}
 
 .settings__arrow {
   display: inline-grid;
@@ -101,43 +107,13 @@
   background: rgba(255, 255, 255, .22);
 }
 
-/* Палец: чипы тоже от 44 px. */
-@media (max-width: 1023.98px),
-       (pointer: coarse),
-       (max-width: 1179.98px) and (orientation: portrait) {
-  .chip { min-height: 44px; }
-}
-
-/* Телефон: поля 44 px по бокам съедали бы треть экрана. */
 @media (max-width: 767.98px) {
-  .settings__header {
-    padding:
-      calc(18px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 0
-      calc(16px + env(safe-area-inset-left));
-  }
-
-  .settings__main {
-    width: min(760px, calc(100% - 32px));
-    padding-bottom: calc(48px + env(safe-area-inset-bottom));
-  }
-
-  .settings__card { padding: 20px 18px; }
-  /* Два чипа в ряд: 4 варианта складываются в аккуратные 2×2. */
-  .chip { flex: 1 1 calc(50% - 6px); }
+  /* Ползунок и список занимают строку целиком — иначе на 320 px не влезут. */
+  .range { width: 100%; }
+  .select { width: 100%; }
+  .page__actions .btn { width: 100%; }
 }
 
-@media (max-width: 640px) {
-  .settings__header { flex-direction: column; align-items: flex-start; }
-  .settings__actions .btn { width: 100%; }
-}
-
-/* Телефон в ландшафте: экран низкий, отступы сверху и снизу лишние. */
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
-  .settings__header { padding-top: calc(12px + env(safe-area-inset-top)); }
-  .settings__main { padding-top: 10px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
-  .settings__title { font-size: 24px; }
-  .settings__lead { margin-top: 6px; }
-  .settings__card { margin-top: 12px; padding: 14px 18px; }
-  .settings__actions { margin-top: 14px; }
-  .settings .btn--pink-lg { padding: 13px 20px 13px 26px; font-size: 16px; }
+  .page .btn--pink-lg { padding: 13px 20px 13px 26px; font-size: 16px; }
 }

@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useSession } from '../auth/SessionProvider'
 import { TRACKS, type Track, shuffled, trackSrc } from '../data/music'
 
 type MusicValue = {
@@ -21,8 +22,8 @@ type MusicValue = {
 
 const MusicContext = createContext<MusicValue | null>(null)
 
-/** Целевая громкость. Позже приедет из настроек профиля. */
-const VOLUME = 1
+/** Громкость по умолчанию, пока профиль не загрузился: 0…100 из настроек. */
+const DEFAULT_VOLUME = 100
 
 /** Плавный вход: новый трек разгорается дольше, возврат с паузы — быстро. */
 const FADE_START = 1200
@@ -42,6 +43,17 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [blocked, setBlocked] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const fadeRef = useRef<number | null>(null)
+
+  // Музыка и её громкость — настройки профиля (раздел 5.2). Выключена —
+  // проигрыватель не стартует вовсе, а уже игравший встаёт на паузу.
+  const { me } = useSession()
+  const enabled = me?.settings.music_enabled ?? true
+  const target = (me?.settings.music_volume ?? DEFAULT_VOLUME) / 100
+  // Ref, чтобы плавный вход читал свежую громкость, а не ту, что была при
+  // создании обработчика.
+  const targetRef = useRef(target)
+  targetRef.current = target
+  const on = playing && enabled
 
   const track = playlist[index % playlist.length]
 
@@ -71,7 +83,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     a.volume = 0
     fadeRef.current = window.setInterval(() => {
       done += 1
-      a.volume = Math.min(VOLUME, (VOLUME * done) / steps)
+      const to = targetRef.current
+      a.volume = Math.min(to, (to * done) / steps)
       if (done >= steps) stopFade()
     }, FADE_STEP)
   }, [])
@@ -119,7 +132,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
     a.volume = 0
     fresh.current = true
-    if (playing) {
+    if (on) {
       play(FADE_START)
       fresh.current = false
     }
@@ -127,7 +140,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       a.onended = null
       a.onloadedmetadata = null
     }
-    // playing нарочно не в зависимостях: пуск и паузу ведёт эффект ниже.
+    // on нарочно не в зависимостях: пуск и паузу ведёт эффект ниже.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.id, track.startAt, next, play])
 
@@ -136,14 +149,21 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const a = audioRef.current
     if (!a) return
-    if (playing) {
+    if (on) {
       play(fresh.current ? FADE_START : FADE_RESUME)
       fresh.current = false
     } else {
       stopFade()
       a.pause()
     }
-  }, [playing, play])
+  }, [on, play])
+
+  // Ползунок громкости двигают во время музыки — она меняется сразу, но
+  // только когда плавный вход уже закончился и не спорит с ним.
+  useEffect(() => {
+    const a = audioRef.current
+    if (a && fadeRef.current === null && !a.paused) a.volume = target
+  }, [target])
 
   useEffect(
     () => () => {

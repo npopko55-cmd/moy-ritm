@@ -1,0 +1,254 @@
+/* ═══════ Страницы кабинета: настройки, профиль, прогресс, помощь ═══════
+   Композиция и отступы взяты с прежней страницы «Настройки», чтобы переход
+   между разделами не ощущался переходом на другой сайт. Все селекторы
+   начинаются с .page: общий CSS проекта не должен доставать до чужих экранов. */
+
+.page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.page > *:not(.wave-bg) { position: relative; z-index: 1; }
+
+.page__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  max-width: 1720px;
+  margin: 0 auto;
+  padding:
+    calc(26px + env(safe-area-inset-top)) calc(clamp(44px, 3.5vw, 72px) + env(safe-area-inset-right)) 0
+    calc(clamp(44px, 3.5vw, 72px) + env(safe-area-inset-left));
+}
+
+.page__header .btn { margin-top: 4px; }
+
+.page__main {
+  width: min(760px, calc(100% - 2 * clamp(24px, 3.5vw, 72px)));
+  margin: auto;
+  padding: clamp(28px, 4vh, 48px) 0 clamp(60px, 12vh, 140px);
+}
+
+/* Календарю и графику 760 px тесно. */
+.page__main--wide { width: min(980px, calc(100% - 2 * clamp(24px, 3.5vw, 72px))); }
+
+.page__title {
+  font-size: clamp(32px, 4vh, 48px);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.page__lead {
+  margin-top: 10px;
+  font-size: clamp(15px, 1.6vh, 18px);
+  line-height: 1.5;
+  color: var(--gray-500);
+}
+
+.page__card {
+  margin-top: clamp(18px, 2.6vh, 28px);
+  padding: clamp(22px, 3vh, 32px) clamp(22px, 3vh, 34px);
+  background: var(--white);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-soft);
+}
+
+.page__card-title {
+  font-size: clamp(18px, 2vh, 22px);
+  font-weight: 800;
+}
+
+.page__card-text {
+  margin: 6px 0 0;
+  font-size: clamp(14px, 1.45vh, 16px);
+  line-height: 1.5;
+  color: var(--gray-500);
+}
+
+.page__card-title + .page__row,
+.page__card-text + .page__row { margin-top: 16px; }
+
+/* ——— Строка «название — значение» ——— */
+.page__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+  padding: 12px 0;
+  border-top: 1px solid var(--gray-100);
+  flex-wrap: wrap;
+}
+
+.page__row:first-child { border-top: none; padding-top: 0; }
+
+.page__row-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.page__row-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.page__row-hint {
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--gray-500);
+  overflow-wrap: anywhere;
+}
+
+.page__row-side { display: flex; align-items: center; gap: 10px; flex: none; }
+
+/* ——— Короткий ответ: «Сохранено» или ошибка ——— */
+.page__note {
+  margin-top: 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--green-600);
+}
+
+.page__note.is-bad { color: var(--red-500); }
+
+/* ——— Кнопки внутри карточек ——— */
+.page__btn {
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-pill);
+  background: var(--white);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-900);
+  box-shadow: var(--shadow-card);
+  white-space: nowrap;
+}
+
+.page__btn:disabled { opacity: .6; cursor: default; }
+
+/* Опасное действие: без красной заливки, но и не как все. */
+.page__btn--danger { color: var(--red-500); border-color: #ffd9d2; }
+
+.page__btn--pink {
+  border-color: transparent;
+  background: var(--grad-pink);
+  color: var(--white);
+  box-shadow: 0 6px 16px rgba(240, 23, 127, .28);
+}
+
+a.page__btn { display: inline-flex; align-items: center; justify-content: center; }
+
+@media (hover: hover) {
+  .page__btn:not(:disabled):hover { border-color: var(--gray-300); }
+  .page__btn--danger:not(:disabled):hover { border-color: #ffb8ab; }
+  .page__btn--pink:not(:disabled):hover { box-shadow: 0 10px 22px rgba(240, 23, 127, .36); }
+}
+
+/* ——— Ссылка-действие в подвале карточки ——— */
+.page__link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--pink-600);
+}
+
+@media (hover: hover) {
+  .page__link:hover { color: var(--pink-700); }
+}
+
+/* ——— Чипы: интервал в настройках и тема обращения в помощи ——— */
+.chips { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.chip {
+  flex: 1 1 120px;
+  padding: clamp(12px, 1.5vh, 16px) 18px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  font-size: clamp(15px, 1.5vh, 17px);
+  font-weight: 600;
+  color: var(--ink-800);
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+@media (hover: hover) {
+  .chip:hover { border-color: var(--gray-300); }
+}
+
+.chip.is-on {
+  background: var(--grad-pink);
+  border-color: transparent;
+  color: var(--white);
+  box-shadow: 0 6px 16px rgba(240, 23, 127, .28);
+}
+
+/* Палец: чипы тоже от 44 px. */
+@media (max-width: 1023.98px),
+       (pointer: coarse),
+       (max-width: 1179.98px) and (orientation: portrait) {
+  .chip { min-height: 44px; }
+}
+
+/* ——— Крупное действие под карточками ——— */
+.page__actions { margin-top: clamp(22px, 3.4vh, 36px); }
+
+/* ——— Пустое состояние ——— */
+.page__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--gray-500);
+}
+
+/* ——— Телефон ——— */
+@media (max-width: 767.98px) {
+  .page__header {
+    padding:
+      calc(18px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 0
+      calc(16px + env(safe-area-inset-left));
+  }
+
+  .page .logo__word { font-size: 17px; }
+  .page .logo__tagline { font-size: 11.5px; white-space: normal; }
+
+  .page__main,
+  .page__main--wide {
+    width: min(760px, calc(100% - 32px));
+    padding-bottom: calc(48px + env(safe-area-inset-bottom));
+  }
+
+  .page__card { padding: 20px 18px; }
+
+  /* Два чипа в ряд: четыре варианта складываются в аккуратные 2×2. */
+  .chip { flex: 1 1 calc(50% - 6px); }
+
+  /* Кнопка под строкой, а не рядом: на 320 px в ряд они не помещаются. */
+  .page__row { align-items: flex-start; }
+  .page__row-side { width: 100%; }
+  .page__row-side .page__btn { flex: 1 1 auto; }
+}
+
+@media (max-width: 639.98px) {
+  .page__header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .page__header .btn { margin-top: 0; }
+}
+
+/* Телефон в ландшафте: экран низкий, отступы сверху и снизу лишние. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  .page__header { padding-top: calc(12px + env(safe-area-inset-top)); }
+  .page__main { padding-top: 10px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  .page__title { font-size: 24px; }
+  .page__lead { margin-top: 6px; }
+  .page__card { margin-top: 12px; padding: 14px 18px; }
+}
