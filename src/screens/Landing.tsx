@@ -73,7 +73,11 @@ export default function Landing() {
         <nav className="landing__nav">
           <a href="#about">О нас</a>
           <a href="#streams">Потоки</a>
-          <a href="#pricing">Тарифы</a>
+          {/* Тарифы — отдельная страница. href настоящий (Pages живёт
+              в подпапке), клик перехватываем, чтобы не перезагружать сайт. */}
+          <a href={asset('tariffs')} onClick={(e) => { e.preventDefault(); navigate('/tariffs') }}>
+            Тарифы
+          </a>
         </nav>
 
         <div className="landing__actions">

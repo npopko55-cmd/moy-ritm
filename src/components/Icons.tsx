@@ -152,3 +152,87 @@ export const Sparkle = ({ size = 16, className }: I) => (
     <path d="M12 1c.9 7.6 2.4 9.1 10 10-7.6.9-9.1 2.4-10 10-.9-7.6-2.4-9.1-10-10 7.6-.9 9.1-2.4 10-10Z" />
   </svg>
 )
+
+/* ——— Иконки страницы тарифов ——— */
+
+/** Треугольник в круге: «все потоки и движения». */
+export const PlayCircle = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="8.8" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M10.4 8.9v6.2l5.1-3.1-5.1-3.1Z" fill="currentColor" />
+  </svg>
+)
+
+export const Star = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+    <path d="m12 2.6 2.85 5.9 6.35.9-4.6 4.55L17.7 21 12 17.95 6.3 21l1.1-7.05L2.8 9.4l6.35-.9L12 2.6Z" />
+  </svg>
+)
+
+/* Имя со суффиксом: голый Infinity перекрыл бы глобальную переменную. */
+export const InfinityMark = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M12 12c1.5-2.4 2.7-3.6 4.6-3.6a3.6 3.6 0 0 1 0 7.2C13.6 15.6 12.4 8.4 7.4 8.4a3.6 3.6 0 0 0 0 7.2c1.9 0 3.1-1.2 4.6-3.6Z"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+export const Phone = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <rect x="6.6" y="2.6" width="10.8" height="18.8" rx="2.6" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M10.6 5.4h2.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <circle cx="12" cy="18.1" r="1.05" fill="currentColor" />
+  </svg>
+)
+
+/** Смайлик: «движение в удовольствие». */
+export const Smile = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="8.8" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M8.4 13.6c.9 1.5 2.1 2.3 3.6 2.3s2.7-.8 3.6-2.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <circle cx="9.4" cy="9.9" r="1.15" fill="currentColor" />
+    <circle cx="14.6" cy="9.9" r="1.15" fill="currentColor" />
+  </svg>
+)
+
+export const Leaf = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M20 4c-9 0-14 3.2-14 9a5 5 0 0 0 8.6 3.5C18.2 13 20 9.4 20 4Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+    <path d="M4 20c1.6-4.2 4.4-7.4 8.4-9.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+)
+
+export const Shield = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M12 2.8 4.8 5.6v5.5c0 4.4 2.9 8.2 7.2 9.7 4.3-1.5 7.2-5.3 7.2-9.7V5.6L12 2.8Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+    <path d="m9 12.1 2.2 2.2 4-4.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** Корона на бейдже популярного тарифа. */
+export const Crown = ({ size = 14, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+    <path d="M4.6 18.6 2.4 6.2l5.3 3.7L12 3.4l4.3 6.5 5.3-3.7-2.2 12.4H4.6Zm0 1.6h14.8v1.8H4.6v-1.8Z" />
+  </svg>
+)
+
+/** Крестик на кнопке «закрыть» страницы тарифов. */
+export const Close = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path d="m6.4 6.4 11.2 11.2M17.6 6.4 6.4 17.6" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+  </svg>
+)
