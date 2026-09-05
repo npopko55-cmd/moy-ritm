@@ -30,45 +30,72 @@
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   width: 100%;
-  height: 68px;
-  padding: 0 13px;
+  height: 92px;
+  padding: 0 14px 0 0;
   border-radius: var(--r-lg);
   overflow: hidden;
   text-align: left;
   color: var(--white);
+  background: var(--card-grad);
   transition: transform .16s ease, box-shadow .16s ease;
 }
 
 .stream-card:hover { transform: translateY(-1px); }
-.stream-card.is-active { box-shadow: 0 0 0 2.5px var(--white), 0 0 0 4.5px rgba(255, 45, 142, 0.45); }
+.stream-card.is-active { box-shadow: 0 0 0 2.5px var(--white), 0 0 0 4.5px rgba(255, 45, 142, .45); }
 
-.stream-card--cardio { background: var(--grad-cardio); }
-.stream-card--back { background: var(--grad-back); }
-.stream-card--office { background: var(--grad-office); }
-.stream-card--dance { background: var(--grad-dance); }
-.stream-card--senior { background: var(--grad-senior); }
+/* Фото кладётся в плашку как есть, фон не вырезается. */
+.stream-card__photo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 52%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+/*
+ * Два слоя поверх фото.
+ * tint: подменяет цвет снимка на цвет потока, оставляя светотень. Снимки
+ *   сняты на разных подложках (коралл, бирюза, охра), и без этого слоя
+ *   плашки спорили бы между собой по цвету.
+ * fade: сплошная заливка справа, чтобы текст читался.
+ */
+.stream-card__tint {
+  position: absolute;
+  inset: 0;
+  background: var(--card-grad);
+  mix-blend-mode: color;
+  opacity: .88;
+}
+
+.stream-card__fade {
+  position: absolute;
+  inset: 0;
+  background: var(--card-grad);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .18) 24%, rgba(0, 0, 0, .62) 44%, #000 62%);
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .18) 24%, rgba(0, 0, 0, .62) 44%, #000 62%);
+}
 
 .stream-card__text {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-width: 62%;
+  gap: 3px;
+  width: 50%;
   z-index: 1;
 }
 
 .stream-card__title { font-family: var(--font-head); font-weight: 800; font-size: 17px; }
-.stream-card__sub { font-size: 11px; line-height: 1.28; opacity: 0.92; }
+.stream-card__sub { font-size: 11.5px; line-height: 1.3; opacity: .95; }
 
-.stream-card__photo {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  height: 100%;
-  width: auto;
-  object-fit: contain;
-  object-position: bottom right;
-}
+.stream-card--cardio { --card-grad: linear-gradient(100deg, #ff2d8e 0%, #f9552f 100%); }
+.stream-card--back   { --card-grad: linear-gradient(100deg, #2f9bf5 0%, #7ec8ff 100%); }
+.stream-card--office { --card-grad: linear-gradient(100deg, #9b6cf0 0%, #c4a4ff 100%); }
+.stream-card--dance  { --card-grad: linear-gradient(100deg, #f5b322 0%, #ffd76a 100%); }
+.stream-card--senior { --card-grad: linear-gradient(100deg, #46c98b 0%, #93e2bd 100%); }
 
 .side__menu { display: flex; flex-direction: column; gap: 1px; margin-top: auto; padding-top: 14px; }
 

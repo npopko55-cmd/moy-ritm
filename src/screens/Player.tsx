@@ -141,18 +141,13 @@ export default function Player() {
                 className={`stream-card stream-card--${s.theme} ${s.id === stream.id ? 'is-active' : ''}`}
                 onClick={() => navigate(`/player/${s.id}`)}
               >
+                <img className="stream-card__photo" src={s.cover} alt="" loading="lazy" />
+                <span className="stream-card__tint" />
+                <span className="stream-card__fade" />
                 <span className="stream-card__text">
                   <span className="stream-card__title">{s.title}</span>
                   <span className="stream-card__sub">{s.subtitle}</span>
                 </span>
-                <img
-                  className="stream-card__photo"
-                  src={s.cover}
-                  alt=""
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
               </button>
             </li>
           ))}

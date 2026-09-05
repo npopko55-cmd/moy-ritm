@@ -26,7 +26,7 @@ export const STREAMS: Stream[] = [
     title: 'Кардио',
     subtitle: 'энергия и жиросжигание',
     theme: 'cardio',
-    cover: asset('streams/cardio.png'),
+    cover: asset('streams/cardio.jpg'),
     loops: pick('high-knees', 'jumping-jacks', 'punches', 'run-in-place', 'jumps-arms-up', 'jog'),
   },
   {
@@ -34,7 +34,7 @@ export const STREAMS: Stream[] = [
     title: 'Спина',
     subtitle: 'здоровая осанка и сильная спина',
     theme: 'back',
-    cover: asset('streams/back.png'),
+    cover: asset('streams/back.jpg'),
     loops: pick('arms-to-sides', 'arms-up', 'arm-swings', 'arms-to-shoulders'),
   },
   {
@@ -42,7 +42,7 @@ export const STREAMS: Stream[] = [
     title: 'Офис',
     subtitle: 'разминка для работы',
     theme: 'office',
-    cover: asset('streams/office.png'),
+    cover: asset('streams/office.jpg'),
     loops: pick('arms-to-shoulders', 'arms-to-sides', 'arm-swings', 'steps-with-arms'),
   },
   {
@@ -50,7 +50,7 @@ export const STREAMS: Stream[] = [
     title: 'Танцы',
     subtitle: 'движение в удовольствие',
     theme: 'dance',
-    cover: asset('streams/dance.png'),
+    cover: asset('streams/dance.jpg'),
     loops: pick('dance-steps', 'side-steps', 'steps-with-arms', 'arms-up'),
   },
   {
@@ -58,7 +58,7 @@ export const STREAMS: Stream[] = [
     title: '60+',
     subtitle: 'мягкие тренировки для здоровья',
     theme: 'senior',
-    cover: asset('streams/60plus.png'),
+    cover: asset('streams/60plus.jpg'),
     loops: pick('steps-with-arms', 'arms-to-shoulders', 'arm-swings', 'side-steps'),
   },
 ]
