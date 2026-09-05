@@ -85,7 +85,7 @@
   inset: 0;
   background: var(--card-grad);
   mix-blend-mode: color;
-  opacity: .88;
+  opacity: .72;
 }
 
 .stream-card__fade {
