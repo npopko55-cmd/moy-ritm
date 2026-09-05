@@ -1,0 +1,269 @@
+/* ═══════ Экраны учётной записи ═══════
+   Одна карточка по центру — та же композиция, что у «Настроек».
+   Все селекторы начинаются с .account, .field или .form: общий CSS
+   проекта не должен доставать до чужих экранов. */
+
+.account {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.account > *:not(.wave-bg) { position: relative; z-index: 1; }
+
+.account__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  max-width: 1720px;
+  margin: 0 auto;
+  padding:
+    calc(26px + env(safe-area-inset-top)) calc(clamp(44px, 3.5vw, 72px) + env(safe-area-inset-right)) 0
+    calc(clamp(44px, 3.5vw, 72px) + env(safe-area-inset-left));
+}
+
+.account__header .btn { margin-top: 4px; }
+
+.account__main {
+  width: min(520px, calc(100% - 2 * clamp(24px, 3.5vw, 72px)));
+  margin: auto;
+  padding: clamp(24px, 4vh, 44px) 0 clamp(48px, 10vh, 120px);
+}
+
+.account__card {
+  padding: clamp(24px, 3.4vh, 38px) clamp(22px, 3vh, 36px) clamp(24px, 3vh, 34px);
+  background: var(--white);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-soft);
+}
+
+.account__title {
+  font-size: clamp(26px, 3.4vh, 36px);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.account__lead {
+  margin-top: 10px;
+  font-size: clamp(14px, 1.5vh, 16px);
+  line-height: 1.5;
+  color: var(--gray-500);
+}
+
+/* ——— Форма ——— */
+.form { margin-top: clamp(18px, 2.6vh, 26px); }
+
+.field + .field { margin-top: 16px; }
+
+.field__label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.field__box { position: relative; display: flex; }
+
+.field__input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  background: var(--white);
+  font-family: inherit;
+  /* 16px — иначе iOS зумит страницу при фокусе на поле. */
+  font-size: 16px;
+  color: var(--ink-900);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.field__input::placeholder { color: var(--gray-400); }
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--pink-400);
+  box-shadow: 0 0 0 3px var(--pink-100);
+}
+
+.field__input:disabled { background: var(--gray-100); color: var(--gray-500); }
+
+.field.is-bad .field__input { border-color: var(--red-400); }
+.field.is-bad .field__input:focus { box-shadow: 0 0 0 3px rgba(251, 59, 33, .14); }
+
+/* Пароль: место справа под кнопку «Показать», чтобы текст под неё не заезжал. */
+.field--password .field__input { padding-right: 92px; }
+
+.field__toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  min-width: 78px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--pink-600);
+}
+
+@media (hover: hover) {
+  .field__toggle:hover { background: var(--pink-50); }
+}
+
+.field__note {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--gray-500);
+}
+
+.field__note.is-bad { color: var(--red-500); }
+
+/* ——— Кнопки и сообщения формы ——— */
+.form__actions { margin-top: clamp(18px, 2.6vh, 24px); }
+
+.form__submit {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 24px;
+  border-radius: var(--r-pill);
+  background: var(--grad-pink);
+  color: var(--white);
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: var(--shadow-pink);
+  transition: box-shadow .16s ease, transform .16s ease, opacity .16s ease;
+}
+
+.form__submit:active { transform: translateY(1px); }
+.form__submit:disabled { opacity: .6; box-shadow: none; cursor: default; }
+
+@media (hover: hover) {
+  .form__submit:not(:disabled):hover { box-shadow: 0 14px 32px rgba(240, 23, 127, .42); }
+}
+
+/* Вторая кнопка на экране — спокойная, чтобы не спорить с главной. */
+.form__second {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 10px;
+  padding: 12px 24px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-pill);
+  background: var(--white);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-900);
+  box-shadow: var(--shadow-card);
+}
+
+.form__second:disabled { opacity: .6; cursor: default; }
+
+@media (hover: hover) {
+  .form__second:not(:disabled):hover { border-color: var(--gray-300); }
+}
+
+/* Те же кнопки бывают ссылками («Войти», «Написать в поддержку») —
+   выравниваем содержимое так же, как у настоящей <button>. */
+a.form__submit,
+a.form__second {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.form__error,
+.form__ok {
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.form__error { color: var(--red-500); }
+.form__ok { color: var(--green-600); }
+
+/* ——— Ссылки под формой ——— */
+.account__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  justify-content: space-between;
+  margin-top: clamp(16px, 2.4vh, 22px);
+  padding-top: clamp(14px, 2vh, 18px);
+  border-top: 1px solid var(--gray-200);
+  font-size: 14.5px;
+}
+
+.account__links a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--pink-600);
+  font-weight: 600;
+}
+
+@media (hover: hover) {
+  .account__links a:hover { color: var(--pink-700); }
+}
+
+/* Подпись про демо-режим — мелко и без нажима: это не ошибка. */
+.account__demo {
+  margin-top: 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--gray-400);
+}
+
+/* ——— Экран ожидания ——— */
+.account--waiting { justify-content: center; align-items: center; }
+
+.account__waiting {
+  font-size: 16px;
+  color: var(--gray-500);
+}
+
+/* ——— Телефон ——— */
+@media (max-width: 767.98px) {
+  .account__header {
+    padding:
+      calc(18px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 0
+      calc(16px + env(safe-area-inset-left));
+  }
+
+  .account .logo__word { font-size: 17px; }
+  .account .logo__tagline { font-size: 11.5px; white-space: normal; }
+
+  .account__main {
+    width: min(520px, calc(100% - 32px));
+    padding-bottom: calc(40px + env(safe-area-inset-bottom));
+  }
+
+  .account__card { padding: 22px 18px; }
+  .account__links { gap: 4px 16px; }
+}
+
+@media (max-width: 639.98px) {
+  .account__header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .account__header .btn { margin-top: 0; }
+}
+
+/* Телефон в ландшафте: экран низкий, лишние отступы съедают форму. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  .account__header { padding-top: calc(12px + env(safe-area-inset-top)); }
+  .account__main { padding-top: 10px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  .account__title { font-size: 22px; }
+  .account__card { padding: 16px 18px; }
+  .form { margin-top: 14px; }
+  .form__actions { margin-top: 14px; }
+}
