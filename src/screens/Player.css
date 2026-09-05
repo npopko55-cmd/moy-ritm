@@ -538,9 +538,11 @@
   .player__stats { display: contents; }
 
   /* Логотип и карточка трека делят одну ячейку: отступ слева освобождает
-     место под знак, поэтому лишняя колонка в сетке не нужна. */
-  .logo { grid-area: top; align-self: center; justify-self: start; z-index: 2; }
-  .logo__tagline { display: none; }
+     место под знак, поэтому лишняя колонка в сетке не нужна.
+     Селекторы с .player обязательны: CSS в проекте общий, и без них
+     правила легли бы на логотип лендинга и настроек. */
+  .player .logo { grid-area: top; align-self: center; justify-self: start; z-index: 2; }
+  .player .logo__tagline { display: none; }
   .stats__top { grid-area: top; align-self: center; padding-left: 116px; }
   .side__label { display: none; }
 
@@ -659,7 +661,7 @@
       calc(68px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
   }
 
-  .logo__word { display: none; }
+  .player .logo__word { display: none; }
   .stats__top { padding-left: 46px; gap: 8px; }
 
   .stream-card { width: 150px; height: 64px; min-height: 64px; }
@@ -725,7 +727,7 @@
   }
 
   /* Логотип на 390 px высоты съедает место, нужное кругу. */
-  .logo { display: none; }
+  .player .logo { display: none; }
   .stats__top { grid-area: top; align-self: start; padding-left: 0; }
 
   /* Лента становится узкими пилюлями. */
