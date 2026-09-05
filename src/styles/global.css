@@ -12,6 +12,8 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Серая вспышка по тапу на телефоне только мешает: свои состояния есть. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 h1, h2, h3, h4 { font-family: var(--font-head); margin: 0; letter-spacing: -0.02em; }
@@ -42,7 +44,6 @@ ul { margin: 0; padding: 0; list-style: none; }
   font-size: 15px;
   box-shadow: var(--shadow-card);
 }
-.btn--ghost:hover { border-color: var(--gray-300); }
 
 .btn--pink {
   background: var(--grad-pink);
@@ -51,7 +52,6 @@ ul { margin: 0; padding: 0; list-style: none; }
   font-size: 15px;
   box-shadow: 0 6px 16px rgba(240,23,127,.28);
 }
-.btn--pink:hover { box-shadow: 0 10px 22px rgba(240,23,127,.36); }
 
 .btn--pink-lg {
   background: var(--grad-pink);
@@ -61,7 +61,17 @@ ul { margin: 0; padding: 0; list-style: none; }
   font-weight: 700;
   box-shadow: var(--shadow-pink);
 }
-.btn--pink-lg:hover { box-shadow: 0 14px 32px rgba(240,23,127,.42); }
+/* Ховеры — только там, где есть мышь: на тач-экране они «залипают». */
+@media (hover: hover) {
+  .btn--ghost:hover { border-color: var(--gray-300); }
+  .btn--pink:hover { box-shadow: 0 10px 22px rgba(240,23,127,.36); }
+  .btn--pink-lg:hover { box-shadow: 0 14px 32px rgba(240,23,127,.42); }
+}
+
+/* Палец меньше курсора: на планшете и телефоне у кнопок гарантированные 44 px. */
+@media (max-width: 1023.98px), (pointer: coarse) {
+  .btn { min-height: 44px; }
+}
 
 /* — Волнистый фон — */
 .wave-bg {

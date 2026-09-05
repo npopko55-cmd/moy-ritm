@@ -4,14 +4,24 @@
  */
 .player {
   position: relative;
+  /* dvh — чтобы адресная строка мобильного Safari не дёргала вёрстку.
+     Первым идёт vh: старые браузеры возьмут его и не сломаются. */
   height: 100vh;
+  height: 100dvh;
   min-height: 620px;
   display: grid;
   grid-template-columns: clamp(250px, 16vw, 330px) minmax(0, 1fr) clamp(262px, 16vw, 330px);
   gap: clamp(20px, 1.6vw, 34px);
-  padding: clamp(18px, 2vh, 28px) clamp(20px, 1.8vw, 36px);
+  /* env(...) на десктопе равен нулю — отступы те же, что были. */
+  padding:
+    calc(clamp(18px, 2vh, 28px) + env(safe-area-inset-top))
+    calc(clamp(20px, 1.8vw, 36px) + env(safe-area-inset-right))
+    calc(clamp(18px, 2vh, 28px) + env(safe-area-inset-bottom))
+    calc(clamp(20px, 1.8vw, 36px) + env(safe-area-inset-left));
   background: var(--bg-warm);
   overflow: hidden;
+  /* Плеер занимает весь экран: «оттягивать» страницу за край нечему. */
+  overscroll-behavior: none;
 }
 
 .player > *:not(.wave-bg) { position: relative; z-index: 1; }
@@ -60,7 +70,6 @@
   transition: transform .16s ease, box-shadow .16s ease;
 }
 
-.stream-card:hover { transform: translateY(-1px); }
 .stream-card.is-active {
   box-shadow: 0 8px 20px rgba(20, 22, 26, .16);
   transform: translateY(-1px);
@@ -137,8 +146,6 @@
   transition: background-color .15s ease, color .15s ease;
 }
 
-.side__menu-item:hover { background: var(--white); color: var(--ink-900); }
-
 /* ═══════ Центр ═══════ */
 .player__stage {
   display: flex;
@@ -204,8 +211,6 @@
   transition: border-color .15s ease, box-shadow .15s ease;
 }
 
-.track:hover { border-color: var(--gray-300); }
-
 .track--muted .track__text span { color: var(--orange-500); }
 
 .track__icon {
@@ -245,13 +250,12 @@
   transition: border-color .15s ease;
 }
 
-.icon-btn:hover { border-color: var(--gray-300); }
-
 /* ——— Персонаж в кольце ——— */
 .stage__figure {
   position: relative;
   /* Круг забирает всю высоту, что остаётся под заголовком и управлением. */
   width: min(calc(100vh - 262px), 100%);
+  width: min(calc(100dvh - 262px), 100%);
   aspect-ratio: 1;
   flex: 0 0 auto;
   display: grid;
@@ -328,8 +332,6 @@
   box-shadow: var(--shadow-card);
 }
 
-.ctrl--side:hover { border-color: var(--gray-300); }
-
 .ctrl--main {
   width: clamp(72px, 7.6vh, 104px);
   height: clamp(72px, 7.6vh, 104px);
@@ -337,8 +339,6 @@
   color: var(--white);
   box-shadow: var(--shadow-play);
 }
-
-.ctrl--main:hover { box-shadow: 0 14px 32px rgba(251, 59, 33, 0.45); }
 
 /* ═══════ Правая колонка ═══════ */
 .player__stats { display: flex; flex-direction: column; gap: clamp(12px, 1.3vh, 20px); min-height: 0; }
@@ -436,9 +436,350 @@
 .week__col span { font-size: clamp(9.5px, 1vh, 12.5px); color: var(--gray-400); text-transform: uppercase; }
 .week__col span.is-today { color: var(--pink-500); font-weight: 700; }
 
-@media (max-width: 1180px) {
-  .player { grid-template-columns: 220px minmax(0, 1fr); }
-  .player__stats { grid-column: 1 / -1; flex-direction: row; padding-top: 0; }
-  .player__stats .stat { flex: 1; }
+/* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
+@media (hover: hover) {
+  .stream-card:hover { transform: translateY(-1px); }
+  .side__menu-item:hover { background: var(--white); color: var(--ink-900); }
+  .track:hover { border-color: var(--gray-300); }
+  .icon-btn:hover { border-color: var(--gray-300); }
+  .ctrl--side:hover { border-color: var(--gray-300); }
+  .ctrl--main:hover { box-shadow: 0 14px 32px rgba(251, 59, 33, 0.45); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   1024–1179 в ландшафте: планшет боком и маленький ноутбук.
+   Три колонки остаются, но боковые ужимаются в пользу круга.
+   ═══════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) and (max-width: 1179.98px) and (orientation: landscape) {
+  .player {
+    grid-template-columns: clamp(210px, 20vw, 230px) minmax(0, 1fr) clamp(260px, 25vw, 290px);
+    gap: 16px;
+    padding:
+      calc(14px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+      calc(14px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  }
+
+  .stage__figure { width: min(calc(100dvh - 226px), 100%); }
+
+  .stream-card { min-height: 66px; padding-right: 10px; }
+  .stream-card__text { width: 48%; }
+  .stream-card__title { font-size: 15px; }
+  .stream-card__sub { font-size: 11px; }
+
+  .side__menu-item { padding: 6px; font-size: 13px; gap: 9px; }
+
+  .stat { padding: 12px 14px; }
+  .stat__big { font-size: clamp(34px, 4.6vh, 46px); }
+  .stat__mid { font-size: clamp(26px, 3.4vh, 38px); }
+  .stat__foot { padding-top: 8px; }
+  .week { height: 66px; margin-top: 10px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Низкий десктоп (1280×650 и подобные): колонок по-прежнему три,
+   но круг считается и от высоты, и от ширины — иначе уезжает вниз.
+   ═══════════════════════════════════════════════════════════════ */
+@media (min-width: 1180px) and (max-height: 699.98px) {
+  .player { gap: clamp(16px, 1.4vw, 26px); padding-top: 12px; padding-bottom: 12px; }
+
+  .stage__figure {
+    width: min(
+      calc(100dvh - 200px),
+      calc(100vw - 2 * clamp(250px, 16vw, 330px) - 2 * clamp(16px, 1.4vw, 26px) - 2 * clamp(20px, 1.8vw, 36px)),
+      100%
+    );
+  }
+
+  .stat { padding: 10px 14px; }
+  .stat__big { font-size: clamp(30px, 6.4vh, 44px); margin: 4px 0 8px; }
+  .stat__mid { font-size: clamp(24px, 5vh, 36px); }
+  .stat__foot { padding-top: 8px; }
+  .stream-card { min-height: 64px; }
+  .side__menu-item { padding: 4px 6px; }
+}
+
+/* График недели на низком экране: 56 px хватает, чтобы прочитать столбики. */
+@media (max-height: 759.98px) {
+  .week { height: 56px; margin-top: 10px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Одна колонка: всё до 1024, плюс 1024–1179 в портрете — это
+   iPad Pro стоймя, где три колонки оставили бы круг крошечным.
+   Сайдбар и колонка статистики распускаются через display: contents:
+   их дети становятся ячейками общей сетки, а разметка и порядок
+   в DOM остаются прежними.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1023.98px),
+       (min-width: 1024px) and (max-width: 1179.98px) and (orientation: portrait) {
+  .player {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* clip по горизонтали, чтобы декор не рождал боковую прокрутку;
+       по вертикали страница свободно растёт. */
+    overflow-x: clip;
+    overflow-y: visible;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "top     top     top"
+      "streams streams streams"
+      "stage   stage   stage"
+      "s1      s2      s3"
+      "menu    menu    menu";
+    gap: clamp(8px, 1.2vh, 14px) 12px;
+    padding:
+      calc(10px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+      calc(10px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  }
+
+  .player__side,
+  .player__stats { display: contents; }
+
+  /* Логотип и карточка трека делят одну ячейку: отступ слева освобождает
+     место под знак, поэтому лишняя колонка в сетке не нужна. */
+  .logo { grid-area: top; align-self: center; justify-self: start; z-index: 2; }
+  .logo__tagline { display: none; }
+  .stats__top { grid-area: top; align-self: center; padding-left: 116px; }
+  .side__label { display: none; }
+
+  /* ——— Лента потоков ——— */
+  .side__streams {
+    grid-area: streams;
+    flex: none;
+    flex-direction: row;
+    gap: 10px;
+    padding: 0 4px 2px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
+  }
+
+  .side__streams > li { flex: 0 0 auto; scroll-snap-align: start; }
+
+  .stream-card {
+    width: 180px;
+    height: 72px;
+    min-height: 72px;
+    max-height: none;
+    padding-right: 10px;
+  }
+
+  .stream-card__text { width: 54%; gap: 1px; }
+  .stream-card__title { font-size: 15px; }
+  .stream-card__sub {
+    font-size: 10.5px;
+    line-height: 1.22;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  /* ——— Центр ——— */
+  .player__stage {
+    grid-area: stage;
+    gap: clamp(6px, 1.2vh, 14px);
+    padding-bottom: 0;
+  }
+
+  .stage__top { --headline-sm: clamp(16px, 4.6vw, 20px); }
+  .stage__headline { font-size: var(--headline-sm); -webkit-line-clamp: 2; text-wrap: balance; }
+
+  /* Круг = остаток высоты после шапки, ленты, статистики и меню. */
+  .stage__figure {
+    --stage-chrome: 566px;
+    width: min(70vw, calc(100dvh - var(--stage-chrome)), 100%);
+  }
+
+  .controls { gap: clamp(20px, 5vw, 44px); }
+  .controls__item { font-size: 12px; gap: 6px; }
+  .ctrl--side { width: 56px; height: 56px; }
+  .ctrl--main { width: 76px; height: 76px; }
+
+  /* ——— Статистика строкой ——— */
+  .player__stats > .stat:nth-of-type(1) { grid-area: s1; }
+  .player__stats > .stat:nth-of-type(2) { grid-area: s2; }
+  .player__stats > .stat:nth-of-type(3) { grid-area: s3; }
+
+  .track { min-height: 44px; }
+
+  .stat { padding: 10px 12px; border-radius: var(--r-md); }
+  .stat__head { font-size: 10px; letter-spacing: 0.05em; }
+  .stat__big { font-size: clamp(26px, 5.2vw, 40px); margin: 4px 0 8px; }
+  .stat__mid { font-size: clamp(22px, 4.4vw, 34px); }
+  .stat__foot { padding-top: 8px; gap: 6px; font-size: 11px; }
+  .stat__foot svg { width: 18px; height: 18px; }
+  .stat__row { margin-top: 4px; }
+  .stat__today strong { font-size: 17px; }
+  .stat__today span { font-size: 11px; }
+  .donut { width: 40px; height: 40px; }
+  .donut--sm { width: 36px; height: 36px; }
+  .week { height: 52px; margin-top: 8px; }
+  .week__bar { width: 7px; }
+  .week__col span { font-size: 9.5px; }
+
+  /* ——— Меню строкой ——— */
+  .side__menu { grid-area: menu; flex-direction: row; gap: 6px; padding-top: 0; }
+  .side__menu > li { flex: 1 1 0; min-width: 0; }
+
+  .side__menu-item {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    min-height: 52px;
+    font-size: 12px;
+    line-height: 1.15;
+    text-align: center;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   До 768: телефон в портрете. Меню уходит в нижнюю панель,
+   от логотипа остаётся только знак-звезда.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+  .player {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "top     top"
+      "streams streams"
+      "stage   stage"
+      "s1      s2"
+      "s3      s3";
+    gap: 10px;
+    padding:
+      calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+      /* место под нижнюю панель, чтобы она ничего не перекрывала */
+      calc(68px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+  }
+
+  .logo__word { display: none; }
+  .stats__top { padding-left: 46px; gap: 8px; }
+
+  .stream-card { width: 150px; height: 64px; min-height: 64px; }
+  .stream-card__text { width: 56%; }
+  .stream-card__title { font-size: 13.5px; }
+  .stream-card__sub { font-size: 10px; }
+
+  /* Ноты по бокам круга на узком экране только лезут за край. */
+  .stage__note { display: none; }
+
+  .stage__figure { width: min(86vw, 46dvh, 100%); }
+
+  .ctrl--side { width: 52px; height: 52px; }
+  .ctrl--main { width: 72px; height: 72px; }
+  .controls { gap: clamp(18px, 8vw, 40px); }
+  .controls__item { font-size: 11px; }
+
+  .stat__big { font-size: clamp(28px, 8vw, 38px); }
+  .stat__mid { font-size: clamp(24px, 7vw, 32px); }
+
+  /* Нижняя панель вкладок. Это тот же ul.side__menu — переставлен стилями. */
+  .side__menu {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    gap: 0;
+    height: calc(56px + env(safe-area-inset-bottom));
+    padding: 0 4px env(safe-area-inset-bottom);
+    background: var(--white);
+    border-top: 1px solid var(--gray-200);
+  }
+
+  .side__menu-item {
+    height: 56px;
+    min-height: 56px;
+    padding: 5px 2px;
+    border-radius: 0;
+    /* «Нужна помощь?» должна лечь в одну строку и на 360 px. */
+    font-size: clamp(10px, 2.8vw, 11px);
+    gap: 2px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Телефон в ландшафте (844×390 и подобные): две колонки —
+   круг с управлением слева, компактная статистика справа.
+   ═══════════════════════════════════════════════════════════════ */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  .player {
+    grid-template-columns: minmax(0, 1fr) clamp(150px, 24vw, 210px);
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "streams menu"
+      "stage   top"
+      "stage   s1"
+      "stage   s2";
+    gap: 6px 10px;
+    padding:
+      calc(4px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
+      calc(4px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+  }
+
+  /* Логотип на 390 px высоты съедает место, нужное кругу. */
+  .logo { display: none; }
+  .stats__top { grid-area: top; align-self: start; padding-left: 0; }
+
+  /* Лента становится узкими пилюлями. */
+  /* 44 px — минимум под палец; круг при этом остаётся выше 60 % высоты. */
+  .stream-card { width: 128px; height: 44px; min-height: 44px; border-radius: var(--r-md); }
+  .stream-card__sub { display: none; }
+  .stream-card__title { font-size: 12px; }
+  .stream-card__text { width: 52%; }
+  .side__streams { gap: 8px; }
+
+  .stage__top { --headline-sm: 13px; height: 22px; }
+  .stage__headline { font-size: 14px; -webkit-line-clamp: 1; }
+  .stage__figure { width: min(62dvh, 40vw, 100%); }
+  .stage__note { display: none; }
+
+  .player__stage { gap: 4px; }
+  .controls { gap: 18px; }
+  /* Подписи под кнопками не влезают; смысл кнопок держат aria-label. */
+  .controls__item > span { display: none; }
+  .ctrl--side { width: 44px; height: 44px; }
+  .ctrl--main { width: 54px; height: 54px; }
+
+  .track { min-height: 44px; padding: 5px 10px 5px 7px; }
+  .track__icon { width: 26px; height: 26px; }
+  .icon-btn { width: 44px; height: 44px; }
+
+  .stat { padding: 7px 10px; }
+  .stat__big { font-size: 26px; margin: 2px 0 6px; }
+  .stat__mid { font-size: 22px; }
+  .stat__foot { padding-top: 6px; font-size: 10px; }
+  /* Недельный график в ландшафте не помещается — время и остаток важнее. */
+  .stat--chart { display: none; }
+
+  /* Меню — маленькими иконками в правом верхнем углу. */
+  .side__menu {
+    position: static;
+    grid-area: menu;
+    height: auto;
+    min-height: 0;
+    gap: 4px;
+    padding: 0;
+    background: none;
+    border: 0;
+  }
+
+  .side__menu-item {
+    height: auto;
+    min-height: 44px;
+    padding: 4px 2px;
+    gap: 0;
+    border-radius: var(--r-sm);
+  }
+
+  /* Остаются только иконки: подписи в ландшафте негде разместить. */
+  .side__menu-item > span { display: none; }
 }
 
