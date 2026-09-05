@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
 import { asset } from '../lib/asset'
 import { loopPoster, loopSrc } from '../data/loops'
+import { useMascotVideo } from '../lib/mascot'
 import { prefetchFiles, prefetchImages, whenIdle } from '../lib/prefetch'
 import { STREAMS } from '../data/streams'
 import '../components/Logo.css'
@@ -34,6 +35,10 @@ const FEATURES = [
 export default function Landing() {
   const navigate = useNavigate()
   const start = () => navigate(`/start/${STREAMS[0].id}`)
+
+  // Маскот: ролик подгружается сам, уже после того как страница открылась.
+  const mascot = useRef<HTMLVideoElement>(null)
+  const live = useMascotVideo(mascot)
 
   // Пока человек читает лендинг, канал свободен: тянем то, что понадобится
   // в плеере. До Pages 0,4–0,85 с на запрос, так что фора решает больше,
@@ -120,12 +125,25 @@ export default function Landing() {
           <span className="hero__dot hero__dot--b" />
           <span className="hero__dot hero__dot--c" />
           <span className="hero__dot hero__dot--d" />
-          <img
-            className="hero__photo"
-            src={asset('hero/hero.webp')}
-            alt="Девушка двигается под музыку"
-            decoding="async"
-          />
+          <div className={`hero__mascot ${live ? 'is-live' : ''}`}>
+            <img
+              className="hero__mascot-poster"
+              src={asset('mascot/warmup-poster.webp')}
+              alt=""
+              decoding="async"
+            />
+            {/* Источники вешает хук — до них в разметке ничего не качается. */}
+            <video
+              className="hero__mascot-video"
+              ref={mascot}
+              muted
+              loop
+              playsInline
+              preload="none"
+              poster={asset('mascot/warmup-poster.webp')}
+              aria-hidden="true"
+            />
+          </div>
         </div>
       </main>
     </div>

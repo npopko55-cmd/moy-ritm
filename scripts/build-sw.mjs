@@ -38,13 +38,14 @@ function filesIn(dir) {
 }
 
 // Предкэш — только то, без чего первый экран не покажется: разметка, бандлы,
-// шрифты, фото карточек, hero и постеры роликов. Всё вместе меньше мегабайта.
+// шрифты, фото карточек, постер маскота и постеры роликов. Всё вместе меньше
+// мегабайта. Сам ролик маскота сюда не идёт: он мегабайтный и нужен не сразу.
 const precache = [
   'index.html',
   ...filesIn('assets'),
   ...filesIn('fonts'),
   ...filesIn('streams').filter((f) => f.endsWith('.jpg')),
-  ...filesIn('hero'),
+  ...filesIn('mascot').filter((f) => f.endsWith('.webp')),
   ...filesIn('loops').filter((f) => f.endsWith('.webp')),
   'manifest.webmanifest',
 ].sort()
@@ -68,6 +69,7 @@ const BASE = '${BASE}'
 const PRECACHE = 'myrithm-precache-' + VERSION
 const LOOPS = 'myrithm-loops'
 const MUSIC = 'myrithm-music'
+const MASCOT = 'myrithm-mascot'
 const MUSIC_LIMIT = 13
 
 const ASSETS = ${JSON.stringify(urls, null, 2)}
@@ -176,6 +178,16 @@ self.addEventListener('fetch', (e) => {
   // Музыка: тринадцать треков по 0,6–1,3 МБ, больше в кэше держать незачем.
   if (url.pathname.endsWith('.m4a')) {
     e.respondWith(media(req, MUSIC, MUSIC_LIMIT))
+    return
+  }
+
+  // Маскот с главной: три файла на 3,4 МБ, из них качается один — тот, что
+  // подошёл браузеру и ширине экрана. Со второго захода берём из кэша.
+  if (
+    url.pathname.includes('/mascot/') &&
+    (url.pathname.endsWith('.webm') || url.pathname.endsWith('.mov'))
+  ) {
+    e.respondWith(media(req, MASCOT))
     return
   }
 

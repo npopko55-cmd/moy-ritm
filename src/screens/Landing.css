@@ -317,3 +317,59 @@
   .hero__dot--c { bottom: 52px; left: 6px; }
   .hero__dot--d { width: 15px; height: 15px; bottom: 16px; left: 54px; }
 }
+
+/* ——— Маскот ——— */
+/*
+ * Стоит там же, где стояло фото, и берёт ту же --figure-h: она задана на
+ * .hero__visual и переопределена в каждом медиазапросе выше, так что высота
+ * фигуры на всех экранах остаётся прежней.
+ *
+ * Ширина считается из пропорции кадра (672x934), а не задаётся отдельно.
+ * Кадр шире прежнего снимка, поэтому в узкой колонке планшета он упирается
+ * в её ширину — min(...,100%) ужимает блок, высота идёт следом за пропорцией.
+ * Ровно так вёл себя <img> с max-width: 100%.
+ *
+ * isolation — чтобы тень (::after, z-index: -1) ушла под фигуру, но осталась
+ * поверх цветного пятна .hero__blob.
+ */
+.hero__mascot {
+  position: relative;
+  isolation: isolate;
+  width: min(calc(var(--figure-h) * 672 / 934), 100%);
+  aspect-ratio: 672 / 934;
+}
+
+/* Постер и ролик лежат друг на друге — подмена идёт кадр в кадр, без скачка. */
+.hero__mascot-poster,
+.hero__mascot-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity .4s ease;
+}
+
+/* До первого playing видео прозрачно; если ролика не будет — постер и останется. */
+.hero__mascot-video { opacity: 0; }
+.hero__mascot.is-live .hero__mascot-video { opacity: 1; }
+.hero__mascot.is-live .hero__mascot-poster { opacity: 0; }
+
+/*
+ * Тень — отдельный эллипс под ногами. drop-shadow тут не годится: у фото он
+ * считался один раз, а на видео пересчитывался бы каждый кадр по маске альфы.
+ *
+ * Числа сняты с кадра: ступни стоят на 98,9 % высоты и занимают 31,8 % ширины,
+ * фигура за ролик с места не сходит. Эллипс шире ступней и по центру их линии.
+ */
+.hero__mascot::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: -1%;
+  width: 40%;
+  height: 4.4%;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(20, 22, 26, .22), rgba(20, 22, 26, 0));
+}
