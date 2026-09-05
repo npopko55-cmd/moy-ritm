@@ -96,7 +96,7 @@ export default function Landing() {
           <span className="hero__dot hero__dot--d" />
           <img
             className="hero__photo"
-            src={asset('hero/hero.jpg')}
+            src={asset('hero/hero.webp')}
             alt="Девушка двигается под музыку"
           />
         </div>
