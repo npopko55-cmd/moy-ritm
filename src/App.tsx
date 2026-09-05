@@ -8,9 +8,13 @@ import Login from './screens/Login'
 import Register from './screens/Register'
 import ConfirmEmail from './screens/ConfirmEmail'
 import ConfirmNewEmail from './screens/ConfirmNewEmail'
+import DeleteAccount from './screens/DeleteAccount'
 import ForgotPassword from './screens/ForgotPassword'
 import ResetPassword from './screens/ResetPassword'
 import PaymentSuccess from './screens/PaymentSuccess'
+import Profile from './screens/Profile'
+import Progress from './screens/Progress'
+import Help from './screens/Help'
 import { SessionProvider } from './auth/SessionProvider'
 import { RequireAccess, RequireAuth } from './auth/guards'
 import { MusicProvider } from './music/MusicProvider'
@@ -30,6 +34,11 @@ export default function App() {
           <Route path="/confirm-new-email" element={<ConfirmNewEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/delete-account" element={<DeleteAccount />} />
+
+          {/* FAQ открыт всем: он нужен и до входа. Форма обращения внутри
+              появляется только вошедшим — её ручка требует входа. */}
+          <Route path="/help" element={<Help />} />
 
           <Route path="/tariffs" element={<Tariffs />} />
           <Route
@@ -69,6 +78,24 @@ export default function App() {
             element={
               <RequireAuth>
                 <Settings />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth>
+                <Profile />
+              </RequireAuth>
+            }
+          />
+          {/* Статистику видно и с закончившимся доступом: иначе непонятно,
+              ради чего продлевать. */}
+          <Route
+            path="/progress"
+            element={
+              <RequireAuth>
+                <Progress />
               </RequireAuth>
             }
           />

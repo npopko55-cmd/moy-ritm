@@ -28,7 +28,7 @@ type Stage = 'checking' | 'paid' | 'timeout'
 
 export default function PaymentSuccess() {
   const navigate = useNavigate()
-  const { me, access: sessionAccess, reload } = useSession()
+  const { access: sessionAccess, reload } = useSession()
 
   const [stage, setStage] = useState<Stage>(() => (hasAccess(sessionAccess) ? 'paid' : 'checking'))
   const [access, setAccess] = useState<Access | null>(sessionAccess)
@@ -109,7 +109,6 @@ export default function PaymentSuccess() {
     void poll()
   }
 
-  const support = me?.support.email ? `mailto:${me.support.email}` : '/tariffs'
 
   if (stage === 'paid') {
     return (
@@ -142,10 +141,9 @@ export default function PaymentSuccess() {
           <button className="form__submit" type="button" onClick={again}>
             Проверить ещё раз
           </button>
-          {/* Экран «Нужна помощь?» появится позже; пока — прямое письмо. */}
-          <a className="form__second" href={support}>
+          <Link className="form__second" to="/help">
             Написать в поддержку
-          </a>
+          </Link>
           <FormError>{error}</FormError>
         </div>
 

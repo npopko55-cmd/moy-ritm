@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import {
@@ -149,7 +149,6 @@ export default function Tariffs() {
 
   const paid = hasAccess(access)
   const ctaLabel = paid ? 'Продлить' : 'Выбрать'
-  const support = me?.support.email
 
   return (
     <div className="tariffs">
@@ -278,10 +277,10 @@ export default function Tariffs() {
               </>
             )}
 
-            {note?.kind === 'error' && support && (
-              <a className="tariffs__msg-btn" href={`mailto:${support}`}>
+            {note?.kind === 'error' && (
+              <Link className="tariffs__msg-btn" to="/help">
                 Написать в поддержку
-              </a>
+              </Link>
             )}
           </div>
         )}
