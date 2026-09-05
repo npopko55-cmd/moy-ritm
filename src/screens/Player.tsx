@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { api } from '../api/client'
+import type { DayStats, Settings, StatsSummary } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { days } from '../lib/date'
+import { days, minutes, toMinutes, weekdayShort } from '../lib/date'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import {
@@ -22,6 +24,7 @@ import {
 } from '../components/Icons'
 import { STREAMS, getStream } from '../data/streams'
 import { loopPoster, loopSrc } from '../data/loops'
+import { createChunkQueue, uuid, type ChunkQueue } from '../lib/chunks'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { loadMoveInterval } from '../lib/settings'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
@@ -33,15 +36,38 @@ import './Player.css'
 const mmss = (total: number) =>
   `${Math.floor(total / 60)}:${String(Math.floor(total % 60)).padStart(2, '0')}`
 
-const WEEK = [
-  { day: 'пн', value: 22 },
-  { day: 'вт', value: 31 },
-  { day: 'ср', value: 36, today: true },
-  { day: 'чт', value: 18 },
-  { day: 'пт', value: 26 },
-  { day: 'сб', value: 12 },
-  { day: 'вс', value: 20 },
-]
+/** Сверка с сервером: раз в минуту серверные цифры заменяют локальные. */
+const SYNC_MS = 60_000
+
+/**
+ * Кусок закрывается принудительно раз в минуту. Нужно только при интервале
+ * в две минуты: при остальных движение сменится раньше и закроет кусок само.
+ */
+const FORCE_CLOSE_MS = 60_000
+
+/** Длиннее сервер не примет: такой кусок означает спящую вкладку. */
+const MAX_CHUNK_SECONDS = 300
+
+/**
+ * Дневной ориентир для кольца в карточке «Сегодня» — полчаса движения.
+ * Это не цель и не обещание, просто шкала, по которой кольцо заполняется.
+ */
+const DAY_GOAL_SECONDS = 1800
+
+/** Пока сводка не пришла — та же сетка из семи дней, чтобы карточка не прыгала. */
+function emptyWeek(): DayStats[] {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    return {
+      local_date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
+      seconds: 0,
+      steps: 0,
+      workouts: 0,
+    }
+  })
+}
 
 /**
  * Длинную фразу показываем мельче и в две строки. Считаем по код-поинтам,
@@ -50,17 +76,20 @@ const WEEK = [
 const isLongPhrase = (text: string) => [...text].length > 40
 
 const MENU = [
-  { icon: <Clock size={19} />, label: 'Мой прогресс', action: null },
-  { icon: <User size={19} />, label: 'Профиль', action: null },
-  { icon: <Gear size={19} />, label: 'Настройки', action: 'settings' },
-  { icon: <Question size={19} />, label: 'Нужна помощь?', action: null },
+  { icon: <Clock size={19} />, label: 'Мой прогресс', to: '/progress' },
+  { icon: <User size={19} />, label: 'Профиль', to: '/profile' },
+  { icon: <Gear size={19} />, label: 'Настройки', to: '/settings' },
+  { icon: <Question size={19} />, label: 'Нужна помощь?', to: '/help' },
 ] as const
+
+/** Открытый кусок движения: живёт в ref, чтобы не перерисовывать плеер. */
+type OpenChunk = { startedAt: number; seconds: number; stream: string; move: string }
 
 export default function Player() {
   const { streamId } = useParams()
   const navigate = useNavigate()
   const stream = getStream(streamId)
-  const { access } = useSession()
+  const { access, me, reload } = useSession()
 
   // Плашка о конце доступа: строкой в колонке, а не всплывающим окном.
   const notice =
@@ -70,14 +99,26 @@ export default function Player() {
         ? 'Доступ закончился — продлите, чтобы продолжить завтра'
         : ''
 
+  // Настройки: профиль уже загружен обёрткой RequireAuth, поэтому плеер
+  // стартует сразу, а bootstrap лишь подтверждает цифры с сервера.
+  const [boot, setBoot] = useState<Settings | null>(null)
+  const settings = boot ?? me?.settings ?? null
+  const moveInterval = settings?.move_interval_seconds ?? loadMoveInterval()
+  const motivationOn = settings?.motivation_enabled ?? true
+
   // Счётчик смен движения. Не заворачивается по кругу нарочно: по его
   // чётности выбирается, какой из двух <video> сейчас на виду.
   const [step, setStep] = useState(0)
-  const [inMove, setInMove] = useState(17) // на макете до смены остаётся 0:13
+  const [inMove, setInMove] = useState(0)
   const [playing, setPlaying] = useState(true)
-  const [todaySeconds, setTodaySeconds] = useState(12 * 60 + 47)
-  // Интервал меняется на странице настроек; плеер читает его при открытии.
-  const [moveInterval] = useState(loadMoveInterval)
+  // Вкладку свернули — движение не считается, даже если ролик крутится.
+  const [visible, setVisible] = useState(() => document.visibilityState !== 'hidden')
+
+  // Цифры правой колонки. Серверная сводка — основа, к ней прибавляются
+  // секунды, которые сервер ещё не видел (раздел 6.5 архитектуры).
+  const [summary, setSummary] = useState<StatsSummary | null>(null)
+  const [pendingSeconds, setPendingSeconds] = useState(0)
+  const [openSeconds, setOpenSeconds] = useState(0)
 
   // Колода фраз одна на всё время жизни экрана, иначе они пошли бы по кругу.
   const picker = useRef(createMotivationPicker()).current
@@ -101,6 +142,144 @@ export default function Player() {
 
   const { track, blocked: soundBlocked, setPlaying: setMusicPlaying, next: nextTrack } = useMusic()
 
+  /* ─────────────  Куски движения  ───────────── */
+
+  const queueRef = useRef<ChunkQueue | null>(null)
+  const openRef = useRef<OpenChunk | null>(null)
+
+  // Секунды в буфере считаем только за сегодня: кусок, застрявший с вечера,
+  // не должен приписываться к новому дню.
+  const recount = useCallback(() => {
+    const q = queueRef.current
+    if (!q) return
+    const today = new Date().toDateString()
+    setPendingSeconds(
+      q
+        .pending()
+        .reduce(
+          (sum, c) =>
+            new Date(c.started_at).toDateString() === today ? sum + c.duration_seconds : sum,
+          0,
+        ),
+    )
+  }, [])
+
+  const openChunk = useCallback((streamCode: string, moveId: string) => {
+    openRef.current = { startedAt: Date.now(), seconds: 0, stream: streamCode, move: moveId }
+    setOpenSeconds(0)
+  }, [])
+
+  // Закрытие идемпотентно: его зовут и обработчик ухода со страницы, и
+  // уборка эффекта следом за ним.
+  const closeChunk = useCallback(() => {
+    const cur = openRef.current
+    openRef.current = null
+    setOpenSeconds(0)
+    if (!cur || cur.seconds < 1) return
+    queueRef.current?.push({
+      // Идентификатор придумывается один раз, до первой отправки: повтор
+      // после обрыва сети не должен засчитаться дважды.
+      client_chunk_id: uuid(),
+      stream_code: cur.stream,
+      move_id: cur.move,
+      started_at: new Date(cur.startedAt).toISOString(),
+      duration_seconds: Math.min(MAX_CHUNK_SECONDS, Math.round(cur.seconds)),
+      steps: 0,
+    })
+  }, [])
+
+  useEffect(() => {
+    const q = createChunkQueue({
+      onSummary: setSummary,
+      // Доступ кончился прямо во время тренировки: перечитываем профиль,
+      // и защита маршрутов уводит на тарифы.
+      onAccessLost: () => void reload(),
+      onChange: recount,
+    })
+    queueRef.current = q
+    recount()
+    return () => {
+      q.stop()
+      queueRef.current = null
+    }
+  }, [recount, reload])
+
+  // Один кусок на движение. Уборка эффекта закрывает его при смене движения,
+  // паузе, сворачивании вкладки и уходе с экрана.
+  useEffect(() => {
+    if (!playing || !visible) return
+    openChunk(stream.id, loopAt(stream, step).id)
+    const id = setInterval(() => {
+      closeChunk()
+      openChunk(stream.id, loopAt(stream, step).id)
+    }, FORCE_CLOSE_MS)
+    return () => {
+      clearInterval(id)
+      closeChunk()
+    }
+  }, [playing, visible, stream, step, openChunk, closeChunk])
+
+  // Уход со страницы: закрываем кусок и пробуем отправить буфер. Не успеет —
+  // не страшно, буфер лежит в localStorage и уйдёт при следующем открытии.
+  useEffect(() => {
+    const leave = () => {
+      closeChunk()
+      queueRef.current?.flush()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        leave()
+        setVisible(false)
+      } else {
+        setVisible(true)
+      }
+    }
+    window.addEventListener('pagehide', leave)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', leave)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [closeChunk])
+
+  // Цифры при открытии плеера — из одного запроса. Не получилось (доступ
+  // кончился между переходами) — берём хотя бы сводку: она открыта без оплаты.
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const data = await api.playerBootstrap()
+        if (!alive) return
+        setBoot(data.settings)
+        setSummary(data.stats)
+      } catch {
+        try {
+          const stats = await api.statsSummary()
+          if (alive) setSummary(stats)
+        } catch {
+          /* цифр не будет — покажем нули, тренировке это не мешает */
+        }
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  // Сверка раз в минуту: при расхождении правы цифры сервера, локальный
+  // счётчик продолжает от них.
+  useEffect(() => {
+    const id = setInterval(() => {
+      void api
+        .statsSummary()
+        .then(setSummary)
+        .catch(() => undefined)
+    }, SYNC_MS)
+    return () => clearInterval(id)
+  }, [])
+
+  /* ─────────────  Ролики и таймер  ───────────── */
+
   // Два постоянных <video>: пока один играет, во второй уже качается
   // следующий ролик. Раньше элемент пересоздавался, и на медленной сети
   // круг пустел на несколько секунд при каждой смене движения.
@@ -108,13 +287,9 @@ export default function Player() {
   const videoB = useRef<HTMLVideoElement>(null)
   const buffers = [videoA, videoB]
 
-  const at = (n: number) => {
-    const count = stream.loops.length
-    return stream.loops[((n % count) + count) % count]
-  }
-  const loop = at(step)
-  const nextLoop = at(step + 1)
-  const afterNext = at(step + 2)
+  const loop = loopAt(stream, step)
+  const nextLoop = loopAt(stream, step + 1)
+  const afterNext = loopAt(stream, step + 2)
   const active = ((step % 2) + 2) % 2
 
   const untilSwitch = Math.max(0, moveInterval - inMove)
@@ -129,13 +304,16 @@ export default function Player() {
     [showPhrase],
   )
 
-  // Секундный тик: ведёт время тренировки и смену движения.
+  // Секундный тик: ведёт время тренировки, смену движения и открытый кусок.
   useEffect(() => {
     if (!playing) return
     const id = setInterval(() => {
-      setTodaySeconds((s) => s + 1)
       sessionRef.current += 1
       setSessionSeconds(sessionRef.current)
+      if (openRef.current) {
+        openRef.current.seconds += 1
+        setOpenSeconds(openRef.current.seconds)
+      }
       setInMove((s) => {
         if (s + 1 >= moveInterval) {
           goToMove(1)
@@ -190,6 +368,14 @@ export default function Player() {
     prefetchFiles([loopSrc(afterNext.id)])
   }, [afterNext.id])
 
+  /* ─────────────  Цифры для правой колонки  ───────────── */
+
+  const todaySeconds = (summary?.today_seconds ?? 0) + pendingSeconds + openSeconds
+  const week = summary?.week ?? emptyWeek()
+  const isToday = (date: string) => date === (summary?.local_today ?? week[week.length - 1].local_date)
+  const weekMinutes = week.map((d) => (isToday(d.local_date) ? toMinutes(todaySeconds) : toMinutes(d.seconds)))
+  const weekTop = Math.max(1, ...weekMinutes)
+
   return (
     <div className={`player ${notice ? 'player--notice' : ''}`}>
       <WaveBg opacity={0.28} />
@@ -233,11 +419,8 @@ export default function Player() {
             <li key={m.label}>
               <button
                 className="side__menu-item"
-                onClick={
-                  m.action === 'settings'
-                    ? () => navigate('/settings', { state: { from: stream.id } })
-                    : undefined
-                }
+                // Откуда пришли, чтобы «К тренировке» вернуло в тот же поток.
+                onClick={() => navigate(m.to, { state: { from: stream.id } })}
               >
                 {m.icon}
                 <span>{m.label}</span>
@@ -250,8 +433,10 @@ export default function Player() {
       {/* ——— Центр ——— */}
       <main className="player__stage">
         <header className="stage__top">
-          <h1 className={`stage__headline ${isLongPhrase(motivation) ? 'is-long' : ''}`}>
-            {motivation}
+          {/* Фразы выключены в настройках — блок остаётся на месте пустым,
+              иначе круг подпрыгивал бы вверх. */}
+          <h1 className={`stage__headline ${motivationOn && isLongPhrase(motivation) ? 'is-long' : ''}`}>
+            {motivationOn ? motivation : ' '}
           </h1>
         </header>
 
@@ -361,7 +546,7 @@ export default function Player() {
             <span>
               Время в движении вчера:
               <br />
-              15 минут
+              {minutes(toMinutes(summary?.yesterday_seconds ?? 0))}
             </span>
           </footer>
         </section>
@@ -381,20 +566,22 @@ export default function Player() {
             <span>Сегодня</span>
           </header>
           <div className="stat__row stat__row--gap">
-            <Donut value={0.6} small />
+            <Donut value={todaySeconds / DAY_GOAL_SECONDS} small />
             <span className="stat__today">
-              <strong>36 мин</strong>
+              <strong>{toMinutes(todaySeconds)} мин</strong>
               <span>в движении</span>
             </span>
           </div>
           <div className="week">
-            {WEEK.map((d) => (
-              <div key={d.day} className="week__col">
+            {week.map((d, i) => (
+              <div key={d.local_date} className="week__col">
                 <div
-                  className={`week__bar ${d.today ? 'is-today' : ''}`}
-                  style={{ height: `${Math.round((d.value / 40) * 100)}%` }}
+                  className={`week__bar ${isToday(d.local_date) ? 'is-today' : ''}`}
+                  style={{ height: `${Math.round((weekMinutes[i] / weekTop) * 100)}%` }}
                 />
-                <span className={d.today ? 'is-today' : ''}>{d.day}</span>
+                <span className={isToday(d.local_date) ? 'is-today' : ''}>
+                  {weekdayShort(d.local_date)}
+                </span>
               </div>
             ))}
           </div>
@@ -403,6 +590,12 @@ export default function Player() {
 
     </div>
   )
+}
+
+/** Движение потока по номеру шага: счётчик растёт бесконечно, список — нет. */
+function loopAt(stream: ReturnType<typeof getStream>, n: number) {
+  const count = stream.loops.length
+  return stream.loops[((n % count) + count) % count]
 }
 
 /** Маленькое кольцо прогресса в карточках справа. */
