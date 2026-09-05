@@ -32,7 +32,7 @@
   align-items: center;
   justify-content: flex-end;
   width: 100%;
-  height: 92px;
+  height: 96px;
   padding: 0 14px 0 0;
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -45,15 +45,21 @@
 .stream-card:hover { transform: translateY(-1px); }
 .stream-card.is-active { box-shadow: 0 0 0 2.5px var(--white), 0 0 0 4.5px rgba(255, 45, 142, .45); }
 
-/* Фото кладётся в плашку как есть, фон не вырезается. */
+/*
+ * Фото кладётся в плашку как есть, фон не вырезается.
+ * Правый край растушёван маской: без неё на границе снимка и заливки
+ * была видна жёсткая вертикальная линия.
+ */
 .stream-card__photo {
   position: absolute;
   left: 0;
   top: 0;
-  width: 52%;
+  width: 74%;
   height: 100%;
   object-fit: cover;
-  object-position: center top;
+  object-position: 40% 22%;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 34%, rgba(0, 0, 0, .55) 62%, transparent 92%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 34%, rgba(0, 0, 0, .55) 62%, transparent 92%);
 }
 
 /*
@@ -75,8 +81,8 @@
   position: absolute;
   inset: 0;
   background: var(--card-grad);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .18) 24%, rgba(0, 0, 0, .62) 44%, #000 62%);
-  mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .18) 24%, rgba(0, 0, 0, .62) 44%, #000 62%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .12) 26%, rgba(0, 0, 0, .5) 48%, rgba(0, 0, 0, .88) 68%, #000 82%);
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .12) 26%, rgba(0, 0, 0, .5) 48%, rgba(0, 0, 0, .88) 68%, #000 82%);
 }
 
 .stream-card__text {
@@ -84,7 +90,7 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  width: 50%;
+  width: 47%;
   z-index: 1;
 }
 
