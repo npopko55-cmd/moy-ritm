@@ -57,6 +57,21 @@ export function formatDay(localDate: string): string {
   return parseLocalDate(localDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
 }
 
+/** «12 авг» — подписи недель и день без года. Точку после месяца убираем. */
+export function formatDayShort(localDate: string): string {
+  return parseLocalDate(localDate)
+    .toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+    .replace(/\.$/, '')
+}
+
+/** «12 авг 2026» — дата получения награды. */
+export function formatDayShortYear(localDate: string): string {
+  return parseLocalDate(localDate)
+    .toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
+    .replace(/\s*г\.$/, '')
+    .replace('.', '')
+}
+
 /** «сентябрь 2026» с большой буквы — заголовок календаря. */
 export function formatMonth(month: string): string {
   const [y, m] = month.split('-').map(Number)
