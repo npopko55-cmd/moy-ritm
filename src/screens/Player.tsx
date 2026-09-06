@@ -23,7 +23,8 @@ import {
   User,
 } from '../components/Icons'
 import { STREAMS, getStream } from '../data/streams'
-import { loopPoster, loopSrc } from '../data/loops'
+import { loopPoster, loopSrc, stepsFor } from '../data/loops'
+import PlayerPause from './PlayerPause'
 import { createChunkQueue, uuid, type ChunkQueue } from '../lib/chunks'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { loadMoveInterval } from '../lib/settings'
@@ -130,6 +131,10 @@ export default function Player() {
   const [sessionSeconds, setSessionSeconds] = useState(0)
   const sessionRef = useRef(0)
 
+  // Шаги закрытых кусков этой тренировки: их показывает экран паузы.
+  // Открытый кусок к ним прибавляется отдельно, по его секундам.
+  const [sessionSteps, setSessionSteps] = useState(0)
+
   // Фразу меняем не чаще раза в секунду: «Вперёд» можно нажать подряд
   // несколько раз, а прочитать надо успеть.
   const phraseAt = useRef(0)
@@ -176,6 +181,8 @@ export default function Player() {
     openRef.current = null
     setOpenSeconds(0)
     if (!cur || cur.seconds < 1) return
+    const seconds = Math.min(MAX_CHUNK_SECONDS, Math.round(cur.seconds))
+    setSessionSteps((s) => s + stepsFor(cur.move, seconds))
     queueRef.current?.push({
       // Идентификатор придумывается один раз, до первой отправки: повтор
       // после обрыва сети не должен засчитаться дважды.
@@ -183,8 +190,8 @@ export default function Player() {
       stream_code: cur.stream,
       move_id: cur.move,
       started_at: new Date(cur.startedAt).toISOString(),
-      duration_seconds: Math.min(MAX_CHUNK_SECONDS, Math.round(cur.seconds)),
-      steps: 0,
+      duration_seconds: seconds,
+      // steps очередь посчитает сама — по движению и длительности.
     })
   }, [])
 
@@ -368,6 +375,33 @@ export default function Player() {
     prefetchFiles([loopSrc(afterNext.id)])
   }, [afterNext.id])
 
+  /* ─────────────  Пауза  ───────────── */
+
+  /**
+   * «Вернусь позже»: закрываем открытый кусок, не ждём склейку — и уходим
+   * на прогресс. Кусок уже в буфере, поэтому минуты этой тренировки там
+   * будут даже если сеть ответит не сразу.
+   */
+  const goLater = useCallback(() => {
+    closeChunk()
+    queueRef.current?.flush()
+    navigate('/progress', { state: { from: stream.id } })
+  }, [closeChunk, navigate, stream.id])
+
+  // Пробел — та же пауза, что и кнопка. Когда в фокусе кнопка или поле,
+  // пробел уже что-то значит для них: второй раз его перехватывать нельзя.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || e.repeat) return
+      const el = document.activeElement
+      if (el instanceof HTMLElement && (el.isContentEditable || /^(BUTTON|INPUT|TEXTAREA|SELECT|A)$/.test(el.tagName))) return
+      e.preventDefault()
+      setPlaying((p) => !p)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   /* ─────────────  Цифры для правой колонки  ───────────── */
 
   const todaySeconds = (summary?.today_seconds ?? 0) + pendingSeconds + openSeconds
@@ -377,7 +411,13 @@ export default function Player() {
   const weekTop = Math.max(1, ...weekMinutes)
 
   return (
-    <div className={`player ${notice ? 'player--notice' : ''}`}>
+    <>
+      {/*
+        Игровая раскладка не размонтируется на паузе, а прячется: ролики
+        остаются в DOM вместе с закачанным буфером и текущей секундой,
+        поэтому «Продолжить» возвращает ровно туда, где остановились.
+      */}
+      <div className={`player ${notice ? 'player--notice' : ''}`} hidden={!playing}>
       <WaveBg opacity={0.28} />
 
       {/* ——— Левая колонка ——— */}
@@ -588,7 +628,19 @@ export default function Player() {
         </section>
       </aside>
 
-    </div>
+      </div>
+
+      {!playing && (
+        <PlayerPause
+          sessionSeconds={sessionSeconds}
+          sessionSteps={sessionSteps + stepsFor(loop.id, openSeconds)}
+          todaySeconds={todaySeconds}
+          summary={summary}
+          onResume={() => setPlaying(true)}
+          onLater={goLater}
+        />
+      )}
+    </>
   )
 }
 

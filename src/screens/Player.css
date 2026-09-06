@@ -24,6 +24,11 @@
   overscroll-behavior: none;
 }
 
+/* Пауза прячет игровую раскладку целиком. Правило нужно явно: `display: grid`
+   выше — авторское, а `[hidden]` браузер объявляет в своей таблице и
+   проигрывает ему. */
+.player[hidden] { display: none; }
+
 .player > *:not(.wave-bg) { position: relative; z-index: 1; }
 
 /* ═══════ Левая колонка ═══════ */

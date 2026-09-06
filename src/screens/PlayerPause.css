@@ -1,0 +1,465 @@
+/* ═══════ Экран паузы ═══════
+   Композиция та же, что у тарифов: одна белая карточка по центру светлого
+   фона. Это состояние плеера, а не окно поверх него, поэтому страница
+   обычная — со своей прокруткой и без затемнения. */
+
+.pause {
+  --photo-h: clamp(190px, 18vw, 260px);
+  --grad-warm: linear-gradient(92deg, var(--pink-500) 0%, var(--orange-500) 100%);
+
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  padding:
+    calc(clamp(16px, 3vh, 40px) + env(safe-area-inset-top))
+    calc(clamp(12px, 2.5vw, 40px) + env(safe-area-inset-right))
+    calc(clamp(24px, 4vh, 48px) + env(safe-area-inset-bottom))
+    calc(clamp(12px, 2.5vw, 40px) + env(safe-area-inset-left));
+}
+
+.pause > *:not(.wave-bg) { position: relative; z-index: 1; }
+
+/* Волны — только на первый экран: ниже они размазываются. */
+.pause .wave-bg { bottom: auto; height: 100vh; height: 100dvh; }
+
+.pause__card {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  margin: auto;
+  padding: clamp(20px, 2.4vw, 36px) clamp(18px, 2.8vw, 44px) clamp(22px, 2.4vw, 34px);
+  background: var(--white);
+  border-radius: 28px;
+  box-shadow: 0 18px 60px rgba(20, 22, 26, .10), 0 2px 10px rgba(20, 22, 26, .04);
+  /* Наклонная подпись и фото не должны рождать боковую прокрутку. */
+  overflow: hidden;
+}
+
+.pause__close {
+  position: absolute;
+  top: clamp(12px, 1.4vw, 20px);
+  right: clamp(12px, 1.4vw, 20px);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-500);
+  box-shadow: var(--shadow-card);
+  transition: color .15s ease, border-color .15s ease;
+}
+
+/* ——— Шапка ——— */
+.pause__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(12px, 2vw, 32px);
+  /* Место справа под крестик. */
+  padding-right: 52px;
+}
+
+.pause__title {
+  margin-top: clamp(12px, 1.8vw, 22px);
+  font-size: clamp(26px, 3.6vw, 48px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.pause__lead {
+  margin-top: clamp(8px, 1vw, 14px);
+  font-size: clamp(14px, 1.3vw, 18px);
+  line-height: 1.5;
+  color: var(--gray-500);
+}
+
+/* ——— Фото с пятном и нотками ——— */
+.pause__visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(2px, 1vw, 14px);
+}
+
+/* Пятно центрируем по фото: у hero.webp ширина — 0,496 высоты. */
+.pause__blob {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--photo-h) * 0.248);
+  width: calc(var(--photo-h) * 0.88);
+  height: calc(var(--photo-h) * 0.88);
+  transform: translate(-50%, -52%);
+  border-radius: 50%;
+  filter: blur(2px);
+  background:
+    radial-gradient(circle at 32% 26%, #ffe9f3 0%, rgba(255, 233, 243, 0) 62%),
+    linear-gradient(150deg, #fdeaf4 0%, #ffe4f0 54%, #ffeedf 100%);
+}
+
+.pause__photo {
+  position: relative;
+  flex: none;
+  height: var(--photo-h);
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 24px rgba(20, 22, 26, .14));
+}
+
+.pause__note { position: absolute; }
+.pause__note--a { top: 6%;  left: calc(var(--photo-h) * 0.40); color: var(--pink-400); }
+.pause__note--b { top: 30%; left: calc(var(--photo-h) * -0.04); color: var(--orange-400); }
+.pause__note--c { top: 66%; left: calc(var(--photo-h) * 0.46); color: var(--pink-200); }
+
+/* ——— Рукописные подписи ——— */
+.pause__hand {
+  font-family: var(--font-hand);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.pause__hand--side {
+  position: relative;
+  width: clamp(130px, 12vw, 180px);
+  transform: rotate(-10deg);
+  color: var(--pink-500);
+  font-size: clamp(18px, 1.7vw, 26px);
+}
+
+.pause__hand--footer {
+  margin-top: clamp(16px, 2vw, 26px);
+  text-align: center;
+  color: var(--gray-400);
+  font-size: clamp(19px, 1.8vw, 26px);
+}
+
+/* ——— Три карточки итогов ——— */
+.pause__cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(10px, 1.2vw, 18px);
+  margin-top: clamp(18px, 2.2vw, 28px);
+}
+
+.sum {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: clamp(14px, 1.6vw, 22px) clamp(14px, 1.4vw, 20px);
+  border: 1px solid var(--gray-200);
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+}
+
+.sum__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+}
+
+.sum__icon--pink   { background: var(--pink-50);    color: var(--pink-500); }
+.sum__icon--orange { background: var(--orange-100); color: var(--orange-500); }
+.sum__icon--green  { background: #e4f7ed;           color: var(--green-600); }
+
+.sum__label { font-size: clamp(12.5px, 1.05vw, 14.5px); color: var(--gray-500); }
+
+.sum__value {
+  font-family: var(--font-head);
+  font-size: clamp(28px, 3vw, 42px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.sum__unit { font-size: clamp(12px, 1vw, 14px); color: var(--gray-400); }
+
+/* ——— Полоса «сегодня в движении» ——— */
+.pause__bar {
+  margin-top: clamp(18px, 2.2vw, 28px);
+  padding: clamp(16px, 1.8vw, 24px) clamp(16px, 1.6vw, 22px) clamp(10px, 1.2vw, 14px);
+  border-radius: 20px;
+  background: var(--bg-panel);
+}
+
+.pause__bar-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: clamp(14px, 1.2vw, 17px);
+  color: var(--ink-800);
+}
+
+.pause__bar-top strong { font-weight: 800; }
+
+.pause__bar-note { font-size: clamp(12px, 1vw, 14px); color: var(--gray-500); text-align: right; }
+
+.meter {
+  position: relative;
+  height: 12px;
+  margin-top: 14px;
+  border-radius: var(--r-pill);
+  background: var(--gray-200);
+  overflow: hidden;
+}
+
+.meter__fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--grad-warm);
+  transition: width .3s ease;
+}
+
+/* Насечки стоят поверх заливки: по ним видно, до какой отметки уже дошли. */
+.meter__mark {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  margin-left: -1px;
+  background: var(--white);
+  opacity: .8;
+}
+
+.meter__mark.is-done { opacity: .55; }
+
+/* Подписи к отметкам: каждая привязана к своей доле полосы. */
+.meter__legend { position: relative; height: 38px; margin-top: 8px; }
+
+.meter__legend li {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  font-size: clamp(10.5px, .9vw, 12.5px);
+  line-height: 1.25;
+  color: var(--gray-400);
+}
+
+.meter__legend li b { font-weight: 700; color: var(--gray-500); }
+.meter__legend li.is-done b { color: var(--pink-600); }
+.meter__legend li.is-done { color: var(--pink-500); }
+
+/* Крайняя подпись прижимается к правому краю, иначе вылезает за карточку. */
+.meter__legend li:last-child { transform: translateX(-100%); text-align: right; }
+.meter__legend li:first-child { transform: translateX(-30%); text-align: left; }
+
+/* ——— «Не обязательно заниматься долго» ——— */
+.pause__tip {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: clamp(10px, 1.6vw, 26px);
+  margin-top: clamp(18px, 2.2vw, 28px);
+  padding: clamp(18px, 2vw, 26px) clamp(16px, 1.8vw, 26px);
+  border-radius: 20px;
+  background: var(--pink-50);
+}
+
+.pause__tip-title {
+  font-size: clamp(17px, 1.7vw, 23px);
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.pause__tip-text p {
+  font-size: clamp(13px, 1.15vw, 16px);
+  line-height: 1.55;
+  color: var(--gray-600);
+}
+
+.pause__hand--tip {
+  justify-self: end;
+  width: clamp(140px, 13vw, 200px);
+  transform: rotate(-5deg);
+  color: var(--pink-500);
+  font-size: clamp(18px, 1.6vw, 25px);
+  text-align: center;
+}
+
+.ideas {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: center;
+  gap: clamp(8px, 1vw, 14px);
+  margin-top: clamp(14px, 1.6vw, 20px);
+}
+
+.idea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--white);
+}
+
+.idea__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.idea__icon--orange { background: var(--orange-100); color: var(--orange-500); }
+.idea__icon--pink   { background: var(--pink-100);   color: var(--pink-500); }
+.idea__icon--violet { background: #f1ebff;           color: var(--violet-500); }
+
+.idea__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.idea__body b { font-size: clamp(12.5px, 1.05vw, 15px); font-weight: 700; }
+.idea__body span { font-size: clamp(11px, .95vw, 13px); line-height: 1.3; color: var(--gray-500); }
+
+.idea--sum {
+  justify-content: center;
+  background: none;
+  font-family: var(--font-head);
+  font-size: clamp(13px, 1.15vw, 16px);
+  font-weight: 800;
+  color: var(--pink-600);
+  white-space: nowrap;
+}
+
+/* ——— Серия дней ——— */
+.pause__streak {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(12px, 2vw, 28px);
+  margin-top: clamp(14px, 1.8vw, 22px);
+  padding: clamp(16px, 1.8vw, 24px) clamp(16px, 1.8vw, 24px);
+  border-radius: 20px;
+  background: #eaf8f0;
+}
+
+.pause__streak-text h2 { font-size: clamp(16px, 1.6vw, 22px); font-weight: 800; }
+
+.pause__streak-text p {
+  margin-top: 6px;
+  font-size: clamp(12.5px, 1.1vw, 15px);
+  line-height: 1.45;
+  color: var(--gray-600);
+}
+
+.dots { display: flex; gap: clamp(6px, .8vw, 10px); }
+
+.dot { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+
+.dot__mark {
+  display: grid;
+  place-items: center;
+  width: clamp(30px, 2.8vw, 38px);
+  height: clamp(30px, 2.8vw, 38px);
+  border-radius: 50%;
+  border: 1.6px solid #cfe8da;
+  background: var(--white);
+  color: var(--white);
+}
+
+.dot.is-done .dot__mark { background: var(--green-500); border-color: var(--green-500); }
+.dot.is-future .dot__mark { border-color: var(--gray-200); background: var(--gray-100); }
+.dot.is-today .dot__mark { box-shadow: 0 0 0 3px rgba(70, 201, 139, .28); }
+
+.dot__label { font-size: clamp(10px, .9vw, 12px); color: var(--gray-500); text-transform: uppercase; }
+.dot.is-today .dot__label { color: var(--green-600); font-weight: 700; }
+
+/* ——— Кнопки ——— */
+.pause__cta {
+  width: 100%;
+  margin-top: clamp(18px, 2.2vw, 28px);
+  min-height: 56px;
+}
+
+.pause__later {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  font-size: clamp(14px, 1.15vw, 16px);
+  font-weight: 600;
+  color: var(--gray-500);
+}
+
+@media (hover: hover) {
+  .pause__close:hover { color: var(--ink-900); border-color: var(--gray-300); }
+  .pause__later:hover { color: var(--pink-600); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   До 900: фото уходит, подсказки перестраиваются в две строки.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 899.98px) {
+  .pause__head { grid-template-columns: minmax(0, 1fr); padding-right: 48px; }
+  .pause__visual { display: none; }
+
+  .pause__tip { grid-template-columns: minmax(0, 1fr); }
+  .pause__hand--tip { justify-self: start; width: auto; transform: rotate(-3deg); text-align: left; }
+
+  .ideas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .idea--sum { grid-column: 1 / -1; }
+
+  .pause__streak { grid-template-columns: minmax(0, 1fr); }
+  .dots { justify-content: space-between; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   До 640: телефон. Карточки в столбик, подсказки тоже.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 639.98px) {
+  .pause {
+    padding:
+      calc(12px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
+      calc(20px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+  }
+
+  .pause__card { padding: 18px 16px 22px; border-radius: 22px; }
+  .pause__close { top: 10px; right: 10px; }
+  .pause__head { padding-right: 46px; }
+
+  .pause .logo__word { font-size: 17px; }
+  .pause .logo__tagline { font-size: 11.5px; white-space: normal; }
+
+  /* Три карточки остаются в ряд, пока каждой хватает сотни пикселей. */
+  .pause__cards { gap: 8px; }
+  .sum { padding: 12px 10px; border-radius: var(--r-lg); }
+  .sum__icon { width: 32px; height: 32px; margin-bottom: 6px; }
+  .sum__label { font-size: 11px; }
+  .sum__value { font-size: clamp(19px, 6vw, 26px); }
+  .sum__unit { font-size: 10.5px; line-height: 1.25; }
+
+  .pause__bar-top { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .pause__bar-note { text-align: left; }
+
+  /* Три похвалы в ряд на телефоне наезжают друг на друга. Оставляем сами
+     отметки: нужную фразу человек уже прочитал над полосой. */
+  .meter__legend { height: 16px; }
+  .meter__legend li span { display: none; }
+
+  .ideas { grid-template-columns: minmax(0, 1fr); }
+
+  .dots { gap: 4px; }
+  .dot__mark { width: 34px; height: 34px; }
+}
+
+/* Совсем узкие экраны: 320 px на три карточки уже не хватает. */
+@media (max-width: 359.98px) {
+  .pause__cards { grid-template-columns: minmax(0, 1fr); }
+}

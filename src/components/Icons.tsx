@@ -230,9 +230,120 @@ export const Crown = ({ size = 14, className }: I) => (
   </svg>
 )
 
-/** Крестик на кнопке «закрыть» страницы тарифов. */
+/** Крестик на кнопке «закрыть» страницы тарифов и экрана паузы. */
 export const Close = ({ size = 20, className }: I) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <path d="m6.4 6.4 11.2 11.2M17.6 6.4 6.4 17.6" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+  </svg>
+)
+
+/* ——— Иконки экрана паузы и «Моего прогресса» ——— */
+
+/** Домик — первый пункт бокового меню. */
+export const Home = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M3.6 10.4 12 3.6l8.4 6.8V19a1.4 1.4 0 0 1-1.4 1.4h-3.6v-5.6H8.6v5.6H5a1.4 1.4 0 0 1-1.4-1.4v-8.6Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** Следы: счётчик шагов. Шаги у нас оценочные, поэтому и знак нестрогий. */
+export const Steps = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+    <path d="M6.6 2.6c1.7 0 2.8 1.6 2.8 3.7 0 1.4-.5 2.6-.5 3.8 0 .9.3 1.5.3 2.3 0 1.3-1 2.1-2.6 2.1s-2.6-.8-2.6-2.1c0-.8.3-1.4.3-2.3 0-1.2-.5-2.4-.5-3.8 0-2.1 1.1-3.7 2.8-3.7Z" />
+    <path d="M6.6 16.6c1.5 0 2.4.6 2.4 1.6 0 .6-.2 1-.2 1.5 0 .9-.8 1.7-2.2 1.7s-2.2-.8-2.2-1.7c0-.5-.2-.9-.2-1.5 0-1 .9-1.6 2.4-1.6Z" />
+    <path d="M17.4 6.2c1.7 0 2.8 1.6 2.8 3.7 0 1.4-.5 2.6-.5 3.8 0 .9.3 1.5.3 2.3 0 1.3-1 2.1-2.6 2.1s-2.6-.8-2.6-2.1c0-.8.3-1.4.3-2.3 0-1.2-.5-2.4-.5-3.8 0-2.1 1.1-3.7 2.8-3.7Z" />
+  </svg>
+)
+
+/** Солнце с лучами — «утром» и заметка про хорошее настроение. */
+export const Sun = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.8" />
+    <path
+      d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+  </svg>
+)
+
+/** Солнце над линией горизонта — «днём». */
+export const SunHalf = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path d="M6.6 15.4a5.4 5.4 0 0 1 10.8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <path
+      d="M2.6 18.6h18.8M12 4v2.2M4.6 7.4l1.6 1.6M19.4 7.4l-1.6 1.6"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+  </svg>
+)
+
+/** Месяц — «вечером». */
+export const Moon = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M20 14.4A8.4 8.4 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** Галочка: день в серии и полученная награда. */
+export const Check = ({ size = 16, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path d="m5 12.6 4.4 4.4L19 6.6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** Росток — награда «Первый шаг». */
+export const Sprout = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path d="M12 21v-8.4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    <path
+      d="M12 12.6C12 9.4 9.6 7 6.4 7H4.2c0 3.2 2.4 5.6 5.6 5.6H12ZM12 12.6c0-3 2.2-5.2 5.2-5.2h2.6c0 3-2.4 5.2-5.4 5.2H12Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** Ракета — награда «Поехали!». */
+export const Rocket = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M12 2.6c3 2.2 4.6 5.4 4.6 9.2l-1.9 3.6H9.3l-1.9-3.6c0-3.8 1.6-7 4.6-9.2Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="9.6" r="1.8" stroke="currentColor" strokeWidth="1.7" />
+    <path
+      d="M9.3 15.4 7 17.8v2.6l2.7-1.5M14.7 15.4l2.3 2.4v2.6l-2.7-1.5"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** Календарь — награда за десять дней. */
+export const Calendar = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <rect x="3.4" y="5" width="17.2" height="15.6" rx="2.6" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M3.4 9.8h17.2M8.2 3.4v3.2M15.8 3.4v3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <circle cx="8.4" cy="14" r="1.15" fill="currentColor" />
+    <circle cx="12" cy="14" r="1.15" fill="currentColor" />
+    <circle cx="15.6" cy="14" r="1.15" fill="currentColor" />
   </svg>
 )
