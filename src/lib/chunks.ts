@@ -14,6 +14,7 @@
 
 import { api } from '../api/client'
 import { ApiError, type Chunk, type StatsSummary } from '../api/types'
+import { stepsFor } from '../data/loops'
 
 const KEY = 'moy-ritm.chunks'
 
@@ -164,7 +165,13 @@ export function createChunkQueue({ onSummary, onAccessLost, onChange }: Options)
 
   return {
     push(chunk) {
-      buffer = [...buffer, chunk].slice(-LIMIT)
+      // Шаги считаются здесь, в одном месте: плеер знает про движение и
+      // секунды, а перевод в шаги — дело куска.
+      const withSteps: Chunk = {
+        ...chunk,
+        steps: chunk.steps ?? stepsFor(chunk.move_id, chunk.duration_seconds),
+      }
+      buffer = [...buffer, withSteps].slice(-LIMIT)
       store()
       plan()
     },
