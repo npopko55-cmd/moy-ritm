@@ -59,6 +59,10 @@ export type Totals = {
   total_workouts: number
   current_streak_days: number
   longest_streak_days: number
+  /** Оценка плеера, а не показания шагомера: печатать только с «~». */
+  total_steps: number
+  /** Дней с движением за всё время, а не за месяц. */
+  days_active_total: number
 }
 
 /** Куда ведут кнопки экрана «Нужна помощь?». Пустой telegram_url — кнопки нет. */
@@ -193,12 +197,37 @@ export type StatsSummary = {
   current_streak_days: number
   longest_streak_days: number
   longest_workout_seconds: number
+  /** Оценка за всё время. В интерфейсе всегда с «~». */
+  total_steps: number
   timezone: string
   local_today: string
 }
 
 export type ProgressDay = { local_date: string; seconds: number; workouts: number }
-export type ProgressWeek = { week_start: string; seconds: number }
+export type ProgressWeek = { week_start: string; seconds: number; steps: number; workouts: number }
+
+/** Минуты и занятия по одному потоку за всё время. Пустых потоков в списке нет. */
+export type StreamStat = {
+  code: string
+  seconds: number
+  steps: number
+  sessions: number
+  /** Последняя активность, ISO 8601. */
+  last_at: string
+}
+
+/**
+ * Награда. Тексты приходят с сервера — своих в интерфейсе нет.
+ * `earned_at` null — ещё не получена, тогда смотрим на `progress`.
+ */
+export type Achievement = {
+  code: string
+  title: string
+  description: string
+  earned_at: string | null
+  earned_local_date: string | null
+  progress: { current: number; target: number }
+}
 
 export type StatsProgress = {
   month: string
@@ -212,7 +241,15 @@ export type StatsProgress = {
     best_day: { local_date: string; seconds: number } | null
     best_week: { week_start: string; seconds: number } | null
   }
-  totals: { seconds: number; workouts: number; days_active: number }
+  /** seconds, workouts и days_active — за показанный месяц; days_active_total — за всё время. */
+  totals: { seconds: number; workouts: number; days_active: number; days_active_total: number }
+  /** Оценка шагов за всё время. */
+  total_steps: number
+  averages: { per_active_day_seconds: number }
+  /** Только потоки с активностью, по убыванию минут. */
+  streams: StreamStat[]
+  /** Всегда шесть, в постоянном порядке: карточки не должны прыгать. */
+  achievements: Achievement[]
 }
 
 /* ─────────────────────────  Поддержка  ───────────────────────── */

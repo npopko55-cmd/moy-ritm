@@ -17,6 +17,7 @@ import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client
 import {
   ApiError,
   type Access,
+  type Achievement,
   type Chunk,
   type ChunksResponse,
   type DayStats,
@@ -28,6 +29,7 @@ import {
   type Settings,
   type StatsProgress,
   type StatsSummary,
+  type StreamStat,
   type SupportCreated,
   type SupportTopic,
   type Tariff,
@@ -91,12 +93,19 @@ type DemoDay = {
   seconds: number
   steps: number
   workouts: number
+  /** Самая длинная тренировка этого дня — по ней считается награда «Поехали!». */
+  longest_workout: number
   /** Конец последнего куска: по нему видно перерыв больше десяти минут. */
   last_end: number
 }
 
+/** Итоги одного потока за всё время. `last_at` — конец последнего куска, мс. */
+type DemoStream = { seconds: number; steps: number; sessions: number; last_at: number }
+
 type DemoStats = {
   days: Record<string, DemoDay>
+  /** Итоги по потокам: «Кардио — 164 мин, 32 занятия». */
+  streams: Record<string, DemoStream>
   /** Идентификаторы кусков: повтор после обрыва сети не считается дважды. */
   seen: string[]
   longest_workout_seconds: number
@@ -121,10 +130,27 @@ const DEFAULT_SETTINGS: Settings = {
  */
 const emptyStats = (): DemoStats => ({
   days: {},
+  streams: {},
   seen: [],
   longest_workout_seconds: 0,
   current_workout_seconds: 0,
 })
+
+/**
+ * Шесть наград: те же коды, тексты и условия, что и на бэкенде.
+ * Порядок постоянный — карточки на «Моём прогрессе» не должны прыгать.
+ */
+const ACHIEVEMENTS = [
+  { code: 'first_step', title: 'Первый шаг', description: 'Попробовала новый формат тренировки', target: 1 },
+  { code: 'lets_go', title: 'Поехали!', description: 'Завершила первую тренировку', target: 1 },
+  { code: 'twice_a_day', title: 'В ритме дня', description: 'Зашла в поток 2 раза за день', target: 2 },
+  { code: 'five_days', title: 'Каждый день считается', description: '5 дней подряд в движении', target: 5 },
+  { code: 'week_rhythm', title: 'Неделя в ритме', description: '7 дней подряд в движении', target: 7 },
+  { code: 'ten_days', title: 'Возвращаюсь к себе', description: '10 разных дней в потоке', target: 10 },
+] as const
+
+/** Тренировка, которая считается «завершённой первой» — как на бэкенде. */
+const WORKOUT_DONE_SECONDS = 600
 
 /**
  * Буфер незакрытых кусков плеера (`src/lib/chunks.ts`) лежит в браузере и к
@@ -245,6 +271,8 @@ export function createDemoApi(): Api {
       ...emptyStats(),
       ...(saved ?? {}),
       days: saved?.days ?? {},
+      // Потоки и рекорд дня появились позже: в старых записях их нет.
+      streams: saved?.streams ?? {},
       seen: saved?.seen ?? [],
     }
   }
@@ -306,6 +334,8 @@ export function createDemoApi(): Api {
       total_workouts: everyDay.reduce((s, d) => s + d.workouts, 0),
       current_streak_days: currentStreak,
       longest_streak_days: longestStreak,
+      total_steps: everyDay.reduce((s, d) => s + d.steps, 0),
+      days_active_total: everyDay.filter((d) => d.seconds > 0).length,
     }
 
     // Итоги профиля попадают в сводку плеера как есть: разойтись они уже не
@@ -319,6 +349,84 @@ export function createDemoApi(): Api {
       timezone: timezone(),
       local_today: today,
     }
+
+    /**
+     * Награды: проигрываем активные дни по порядку и запоминаем, на каком
+     * из них условие выполнилось впервые. Отдельно хранить дату получения не
+     * нужно — она однозначно выводится из накопленных дней.
+     */
+    function achievements(): Achievement[] {
+      const dates = Object.keys(stats.days)
+        .filter((d) => stats.days[d].seconds > 0)
+        .sort()
+
+      const at: Record<string, string> = {}
+      const mark = (code: string, ok: boolean, date: string) => {
+        if (ok && !at[code]) at[code] = date
+      }
+
+      let activeDays = 0
+      let run = 0
+      let bestStreak = 0
+      let bestWorkout = 0
+      let bestPerDay = 0
+      let prev = ''
+
+      for (const date of dates) {
+        const d = stats.days[date]
+        activeDays += 1
+        const step = prev ? Math.round((Date.parse(`${date}T00:00:00`) - Date.parse(`${prev}T00:00:00`)) / DAY_MS) : 0
+        run = step === 1 ? run + 1 : 1
+        prev = date
+        bestStreak = Math.max(bestStreak, run)
+        bestWorkout = Math.max(bestWorkout, d.longest_workout ?? 0)
+        bestPerDay = Math.max(bestPerDay, d.workouts)
+
+        mark('first_step', true, date)
+        mark('lets_go', bestWorkout >= WORKOUT_DONE_SECONDS, date)
+        mark('twice_a_day', bestPerDay >= 2, date)
+        mark('five_days', bestStreak >= 5, date)
+        mark('week_rhythm', bestStreak >= 7, date)
+        mark('ten_days', activeDays >= 10, date)
+      }
+
+      // Сколько набрано к сегодняшнему дню — по одному числу на награду.
+      // Значения те же, что считает бэкенд в app/services/achievements.py.
+      const done: Record<string, number> = {
+        first_step: activeDays,
+        lets_go: Math.floor(bestWorkout / WORKOUT_DONE_SECONDS),
+        twice_a_day: bestPerDay,
+        five_days: bestStreak,
+        week_rhythm: bestStreak,
+        ten_days: activeDays,
+      }
+
+      return ACHIEVEMENTS.map((a) => {
+        const date = at[a.code] ?? null
+        return {
+          code: a.code,
+          title: a.title,
+          description: a.description,
+          // Момент получения — конец последнего куска того дня.
+          earned_at: date ? new Date(stats.days[date].last_end || Date.parse(`${date}T12:00:00`)).toISOString() : null,
+          earned_local_date: date,
+          progress: { current: Math.min(done[a.code] ?? 0, a.target), target: a.target },
+        }
+      })
+    }
+
+    /** Потоки с активностью, от самого «наезженного» к остальным. */
+    const streamStats = (): StreamStat[] =>
+      Object.entries(stats.streams)
+        .filter(([, s]) => s.seconds > 0)
+        .sort((a, b) => b[1].seconds - a[1].seconds)
+        .map(([code, s]) => ({
+          code,
+          seconds: s.seconds,
+          steps: s.steps,
+          sessions: s.sessions,
+          last_at: new Date(s.last_at).toISOString(),
+        }))
 
     function progress(month?: string): StatsProgress {
       const key = month ?? today.slice(0, 7)
@@ -337,8 +445,15 @@ export function createDemoApi(): Api {
       const weeks = Array.from({ length: 12 }, (_, i) => {
         const start = monday.getTime() - (11 - i) * 7 * DAY_MS
         let seconds = 0
-        for (let n = 0; n < 7; n += 1) seconds += day(localDate(start + n * DAY_MS)).seconds
-        return { week_start: localDate(start), seconds }
+        let steps = 0
+        let workouts = 0
+        for (let n = 0; n < 7; n += 1) {
+          const d = day(localDate(start + n * DAY_MS))
+          seconds += d.seconds
+          steps += d.steps
+          workouts += d.workouts
+        }
+        return { week_start: localDate(start), seconds, steps, workouts }
       })
 
       const bestDay = Object.entries(stats.days)
@@ -361,7 +476,18 @@ export function createDemoApi(): Api {
           seconds: active.reduce((s, d) => s + d.seconds, 0),
           workouts: active.reduce((s, d) => s + d.workouts, 0),
           days_active: active.length,
+          days_active_total: totals.days_active_total,
         },
+        total_steps: totals.total_steps,
+        averages: {
+          // Среднее по дням, когда человек двигался, а не по всем подряд:
+          // иначе неделя отпуска обнуляла бы честный результат.
+          per_active_day_seconds: totals.days_active_total
+            ? Math.round(totals.total_seconds / totals.days_active_total)
+            : 0,
+        },
+        streams: streamStats(),
+        achievements: achievements(),
       }
     }
 
@@ -600,15 +726,22 @@ export function createDemoApi(): Api {
         accepted += 1
 
         const key = localDate(started)
-        const day = stats.days[key] ?? { seconds: 0, steps: 0, workouts: 0, last_end: 0 }
+        const day = stats.days[key] ?? {
+          seconds: 0,
+          steps: 0,
+          workouts: 0,
+          longest_workout: 0,
+          last_end: 0,
+        }
         const isNewWorkout = !day.last_end || started - day.last_end > WORKOUT_GAP_MS
         if (isNewWorkout) {
           day.workouts += 1
           stats.current_workout_seconds = 0
         }
+        const ends = started + duration * 1000
         day.seconds += duration
         day.steps += chunk.steps ?? 0
-        day.last_end = started + duration * 1000
+        day.last_end = ends
         stats.days[key] = day
 
         stats.current_workout_seconds += duration
@@ -616,6 +749,20 @@ export function createDemoApi(): Api {
           stats.longest_workout_seconds,
           stats.current_workout_seconds,
         )
+        day.longest_workout = Math.max(day.longest_workout ?? 0, stats.current_workout_seconds)
+
+        // Итоги потока. Занятие целиком принадлежит тому потоку, в котором
+        // его начали: перешла из кардио в танцы без перерыва — у кардио
+        // занятие плюс один, у танцев ноль, а секунды и шаги разошлись по
+        // обоим. Так же считает бэкенд, поэтому сумма занятий по потокам
+        // равна общему числу тренировок.
+        const code = chunk.stream_code
+        const flow = stats.streams[code] ?? { seconds: 0, steps: 0, sessions: 0, last_at: 0 }
+        if (isNewWorkout) flow.sessions += 1
+        flow.seconds += duration
+        flow.steps += chunk.steps ?? 0
+        flow.last_at = ends
+        stats.streams[code] = flow
       }
 
       // Список идентификаторов не растёт бесконечно: хватает последней тысячи.
