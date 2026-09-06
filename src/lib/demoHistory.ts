@@ -33,6 +33,27 @@ const FLOWS = ['cardio', 'cardio', 'dance', 'office', 'cardio', 'back', 'dance',
 /** Во сколько начинаются заходы: утро, день, вечер. */
 const HOURS = [8, 13, 20]
 
+/**
+ * Детерминированный UUID из строки-ключа.
+ *
+ * Идентификатор куска обязан быть настоящим UUID — иначе бэкенд ответит
+ * `invalid_chunk_id`. При этом он должен получаться одним и тем же из одного
+ * и того же ключа: на этом держится «повторный вызов не удваивает».
+ */
+function uuidFrom(key: string): string {
+  let h = 0x811c9dc5
+  let hex = ''
+  for (let round = 0; round < 8; round += 1) {
+    for (let i = 0; i < key.length; i += 1) {
+      h ^= key.charCodeAt(i) + round
+      h = Math.imul(h, 0x01000193) >>> 0
+    }
+    hex += h.toString(16).padStart(8, '0')
+  }
+  // Четвёртая группа начинается с «4», пятая — с «8»: так выглядит UUID v4.
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`
+}
+
 /** Линейный конгруэнтный генератор: одно зерно — одна и та же история. */
 function random(seed: number): () => number {
   let state = seed >>> 0
@@ -88,7 +109,7 @@ export function demoHistoryChunks(): Chunk[] {
         const move = stream.loops[c % stream.loops.length]
         const seconds = 30
         chunks.push({
-          client_chunk_id: `demo-fill-${date}-${w}-${c}`,
+          client_chunk_id: uuidFrom(`demo-fill-${date}-${w}-${c}`),
           stream_code: stream.id,
           move_id: move.id,
           started_at: new Date(at).toISOString(),
