@@ -23,7 +23,7 @@ import {
   User,
 } from '../components/Icons'
 import { STREAMS, getStream } from '../data/streams'
-import { loopPoster, loopSrc, stepsFor } from '../data/loops'
+import { loopPoster, loopSrc, stepRate } from '../data/loops'
 import PlayerPause from './PlayerPause'
 import { createChunkQueue, uuid, type ChunkQueue } from '../lib/chunks'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
@@ -131,8 +131,14 @@ export default function Player() {
   const [sessionSeconds, setSessionSeconds] = useState(0)
   const sessionRef = useRef(0)
 
-  // Шаги закрытых кусков этой тренировки: их показывает экран паузы.
-  // Открытый кусок к ним прибавляется отдельно, по его секундам.
+  // Шаги этой тренировки — их показывает экран паузы. Идут от того же
+  // секундного тика, что и «В этой сессии», и по темпу текущего движения.
+  //
+  // Раньше они складывались из кусков, которые уходят на сервер, а те живут
+  // только при видимой вкладке: при паузе на восьмой секунде время было уже
+  // 0:08, а шаги стояли на «~0». Здесь счётчики разъехаться не могут — у них
+  // один источник секунд. Дробная часть копится в ref, округляем при показе.
+  const stepsRef = useRef(0)
   const [sessionSteps, setSessionSteps] = useState(0)
 
   // Фразу меняем не чаще раза в секунду: «Вперёд» можно нажать подряд
@@ -182,7 +188,6 @@ export default function Player() {
     setOpenSeconds(0)
     if (!cur || cur.seconds < 1) return
     const seconds = Math.min(MAX_CHUNK_SECONDS, Math.round(cur.seconds))
-    setSessionSteps((s) => s + stepsFor(cur.move, seconds))
     queueRef.current?.push({
       // Идентификатор придумывается один раз, до первой отправки: повтор
       // после обрыва сети не должен засчитаться дважды.
@@ -302,6 +307,13 @@ export default function Player() {
   const untilSwitch = Math.max(0, moveInterval - inMove)
   const moveProgress = Math.min(1, inMove / moveInterval)
 
+  // Секундный тик заведён один раз на всю тренировку и не пересоздаётся при
+  // смене движения, поэтому темп он берёт не из замыкания, а отсюда.
+  const moveRef = useRef(loop.id)
+  useEffect(() => {
+    moveRef.current = loop.id
+  }, [loop.id])
+
   const goToMove = useCallback(
     (delta: number) => {
       setStep((s) => s + delta)
@@ -317,6 +329,8 @@ export default function Player() {
     const id = setInterval(() => {
       sessionRef.current += 1
       setSessionSeconds(sessionRef.current)
+      stepsRef.current += stepRate(moveRef.current)
+      setSessionSteps(Math.round(stepsRef.current))
       if (openRef.current) {
         openRef.current.seconds += 1
         setOpenSeconds(openRef.current.seconds)
@@ -633,7 +647,7 @@ export default function Player() {
       {!playing && (
         <PlayerPause
           sessionSeconds={sessionSeconds}
-          sessionSteps={sessionSteps + stepsFor(loop.id, openSeconds)}
+          sessionSteps={sessionSteps}
           todaySeconds={todaySeconds}
           summary={summary}
           onResume={() => setPlaying(true)}

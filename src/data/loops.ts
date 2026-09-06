@@ -54,6 +54,17 @@ export function stepsFor(moveId: string, seconds: number): number {
   return Math.round((Math.max(0, seconds) * perMinute) / 60)
 }
 
+/**
+ * Шагов в секунду этого движения — для счётчиков, которые тикают ежесекундно.
+ *
+ * Округлять каждую секунду нельзя: у танцевальных шагов это 110/60 ≈ 1.83, и
+ * восемь округлённых секунд дали бы 16 шагов вместо 15. Поэтому копится
+ * дробное число, а округление остаётся на показ.
+ */
+export function stepRate(moveId: string): number {
+  return (LOOPS[moveId]?.stepsPerMinute ?? 0) / 60
+}
+
 /** Сколько секунд крутится одно движение, прежде чем сменится следующим. */
 export const SECONDS_PER_MOVE = 30
 
