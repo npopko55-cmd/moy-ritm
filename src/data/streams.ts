@@ -20,6 +20,36 @@ export type Stream = {
 
 const pick = (...ids: string[]): Loop[] => ids.map((id) => LOOPS[id])
 
+/**
+ * Весь каталог движений в постоянном порядке.
+ *
+ * Первые пять — намеренно самые разные: из них собирается бесплатный
+ * уровень (bootstrap.free_tier.exercise_limit), и человек без доступа
+ * должен увидеть не пять почти одинаковых махов руками.
+ */
+export const ALL_MOVES: Loop[] = pick(
+  'run-in-place',
+  'high-knees',
+  'jumping-jacks',
+  'side-steps',
+  'dance-steps',
+  'jog',
+  'run-in-place-2',
+  'jumps-arms-up',
+  'punches',
+  'steps-with-arms',
+  'arm-swings',
+  'arms-to-sides',
+  'arms-up',
+  'arms-to-shoulders',
+)
+
+/*
+ * Временно: пока нет отдельных роликов по потокам, в каждом потоке
+ * крутится весь каталог — заказчик просил «догрузить всё, что есть».
+ * У «Спины», «Офиса», «Танцев» и «60+» это те же файлы, что у «Кардио».
+ * Когда появятся свои ролики, у каждого потока снова будет свой список.
+ */
 export const STREAMS: Stream[] = [
   {
     id: 'cardio',
@@ -27,7 +57,7 @@ export const STREAMS: Stream[] = [
     subtitle: 'энергия и жиросжигание',
     theme: 'cardio',
     cover: asset('streams/cardio.jpg'),
-    loops: pick('high-knees', 'jumping-jacks', 'punches', 'run-in-place', 'jumps-arms-up', 'jog'),
+    loops: ALL_MOVES,
   },
   {
     id: 'back',
@@ -35,7 +65,7 @@ export const STREAMS: Stream[] = [
     subtitle: 'здоровая осанка и сильная спина',
     theme: 'back',
     cover: asset('streams/back.jpg'),
-    loops: pick('arms-to-sides', 'arms-up', 'arm-swings', 'arms-to-shoulders'),
+    loops: ALL_MOVES,
   },
   {
     id: 'office',
@@ -43,7 +73,7 @@ export const STREAMS: Stream[] = [
     subtitle: 'разминка для работы',
     theme: 'office',
     cover: asset('streams/office.jpg'),
-    loops: pick('arms-to-shoulders', 'arms-to-sides', 'arm-swings', 'steps-with-arms'),
+    loops: ALL_MOVES,
   },
   {
     id: 'dance',
@@ -51,7 +81,7 @@ export const STREAMS: Stream[] = [
     subtitle: 'движение в удовольствие',
     theme: 'dance',
     cover: asset('streams/dance.jpg'),
-    loops: pick('dance-steps', 'side-steps', 'steps-with-arms', 'arms-up'),
+    loops: ALL_MOVES,
   },
   {
     id: '60plus',
@@ -59,7 +89,7 @@ export const STREAMS: Stream[] = [
     subtitle: 'мягкие тренировки для здоровья',
     theme: 'senior',
     cover: asset('streams/60plus.jpg'),
-    loops: pick('steps-with-arms', 'arms-to-shoulders', 'arm-swings', 'side-steps'),
+    loops: ALL_MOVES,
   },
 ]
 

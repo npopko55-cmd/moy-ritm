@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { DayStats, Settings, StatsSummary } from '../api/types'
@@ -21,9 +21,10 @@ import {
   User,
 } from '../components/Icons'
 import { STREAMS, getStream } from '../data/streams'
-import { loopPoster, loopSrc, stepRate } from '../data/loops'
+import { loopPoster, loopSrc, stepRate, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
 import { createChunkQueue, uuid, type ChunkQueue } from '../lib/chunks'
+import { createDeck, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { loadMoveInterval } from '../lib/settings'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
@@ -151,6 +152,49 @@ export default function Player() {
 
   const { track, blocked: soundBlocked, setPlaying: setMusicPlaying, next: nextTrack } = useMusic()
 
+  /* ─────────────  Порядок движений  ───────────── */
+
+  /** Движения этого потока — то, из чего собирается колода. */
+  const moves = useMemo(() => stream.loops, [stream])
+
+  /**
+   * Колода движений.
+   *
+   * Список потока тасуется, движения выдаются по одному без повторов; когда
+   * выйдут все — колода тасуется заново, и первое движение новой колоды не
+   * повторяет последнее показанное. Раньше движения шли строго по списку и
+   * при четырёх роликах бросались в глаза.
+   *
+   * Уже выданные движения остаются в `list`: двойная буферизация видео
+   * смотрит на шаг вперёд и через один, и эти взгляды не должны сдвигать
+   * колоду — иначе «следующее» менялось бы на каждом рендере.
+   */
+  const orderRef = useRef<{ deck: Deck<Loop>; list: Loop[] } | null>(null)
+  if (!orderRef.current) orderRef.current = { deck: createDeck(moves), list: [] }
+
+  const moveAt = (n: number): Loop => {
+    const order = orderRef.current as { deck: Deck<Loop>; list: Loop[] }
+    while (order.list.length <= n) order.list.push(order.deck.next() ?? moves[0])
+    return order.list[n]
+  }
+
+  const loop = moveAt(step)
+  const nextLoop = moveAt(step + 1)
+  const afterNext = moveAt(step + 2)
+
+  // Сменили поток (или набор движений — бесплатный уровень) — новая колода
+  // и счёт с нуля. На первом рендере колода уже собрана выше, поэтому здесь
+  // сравниваем ключ: иначе ролик успевал бы моргнуть при открытии плеера.
+  const deckKey = `${stream.id}:${moves.length}`
+  const builtFor = useRef(deckKey)
+  useEffect(() => {
+    if (builtFor.current === deckKey) return
+    builtFor.current = deckKey
+    orderRef.current = { deck: createDeck(moves), list: [] }
+    setStep(0)
+    setInMove(0)
+  }, [deckKey, moves])
+
   /* ─────────────  Куски движения  ───────────── */
 
   const queueRef = useRef<ChunkQueue | null>(null)
@@ -218,16 +262,16 @@ export default function Player() {
   // паузе, сворачивании вкладки и уходе с экрана.
   useEffect(() => {
     if (!playing || !visible) return
-    openChunk(stream.id, loopAt(stream, step).id)
+    openChunk(stream.id, loop.id)
     const id = setInterval(() => {
       closeChunk()
-      openChunk(stream.id, loopAt(stream, step).id)
+      openChunk(stream.id, loop.id)
     }, FORCE_CLOSE_MS)
     return () => {
       clearInterval(id)
       closeChunk()
     }
-  }, [playing, visible, stream, step, openChunk, closeChunk])
+  }, [playing, visible, stream.id, loop.id, openChunk, closeChunk])
 
   // Уход со страницы: закрываем кусок и пробуем отправить буфер. Не успеет —
   // не страшно, буфер лежит в localStorage и уйдёт при следующем открытии.
@@ -297,9 +341,6 @@ export default function Player() {
   const videoB = useRef<HTMLVideoElement>(null)
   const buffers = [videoA, videoB]
 
-  const loop = loopAt(stream, step)
-  const nextLoop = loopAt(stream, step + 1)
-  const afterNext = loopAt(stream, step + 2)
   const active = ((step % 2) + 2) % 2
 
   const moveProgress = Math.min(1, inMove / moveInterval)
@@ -646,12 +687,6 @@ export default function Player() {
       )}
     </>
   )
-}
-
-/** Движение потока по номеру шага: счётчик растёт бесконечно, список — нет. */
-function loopAt(stream: ReturnType<typeof getStream>, n: number) {
-  const count = stream.loops.length
-  return stream.loops[((n % count) + count) % count]
 }
 
 /** Маленькое кольцо прогресса в карточках справа. */
