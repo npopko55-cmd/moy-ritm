@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useSession } from '../auth/SessionProvider'
-import { TRACKS, type Track, shuffled, trackSrc } from '../data/music'
+import { LONG_INTRO_SECONDS, TRACKS, type Track, shuffled, trackSrc } from '../data/music'
 
 type MusicValue = {
   track: Track
@@ -113,7 +113,17 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // с паузы посреди трека — короткий.
   const fresh = useRef(true)
 
+  /**
+   * Был ли уже переход на следующий трек в этом заходе.
+   *
+   * Флаг, а не сравнение индексов: индекс возвращается к нулю, когда
+   * плейлист доигран по кругу, и «первым» стал бы уже звучавший трек.
+   * Ставится и автопереходом по концу трека, и кнопкой «следующий».
+   */
+  const advanced = useRef(false)
+
   const next = useCallback(() => {
+    advanced.current = true
     setIndex((i) => (i + 1) % playlist.length)
     setBlocked(false)
   }, [playlist.length])
@@ -122,13 +132,16 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const a = audioRef.current
     if (!a) return
-    // #t= — медиафрагмент: браузер сам начинает с «разгара» трека. Работает
+    // Первый трек захода — с «разгара», чтобы поток начался сразу. Дальше
+    // с начала, кроме треков с долгим вступлением: их разгар слишком далеко.
+    const from = !advanced.current || track.startAt >= LONG_INTRO_SECONDS ? track.startAt : 0
+    // #t= — медиафрагмент: браузер сам начинает с нужной секунды. Работает
     // и через сервис-воркер, который отдаёт медиа кусками по 206.
-    a.src = `${trackSrc(track.id)}#t=${track.startAt}`
+    a.src = from > 0 ? `${trackSrc(track.id)}#t=${from}` : trackSrc(track.id)
     a.onended = next
     // Подстраховка, если фрагмент не подхватился: доводим руками.
     a.onloadedmetadata = () => {
-      if (a.currentTime < track.startAt - 1) a.currentTime = track.startAt
+      if (from > 0 && a.currentTime < from - 1) a.currentTime = from
     }
     a.volume = 0
     fresh.current = true
