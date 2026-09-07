@@ -352,17 +352,77 @@ export default function Player() {
     }
   }, [])
 
+  /* ─────────────  Смена суток  ───────────── */
+
+  /**
+   * Дата в поясе человека — «2026-09-07».
+   *
+   * Именно по этому поясу сервер раскладывает минуты по дням, поэтому и
+   * сверяем ту же дату, а не дату браузера. en-CA нужна ради формата: этот
+   * язык печатает дату как ISO.
+   */
+  const timezone = me?.user.timezone
+  const userToday = useCallback(() => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', timezone ? { timeZone: timezone } : {}).format(
+        new Date(),
+      )
+    } catch {
+      // Пояс из профиля браузер не знает — считаем по своему.
+      return new Intl.DateTimeFormat('en-CA').format(new Date())
+    }
+  }, [timezone])
+
+  /** Какой день сейчас «сегодня» по последней сводке. */
+  const localToday = useRef<string | null>(null)
+  useEffect(() => {
+    if (summary?.local_today) localToday.current = summary.local_today
+  }, [summary?.local_today])
+
+  /**
+   * Наступили новые сутки при открытом плеере.
+   *
+   * Вкладку могут не перезагружать сутками: человек нажимает паузу вечером,
+   * возвращается утром и жмёт «play» — без этой проверки минуты нового дня
+   * легли бы во вчерашний, а «сегодня» на экране осталось бы вчерашним.
+   *
+   * Поэтому: закрываем открытый кусок (он принадлежит прошлому дню и уже
+   * записан со своим временем), отправляем буфер и берём сводку заново —
+   * «сегодня» начнётся с серверного значения нового дня. Счётчик этой
+   * тренировки не трогаем: она продолжается.
+   */
+  const checkDay = useCallback(() => {
+    const now = userToday()
+    if (!localToday.current || localToday.current === now) return
+    // Помечаем сразу, чтобы до ответа сервера не сработать второй раз.
+    localToday.current = now
+    closeChunk()
+    queueRef.current?.flush()
+    void api
+      .statsSummary()
+      .then(setSummary)
+      .catch(() => undefined)
+  }, [userToday, closeChunk])
+
+  // Каждое «play» — повод сверить дату. Эффект срабатывает и при открытии
+  // плеера, и на каждом возвращении с паузы, откуда бы её ни сняли:
+  // кнопкой, пробелом или «Продолжить» на экране паузы.
+  useEffect(() => {
+    if (playing) checkDay()
+  }, [playing, checkDay])
+
   // Сверка раз в минуту: при расхождении правы цифры сервера, локальный
-  // счётчик продолжает от них.
+  // счётчик продолжает от них. Заодно ловим смену суток посреди тренировки.
   useEffect(() => {
     const id = setInterval(() => {
+      checkDay()
       void api
         .statsSummary()
         .then(setSummary)
         .catch(() => undefined)
     }, SYNC_MS)
     return () => clearInterval(id)
-  }, [])
+  }, [checkDay])
 
   /* ─────────────  Ролики и таймер  ───────────── */
 
