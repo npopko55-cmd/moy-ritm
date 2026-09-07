@@ -13,10 +13,8 @@ import {
   Gear,
   Info,
   MusicNote,
-  Next,
   Pause,
   Play,
-  Prev,
   PulseWave,
   Question,
   Sparkle,
@@ -141,8 +139,8 @@ export default function Player() {
   const stepsRef = useRef(0)
   const [sessionSteps, setSessionSteps] = useState(0)
 
-  // Фразу меняем не чаще раза в секунду: «Вперёд» можно нажать подряд
-  // несколько раз, а прочитать надо успеть.
+  // Фразу меняем не чаще раза в секунду: смена движения и переход в новый
+  // ярус времени могут совпасть, а прочитать фразу надо успеть.
   const phraseAt = useRef(0)
   const showPhrase = useCallback(() => {
     const now = Date.now()
@@ -304,7 +302,6 @@ export default function Player() {
   const afterNext = loopAt(stream, step + 2)
   const active = ((step % 2) + 2) % 2
 
-  const untilSwitch = Math.max(0, moveInterval - inMove)
   const moveProgress = Math.min(1, inMove / moveInterval)
 
   // Секундный тик заведён один раз на всю тренировку и не пересоздаётся при
@@ -314,14 +311,13 @@ export default function Player() {
     moveRef.current = loop.id
   }, [loop.id])
 
-  const goToMove = useCallback(
-    (delta: number) => {
-      setStep((s) => s + delta)
-      setInMove(0)
-      showPhrase()
-    },
-    [showPhrase],
-  )
+  // Движение меняется только само, по интервалу: кнопок «назад» и «вперёд»
+  // в плеере больше нет — владелец счёл их бессмысленными.
+  const nextMove = useCallback(() => {
+    setStep((s) => s + 1)
+    setInMove(0)
+    showPhrase()
+  }, [showPhrase])
 
   // Секундный тик: ведёт время тренировки, смену движения и открытый кусок.
   useEffect(() => {
@@ -337,14 +333,14 @@ export default function Player() {
       }
       setInMove((s) => {
         if (s + 1 >= moveInterval) {
-          goToMove(1)
+          nextMove()
           return 0
         }
         return s + 1
       })
     }, 1000)
     return () => clearInterval(id)
-  }, [playing, goToMove, moveInterval])
+  }, [playing, nextMove, moveInterval])
 
   // Переход в новый ярус времени — сразу новая фраза, не дожидаясь смены
   // движения. Сравниваем с показанным ярусом, а не с флагом первого рендера:
@@ -538,32 +534,20 @@ export default function Player() {
           <MusicNote size={24} className="stage__note stage__note--b" />
           <Sparkle size={15} className="stage__note stage__note--c" />
 
-        </div>
-
-        <div className="controls">
-          <div className="controls__item">
-            <button className="ctrl ctrl--side" onClick={() => goToMove(-1)} aria-label="Назад">
-              <Prev size={24} />
-            </button>
-            <span>Назад</span>
-          </div>
-
-          <div className="controls__item">
+          {/*
+            Пауза лежит в правом нижнем углу квадрата, в который вписан круг:
+            угол всё равно пустой, поэтому кнопка не отнимает у круга ни
+            пикселя. Подпись слева от кнопки — снизу её было бы негде разместить.
+          */}
+          <div className="stage__pause">
+            <span>{playing ? 'Пауза' : 'Играть'}</span>
             <button
               className="ctrl ctrl--main"
               onClick={() => setPlaying((p) => !p)}
-              aria-label={playing ? 'Пауза' : 'Продолжить'}
+              aria-label={playing ? 'Пауза' : 'Играть'}
             >
               {playing ? <Pause size={30} /> : <Play size={30} />}
             </button>
-            <span>{playing ? 'Пауза' : 'Продолжить'}</span>
-          </div>
-
-          <div className="controls__item">
-            <button className="ctrl ctrl--side" onClick={() => goToMove(1)} aria-label="Вперед">
-              <Next size={24} />
-            </button>
-            <span>Вперед</span>
           </div>
         </div>
       </main>
@@ -605,13 +589,19 @@ export default function Player() {
           </footer>
         </section>
 
+        {/* Шаги те же, что на экране паузы: один счётчик, одна величина. */}
         <section className="stat">
           <header className="stat__head">
-            <span>До смены движения</span>
+            <span>Шагов набрано</span>
           </header>
           <div className="stat__row">
-            <strong className="stat__mid">{mmss(untilSwitch)}</strong>
-            <Donut value={1 - moveProgress} />
+            <span className="stat__steps">
+              {/* «~» здесь и везде: шаги мы оцениваем по темпу движения. */}
+              <strong className="stat__mid">~{sessionSteps}</strong>
+              <span>за эту сессию</span>
+            </span>
+            {/* Кольцо осталось индикатором: сколько ещё крутится это движение. */}
+            <Donut value={1 - moveProgress} small />
           </div>
         </section>
 
