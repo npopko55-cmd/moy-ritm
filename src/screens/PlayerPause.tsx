@@ -12,6 +12,7 @@
 
 import type { StatsSummary } from '../api/types'
 import Logo from '../components/Logo'
+import Unlock from '../components/Unlock'
 import WaveBg from '../components/WaveBg'
 import { Check, Clock, Close, FloatNote, Moon, MusicNote, Play, PulseWave, Steps, Sun, SunHalf } from '../components/Icons'
 import { asset } from '../lib/asset'
@@ -76,6 +77,8 @@ type Props = {
   /** Сегодня всего, вместе с тем, что сервер ещё не видел. */
   todaySeconds: number
   summary: StatsSummary | null
+  /** Доступа нет: показываем блок разблокировки над «Продолжить». */
+  locked?: boolean
   onResume(): void
   onLater(): void
 }
@@ -85,6 +88,7 @@ export default function PlayerPause({
   sessionSteps,
   todaySeconds,
   summary,
+  locked = false,
   onResume,
   onLater,
 }: Props) {
@@ -243,6 +247,14 @@ export default function PlayerPause({
             })}
           </ul>
         </section>
+
+        {/* Тот же блок, что в сайдбаре плеера, только строкой: пауза —
+            второй момент, когда человек думает, продолжать ли. */}
+        {locked && (
+          <div className="pause__unlock">
+            <Unlock compact />
+          </div>
+        )}
 
         <button className="btn btn--pink-lg pause__cta" onClick={onResume}>
           <Play size={20} />

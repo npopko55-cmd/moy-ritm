@@ -59,7 +59,7 @@ type Note = { kind: 'error' | 'verify'; text: string } | null
 export default function Tariffs() {
   const navigate = useNavigate()
   const { key, state } = useLocation() as { key: string; state: FromGuard }
-  const { me, access } = useSession()
+  const { me, access, reload } = useSession()
 
   // null — ещё грузим: в это время в карточках стоит скелетон.
   const [tariffs, setTariffs] = useState<Tariff[] | null>(null)
@@ -142,6 +142,9 @@ export default function Tariffs() {
     try {
       const res = await api.resendConfirmation()
       setResend({ busy: false, ok: res.message, error: '' })
+      // Перечитываем профиль: почту могли подтвердить в соседней вкладке,
+      // пока человек был здесь. В демо кнопка подтверждает её сама.
+      await reload()
     } catch (e) {
       setResend({ busy: false, ok: '', error: errorText(e) })
     }

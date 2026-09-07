@@ -1,19 +1,17 @@
 /**
  * Регистрация.
  *
- * Ответ бэкенда на занятую почту дословно совпадает с ответом на новую —
- * иначе по форме перебором узнают, кто у нас зарегистрирован. Поэтому
- * экрана «такая почта уже занята» здесь нет и быть не может: человек с
- * существующим аккаунтом получит письмо «у тебя уже есть аккаунт».
+ * Новая почта — человек создан и сразу вошёл (бэкенд отдаёт те же токены,
+ * что и вход), после чего попадает на главную. Дальше он сам жмёт «Влиться
+ * в поток»: бросать его в тренировку прямо из формы нелогично.
  *
- * Кнопки «Отправить письмо ещё раз» на экране «Проверьте почту» нет:
- * POST /auth/resend-confirmation требует токен, а сразу после регистрации
- * человек ещё не вошёл. Она живёт там, где действительно нужна — на
- * странице тарифов, где неподтверждённая почта мешает оплатить.
+ * Занятая почта — ответ бэкенда дословно совпадает с обычным «проверьте
+ * почту», иначе по форме перебором узнают, кто у нас зарегистрирован.
+ * Только в этом случае и остаётся экран ожидания письма.
  */
 
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, IS_DEMO } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
 import {
@@ -39,9 +37,10 @@ const browserTimezone = () => {
 
 export default function Register() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const next = params.get('next')
   const loginNext = next ? `?next=${encodeURIComponent(next)}` : ''
-  const { me } = useSession()
+  const { me, signUp } = useSession()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -66,12 +65,18 @@ export default function Register() {
 
     setBusy(true)
     try {
-      await api.register({
+      const res = await signUp({
         email: email.trim(),
         password,
         name: name.trim() || undefined,
         timezone: browserTimezone(),
       })
+      if (res.status === 'registered') {
+        // Человек уже вошёл: главная встретит его своим и плашкой про
+        // подтверждение почты. Дальше он сам жмёт «Влиться в поток».
+        navigate('/', { replace: true })
+        return
+      }
       setDone(true)
     } catch (e) {
       setError(errorText(e))
@@ -96,7 +101,7 @@ export default function Register() {
         title="Проверьте почту"
         lead={
           IS_DEMO
-            ? 'В демо-режиме писем нет: почта подтверждена сразу, можно входить.'
+            ? 'В демо-режиме писем нет — просто войдите с этой почтой.'
             : `Мы отправили письмо на ${email.trim()}. Перейдите по ссылке из него — без подтверждения нельзя оплатить доступ и восстановить пароль.`
         }
       >

@@ -21,6 +21,7 @@ import {
   type PaymentCheck,
   type PaymentLink,
   type PlayerBootstrap,
+  type RegisterResponse,
   type SessionRow,
   type Settings,
   type StatsProgress,
@@ -124,8 +125,16 @@ export function createHttpApi(rawBase: string): Api {
 
     /* ——— Вход и учётная запись ——— */
 
-    register: (body: RegisterBody) =>
-      request<MessageResponse>('POST', '/auth/register', { body, auth: false }),
+    async register(body: RegisterBody) {
+      const data = await request<RegisterResponse>('POST', '/auth/register', {
+        body,
+        auth: false,
+      })
+      // Регистрация теперь и есть вход: refresh-cookie бэкенд уже поставил,
+      // остаётся запомнить access-токен. У занятой почты токенов нет.
+      if (data.status === 'registered') accessToken = data.access_token
+      return data
+    },
 
     confirmEmail: (token) =>
       request<MessageResponse>('POST', '/auth/confirm-email', { body: { token }, auth: false }),

@@ -16,7 +16,7 @@ import Profile from './screens/Profile'
 import Progress from './screens/Progress'
 import Help from './screens/Help'
 import { SessionProvider } from './auth/SessionProvider'
-import { RequireAccess, RequireAuth } from './auth/guards'
+import { RequireAuth } from './auth/guards'
 import { MusicProvider } from './music/MusicProvider'
 
 export default function App() {
@@ -50,16 +50,16 @@ export default function App() {
             }
           />
 
-          {/* Тренировка закрыта оплатой. Обёртки решают, какой экран
-              показать; пускать или нет решает бэкенд — контентные ручки
+          {/* Тренировка открыта любому вошедшему. Без оплаты в плеере
+              доступен бесплатный поток из нескольких движений, остальные —
+              с замком; на тарифы ведёт только яркий блок разблокировки.
+              Пускать или нет по-прежнему решает бэкенд: контентные ручки
               отвечают 403 access_required. */}
           <Route
             path="/start/:streamId"
             element={
               <RequireAuth>
-                <RequireAccess>
-                  <Countdown />
-                </RequireAccess>
+                <Countdown />
               </RequireAuth>
             }
           />
@@ -67,9 +67,7 @@ export default function App() {
             path="/player/:streamId"
             element={
               <RequireAuth>
-                <RequireAccess>
-                  <Player />
-                </RequireAccess>
+                <Player />
               </RequireAuth>
             }
           />

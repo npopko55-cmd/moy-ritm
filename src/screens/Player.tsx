@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import type { DayStats, Settings, StatsSummary } from '../api/types'
+import { hasAccess, type DayStats, type FreeTier, type Settings, type StatsSummary } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { days, minutes, toMinutes, weekdayShort } from '../lib/date'
 import Logo from '../components/Logo'
@@ -12,6 +12,7 @@ import {
   Fullscreen,
   Gear,
   Info,
+  Lock,
   MusicNote,
   Pause,
   Play,
@@ -20,6 +21,7 @@ import {
   Sparkle,
   User,
 } from '../components/Icons'
+import Unlock from '../components/Unlock'
 import { STREAMS, getStream } from '../data/streams'
 import { loopPoster, loopSrc, stepRate, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
@@ -53,6 +55,18 @@ const MAX_CHUNK_SECONDS = 300
  * Это не цель и не обещание, просто шкала, по которой кольцо заполняется.
  */
 const DAY_GOAL_SECONDS = 1800
+
+/**
+ * Бесплатный уровень, пока bootstrap не ответил.
+ *
+ * Правило приходит с сервера, но ответа надо дождаться, а плеер стартует
+ * сразу. Если бы до ответа мы считали, что открыто всё, у человека без
+ * доступа на секунду мелькали бы разблокированные потоки.
+ */
+const DEFAULT_FREE_TIER: FreeTier = { stream_code: 'cardio', exercise_limit: 5 }
+
+/** Сколько держится подсветка блока разблокировки, мс. */
+const PULSE_MS = 1200
 
 /** Пока сводка не пришла — та же сетка из семи дней, чтобы карточка не прыгала. */
 function emptyWeek(): DayStats[] {
@@ -106,6 +120,17 @@ export default function Player() {
   const moveInterval = settings?.move_interval_seconds ?? loadMoveInterval()
   const motivationOn = settings?.motivation_enabled ?? true
 
+  /* ─────────────  Бесплатный уровень  ───────────── */
+
+  /**
+   * Без оплаты открыт один поток и только первые несколько его движений.
+   * Правило целиком серверное — фронт его не придумывает, а получает в
+   * bootstrap.free_tier. При grace всё открыто: доступ ещё не кончился.
+   */
+  const [freeTier, setFreeTier] = useState<FreeTier>(DEFAULT_FREE_TIER)
+  const limited = !hasAccess(access)
+  const isLocked = (streamCode: string) => limited && streamCode !== freeTier.stream_code
+
   // Счётчик смен движения. Не заворачивается по кругу нарочно: по его
   // чётности выбирается, какой из двух <video> сейчас на виду.
   const [step, setStep] = useState(0)
@@ -154,8 +179,14 @@ export default function Player() {
 
   /* ─────────────  Порядок движений  ───────────── */
 
-  /** Движения этого потока — то, из чего собирается колода. */
-  const moves = useMemo(() => stream.loops, [stream])
+  /**
+   * Движения этого потока — то, из чего собирается колода. Без доступа
+   * это первые exercise_limit движений: остальные закрыты оплатой.
+   */
+  const moves = useMemo(
+    () => (limited ? stream.loops.slice(0, freeTier.exercise_limit) : stream.loops),
+    [stream, limited, freeTier.exercise_limit],
+  )
 
   /**
    * Колода движений.
@@ -306,6 +337,7 @@ export default function Player() {
         if (!alive) return
         setBoot(data.settings)
         setSummary(data.stats)
+        if (data.free_tier) setFreeTier(data.free_tier)
       } catch {
         try {
           const stats = await api.statsSummary()
@@ -426,6 +458,41 @@ export default function Player() {
     prefetchFiles([loopSrc(afterNext.id)])
   }, [afterNext.id])
 
+  /* ─────────────  Разблокировка  ───────────── */
+
+  // Прямая ссылка на закрытый поток: уводим в бесплатный, а не показываем
+  // пустой экран. Решение всё равно за бэкендом — он не отдаст чужой контент.
+  useEffect(() => {
+    if (limited && stream.id !== freeTier.stream_code) {
+      navigate(`/player/${freeTier.stream_code}`, { replace: true })
+    }
+  }, [limited, stream.id, freeTier.stream_code, navigate])
+
+  // Клик по закрытому потоку не переключает поток, а показывает, что делать:
+  // подводит к блоку разблокировки и коротко его подсвечивает.
+  const unlockRef = useRef<HTMLLIElement>(null)
+  const pulseTimer = useRef<number | null>(null)
+  const [pulse, setPulse] = useState(false)
+
+  const showUnlock = useCallback(() => {
+    unlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    if (pulseTimer.current !== null) clearTimeout(pulseTimer.current)
+    // Класс снимается и ставится заново, иначе повторный клик не перезапустит
+    // анимацию.
+    setPulse(false)
+    pulseTimer.current = window.setTimeout(() => {
+      setPulse(true)
+      pulseTimer.current = window.setTimeout(() => setPulse(false), PULSE_MS)
+    }, 30)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (pulseTimer.current !== null) clearTimeout(pulseTimer.current)
+    },
+    [],
+  )
+
   /* ─────────────  Пауза  ───────────── */
 
   /**
@@ -487,22 +554,39 @@ export default function Player() {
         <p className="side__label">Потоки</p>
 
         <ul className="side__streams">
-          {STREAMS.map((s) => (
-            <li key={s.id}>
-              <button
-                className={`stream-card stream-card--${s.theme} ${s.id === stream.id ? 'is-active' : ''}`}
-                onClick={() => navigate(`/player/${s.id}`)}
-              >
-                <img className="stream-card__photo" src={s.cover} alt="" decoding="async" />
-                <span className="stream-card__tint" />
-                <span className="stream-card__fade" />
-                <span className="stream-card__text">
-                  <span className="stream-card__title">{s.title}</span>
-                  <span className="stream-card__sub">{s.subtitle}</span>
-                </span>
-              </button>
+          {STREAMS.map((s) => {
+            const locked = isLocked(s.id)
+            return (
+              <li key={s.id}>
+                <button
+                  className={`stream-card stream-card--${s.theme} ${s.id === stream.id ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`}
+                  onClick={() => (locked ? showUnlock() : navigate(`/player/${s.id}`))}
+                  aria-label={locked ? `${s.title} — откроется после оплаты` : s.title}
+                >
+                  <img className="stream-card__photo" src={s.cover} alt="" decoding="async" />
+                  <span className="stream-card__tint" />
+                  <span className="stream-card__fade" />
+                  <span className="stream-card__text">
+                    <span className="stream-card__title">{s.title}</span>
+                    <span className="stream-card__sub">{s.subtitle}</span>
+                  </span>
+                  {locked && (
+                    <span className="stream-card__lock">
+                      <Lock size={15} />
+                    </span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+
+          {/* Единственный вход в тарифы из тренировки. На телефоне лента
+              потоков горизонтальная, и блок встаёт в ней последним. */}
+          {limited && (
+            <li className="side__unlock" ref={unlockRef}>
+              <Unlock pulse={pulse} />
             </li>
-          ))}
+          )}
         </ul>
 
         <ul className="side__menu">
@@ -681,6 +765,7 @@ export default function Player() {
           sessionSteps={sessionSteps}
           todaySeconds={todaySeconds}
           summary={summary}
+          locked={limited}
           onResume={() => setPlaying(true)}
           onLater={goLater}
         />

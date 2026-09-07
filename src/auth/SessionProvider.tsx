@@ -11,8 +11,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { api } from '../api/client'
-import type { Access, Me } from '../api/types'
+import { api, type RegisterBody } from '../api/client'
+import type { Access, Me, RegisterResponse } from '../api/types'
 import { saveMoveInterval } from '../lib/settings'
 
 type SessionValue = {
@@ -24,6 +24,11 @@ type SessionValue = {
   loading: boolean
   /** Перечитать профиль с сервера. */
   reload(): Promise<Me | null>
+  /**
+   * Регистрация. При `registered` человек уже вошёл — профиль сразу
+   * оказывается в контексте, и главная встречает его своим.
+   */
+  signUp(body: RegisterBody): Promise<RegisterResponse>
   signIn(email: string, password: string): Promise<Me>
   signOut(): Promise<void>
   /** Положить свежий профиль без запроса: PATCH возвращает его целиком. */
@@ -77,6 +82,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [reload])
 
+  const signUp = useCallback(async (body: RegisterBody) => {
+    const res = await api.register(body)
+    // Занятая почта токенов не даёт — в контексте ничего не меняем.
+    if (res.status === 'registered') {
+      const next = await api.getMe()
+      if (alive.current) setMe(next)
+    }
+    return res
+  }, [])
+
   const signIn = useCallback(async (email: string, password: string) => {
     await api.login(email, password)
     const next = await api.getMe()
@@ -102,8 +117,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [me])
 
   const value = useMemo<SessionValue>(
-    () => ({ me, access: me?.access ?? null, loading, reload, signIn, signOut, setMe }),
-    [me, loading, reload, signIn, signOut],
+    () => ({ me, access: me?.access ?? null, loading, reload, signUp, signIn, signOut, setMe }),
+    [me, loading, reload, signUp, signIn, signOut],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

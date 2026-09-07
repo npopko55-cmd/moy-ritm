@@ -12,20 +12,25 @@
  * с кем он говорит.
  */
 
+import { loopSrc } from '../data/loops'
+import { STREAMS } from '../data/streams'
 import { TARIFFS } from '../data/tariffs'
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
 import {
   ApiError,
+  hasAccess,
   type Access,
   type Achievement,
   type Chunk,
   type ChunksResponse,
   type DayStats,
+  type FreeTier,
   type Me,
   type MessageResponse,
   type PaymentCheck,
   type PaymentLink,
   type PlayerBootstrap,
+  type PlayerStream,
   type Settings,
   type StatsProgress,
   type StatsSummary,
@@ -85,6 +90,12 @@ type DemoUser = {
   name: string | null
   timezone: string
   created_at: string
+  /**
+   * Подтверждена ли почта. Писем в демо нет, поэтому подтверждает
+   * «Отправить письмо ещё раз» — она здесь делает то же, что письмо.
+   * Нет поля — почта подтверждена: так у тех, кто завёлся раньше.
+   */
+  verified?: boolean
 }
 
 type DemoAccess = { paid_until: string; tariff: { code: string; name: string } | null } | null
@@ -170,6 +181,45 @@ function dropChunkBuffer(): void {
   } catch {
     /* приватный режим или запрет хранилища — см. write() */
   }
+}
+
+/** Бесплатный уровень: то же правило, что отдаёт бэкенд в bootstrap. */
+const FREE_TIER: FreeTier = { stream_code: 'cardio', exercise_limit: 5 }
+
+/**
+ * Потоки для bootstrap.
+ *
+ * У человека без доступа бесплатный поток приходит с обрезанным списком
+ * движений, остальные — с замком и без содержимого. Плеер берёт контент из
+ * локальных данных фронтенда, но форма ответа должна совпадать с настоящей.
+ */
+function demoStreams(access: Access): PlayerStream[] {
+  const limited = !hasAccess(access)
+  return STREAMS.map((s) => {
+    if (limited && s.id !== FREE_TIER.stream_code) {
+      return { code: s.id, name: s.title, description: s.subtitle, locked: true }
+    }
+    const loops = limited ? s.loops.slice(0, FREE_TIER.exercise_limit) : s.loops
+    return {
+      id: s.id,
+      code: s.id,
+      title: s.title,
+      name: s.title,
+      description: s.subtitle,
+      exercises: loops.map((l, i) => ({
+        id: l.id,
+        stream_id: s.id,
+        title: l.title,
+        description: null,
+        video_url: loopSrc(l.id),
+        duration: l.duration,
+        steps_per_minute: l.stepsPerMinute,
+        sort_order: i,
+        is_active: true,
+      })),
+      tracks: [],
+    }
+  })
 }
 
 const normalize = (email: string) => email.trim().toLowerCase()
@@ -503,8 +553,9 @@ export function createDemoApi(): Api {
       user: {
         id: user.id,
         email: user.email,
-        // Писем в демо нет, поэтому почта считается подтверждённой сразу.
-        email_verified: true,
+        // Писем в демо нет: подтверждает кнопка «Отправить письмо ещё раз».
+        // Старые записи без поля считаем подтверждёнными.
+        email_verified: user.verified !== false,
         name: user.name,
         timezone: user.timezone,
         created_at: user.created_at,
@@ -524,6 +575,23 @@ export function createDemoApi(): Api {
 
   const ok = (message: string): Promise<MessageResponse> => Promise.resolve({ message })
 
+  /**
+   * Подтвердить почту вошедшего.
+   *
+   * Писем в демо нет, поэтому и ссылка из письма, и кнопка «отправить ещё
+   * раз» делают одно и то же — иначе плашку про подтверждение и пейволл
+   * на тарифах было бы не пройти.
+   */
+  const markVerified = (message: string): string => {
+    const email = current()
+    const all = users()
+    if (email && all[email]) {
+      all[email].verified = true
+      write('users', all)
+    }
+    return message
+  }
+
   return {
     isDemo: true,
 
@@ -535,24 +603,33 @@ export function createDemoApi(): Api {
         throw new ApiError(422, 'VALIDATION_ERROR', 'Пароль короче 8 символов')
       }
       const all = users()
-      if (!all[email]) {
-        all[email] = {
-          id: uuid(),
-          email,
-          name: body.name?.trim() || null,
-          timezone: body.timezone || timezone(),
-          created_at: new Date().toISOString(),
-        }
-        write('users', all)
-        // Новый человек — и цифры у него с нуля: хвост чужой тренировки,
-        // оставшийся в буфере плеера, ему не принадлежит.
-        dropChunkBuffer()
+      // Почта занята: токенов не даём и отвечаем ровно то же, что настоящий
+      // бэкенд, — иначе перебором по форме узнали бы, кто зарегистрирован.
+      if (all[email]) return { status: 'check_email' as const, message: 'Проверьте почту' }
+
+      const user: DemoUser = {
+        id: uuid(),
+        email,
+        name: body.name?.trim() || null,
+        timezone: body.timezone || timezone(),
+        created_at: new Date().toISOString(),
+        verified: false,
       }
-      return { message: 'Проверьте почту' }
+      all[email] = user
+      write('users', all)
+      // Регистрация сразу входит: дальше человек попадает на главную уже
+      // своим и жмёт «Влиться в поток» сам.
+      write('session', email)
+      write('session.at', Date.now())
+      // Новый человек — и цифры у него с нуля: хвост чужой тренировки,
+      // оставшийся в буфере плеера, ему не принадлежит.
+      dropChunkBuffer()
+      return { status: 'registered' as const, ...token(user) }
     },
 
-    confirmEmail: () => ok('Почта подтверждена'),
-    resendConfirmation: () => ok('Письмо отправлено повторно'),
+    /** Подтверждение почты: и по ссылке из письма, и кнопкой «ещё раз». */
+    confirmEmail: () => ok(markVerified('Почта подтверждена')),
+    resendConfirmation: () => ok(markVerified('В демо писем нет — почта подтверждена')),
 
     async login(email, password) {
       const key = normalize(email)
@@ -697,12 +774,15 @@ export function createDemoApi(): Api {
 
     async playerBootstrap() {
       const user = requireUser()
+      const access = accessInfo(user.email)
       return {
-        // Контент в демо берётся из локальных данных фронтенда, не отсюда.
-        streams: [],
+        // Контент плеер берёт из локальных данных фронтенда, но форма
+        // ответа та же: у человека без доступа платные потоки с замком.
+        streams: demoStreams(access),
         settings: read<Settings>(`settings.${user.email}`, DEFAULT_SETTINGS),
-        access: accessInfo(user.email),
+        access,
         stats: summaryOf(user.email),
+        free_tier: FREE_TIER,
       } satisfies PlayerBootstrap
     },
 

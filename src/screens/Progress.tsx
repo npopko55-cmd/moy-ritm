@@ -426,7 +426,7 @@ export default function Progress() {
 
                 <button
                   className="btn today__cta"
-                  onClick={() => navigate(flowTarget(Boolean(me), access))}
+                  onClick={() => navigate(flowTarget(Boolean(me)))}
                 >
                   Влиться в поток
                 </button>

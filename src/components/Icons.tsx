@@ -231,6 +231,14 @@ export const Crown = ({ size = 14, className }: I) => (
 )
 
 /** Крестик на кнопке «закрыть» страницы тарифов и экрана паузы. */
+export const Lock = ({ size = 18, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <rect x="4.6" y="10.3" width="14.8" height="10.1" rx="2.6" stroke="currentColor" strokeWidth="1.9" />
+    <path d="M8.4 10.3V7.8a3.6 3.6 0 0 1 7.2 0v2.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    <circle cx="12" cy="15.3" r="1.5" fill="currentColor" />
+  </svg>
+)
+
 export const Close = ({ size = 20, className }: I) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <path d="m6.4 6.4 11.2 11.2M17.6 6.4 6.4 17.6" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />

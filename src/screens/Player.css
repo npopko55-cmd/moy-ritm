@@ -108,6 +108,31 @@
 }
 
 /*
+ * Закрытый поток. Не прячем и не отключаем кнопку: по ней и надо кликнуть,
+ * чтобы увидеть, что делать дальше, — клик подсвечивает блок разблокировки
+ * ниже. Поэтому приглушение и замок, а не disabled.
+ */
+.stream-card.is-locked { opacity: .58; filter: saturate(.55); cursor: default; }
+
+.stream-card__lock {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: rgba(20, 22, 26, .38);
+  color: var(--white);
+}
+
+/* Блок разблокировки последним в ленте потоков — своей высоты,
+   список его не растягивает. */
+.side__streams > li.side__unlock { flex: 0 0 auto; }
+
+/*
  * Фото кладётся в плашку как есть, фон не вырезается.
  * Правый край растушёван маской: без неё на границе снимка и заливки
  * была видна жёсткая вертикальная линия.
@@ -487,6 +512,8 @@
 /* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
 @media (hover: hover) {
   .stream-card:hover { transform: translateY(-1px); }
+  /* Закрытый поток не «приподнимается»: переключать нечего. */
+  .stream-card.is-locked:hover { transform: none; }
   .side__menu-item:hover { background: var(--white); color: var(--ink-900); }
   .track:hover { border-color: var(--gray-300); }
   .icon-btn:hover { border-color: var(--gray-300); }
@@ -615,6 +642,20 @@
     padding-right: 10px;
   }
 
+  /* Блок разблокировки в горизонтальной ленте: строкой, высотой с
+     карточку потока. */
+  .side__unlock { width: 264px; }
+  .side__unlock .unlock {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    padding: 8px 12px;
+  }
+  .side__unlock .unlock__title { font-size: 13px; }
+  .side__unlock .unlock__price { font-size: 11px; }
+  .side__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 6px 13px; font-size: 12.5px; }
+
   .stream-card__text { width: 54%; gap: 1px; }
   .stream-card__title { font-size: 15px; }
   .stream-card__sub {
@@ -723,6 +764,13 @@
   .stats__top { padding-left: 46px; gap: 8px; }
 
   .stream-card { width: 150px; height: 64px; min-height: 64px; }
+
+  .side__unlock { width: 238px; }
+  .side__unlock .unlock { padding: 7px 10px; }
+  .side__unlock .unlock__title { font-size: 12px; }
+  .side__unlock .unlock__price { font-size: 10.5px; }
+  .side__unlock .unlock__cta { padding: 5px 12px; font-size: 12px; }
+
   .stream-card__text { width: 56%; }
   .stream-card__title { font-size: 13.5px; }
   .stream-card__sub { font-size: 10px; }
@@ -814,6 +862,13 @@
   .stream-card__title { font-size: 12px; }
   .stream-card__text { width: 52%; }
   .side__streams { gap: 8px; }
+
+  /* Пилюля высотой 44 px: цена в неё уже не влезает, остаётся суть и кнопка. */
+  .side__unlock { width: 196px; }
+  .side__unlock .unlock { gap: 6px; padding: 4px 8px; border-radius: var(--r-md); }
+  .side__unlock .unlock__title { font-size: 11px; }
+  .side__unlock .unlock__price { display: none; }
+  .side__unlock .unlock__cta { padding: 4px 10px; font-size: 11px; }
 
   .player__stage { --headline-sm: 13px; }
   .stage__top { height: 22px; }

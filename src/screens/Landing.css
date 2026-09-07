@@ -65,6 +65,45 @@
   .landing__who:hover { color: var(--pink-600); }
 }
 
+/*
+ * Строка «подтвердите почту» между шапкой и героем. Ровно строка: окон на
+ * сайте нет, и мешать заходить в поток она не должна — подтверждение
+ * нужно только к оплате.
+ */
+.verify-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  width: 100%;
+  max-width: 1720px;
+  margin: 14px auto 0;
+  padding: 10px clamp(44px, 3.5vw, 72px);
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--orange-600);
+}
+
+.verify-note__btn {
+  flex: none;
+  padding: 5px 14px;
+  border-radius: var(--r-pill);
+  background: var(--orange-100);
+  color: var(--orange-600);
+  font-size: 13.5px;
+  font-weight: 700;
+  transition: background-color .15s ease;
+}
+
+.verify-note__btn:disabled { opacity: .6; }
+
+.verify-note__msg { flex: none; font-size: 13px; color: var(--green-600); }
+.verify-note__msg.is-bad { color: var(--pink-600); }
+
+@media (hover: hover) {
+  .verify-note__btn:hover:not(:disabled) { background: #ffdcbe; }
+}
+
 /* ——— Герой ——— */
 .landing__hero {
   flex: 1;
@@ -215,6 +254,15 @@
 
   .landing__nav { display: none; }
 
+  .verify-note {
+    max-width: none;
+    margin-top: 10px;
+    padding:
+      8px calc(24px + env(safe-area-inset-right)) 0
+      calc(24px + env(safe-area-inset-left));
+    font-size: 13px;
+  }
+
   /* На узком экране заголовок обязан переноситься. */
   .hero__title { white-space: normal; }
 
@@ -286,6 +334,16 @@
 
   /* Большая кнопка есть в самом герое — в шапке она лишняя. */
   .landing__actions .btn--pink { display: none; }
+
+  .verify-note {
+    gap: 6px 10px;
+    padding:
+      8px calc(16px + env(safe-area-inset-right)) 0
+      calc(16px + env(safe-area-inset-left));
+    font-size: 12.5px;
+  }
+
+  .verify-note__btn { font-size: 12.5px; padding: 5px 12px; }
 
   /* Почта целиком не влезет — обрезаем, полный адрес остаётся в title. */
   .landing__who { max-width: 42vw; font-size: 14px; }

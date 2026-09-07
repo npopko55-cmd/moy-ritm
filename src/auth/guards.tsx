@@ -8,7 +8,6 @@
 
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { hasAccess, type Access } from '../api/types'
 import { STREAMS } from '../data/streams'
 import { Waiting } from '../screens/Account'
 import { useSession } from './SessionProvider'
@@ -21,13 +20,15 @@ export const nextParam = (pathname: string, search = '') =>
 export const FIRST_STREAM = `/start/${STREAMS[0].id}`
 
 /**
- * Куда ведёт «Влиться в поток» (раздел 2 архитектуры):
- * не вошёл — на вход и обратно сюда, вошёл без доступа — в тарифы,
- * с доступом — в отсчёт.
+ * Куда ведёт «Влиться в поток»: не вошёл — на вход и обратно сюда,
+ * вошёл — сразу в отсчёт, оплачено или нет.
+ *
+ * На тарифы отсюда больше не уводим. Пейволл живёт внутри тренировки —
+ * ярким блоком разблокировки: человек сначала пробует бесплатный поток и
+ * только потом решает, платить ли.
  */
-export function flowTarget(signedIn: boolean, access: Access | null): string {
-  if (!signedIn) return `/login${nextParam(FIRST_STREAM)}`
-  return hasAccess(access) ? FIRST_STREAM : '/tariffs'
+export function flowTarget(signedIn: boolean): string {
+  return signedIn ? FIRST_STREAM : `/login${nextParam(FIRST_STREAM)}`
 }
 
 /** Не вошёл — на вход, с адресом возврата. */
@@ -40,13 +41,9 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
-/** Доступа нет или он закончился — на тарифы, со строкой почему. */
-export function RequireAccess({ children }: { children: ReactNode }) {
-  const { access, loading } = useSession()
-
-  if (loading) return <Waiting />
-  if (!hasAccess(access)) {
-    return <Navigate to="/tariffs" state={{ accessReason: access?.status ?? 'none' }} replace />
-  }
-  return <>{children}</>
-}
+/*
+ * Обёртки RequireAccess здесь больше нет: тренировка открыта любому
+ * вошедшему. Что именно ему доступно — бесплатный поток из нескольких
+ * движений или всё сразу — решает плеер по bootstrap.free_tier, а
+ * контентные ручки бэкенда по-прежнему закрыты сами.
+ */

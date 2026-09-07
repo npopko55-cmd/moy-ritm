@@ -21,6 +21,7 @@ import type {
   PaymentCheck,
   PaymentLink,
   PlayerBootstrap,
+  RegisterResponse,
   SessionRow,
   Settings,
   StatsProgress,
@@ -49,7 +50,8 @@ export interface Api {
   readonly isDemo: boolean
 
   /* ——— Вход и учётная запись ——— */
-  register(body: RegisterBody): Promise<MessageResponse>
+  /** Успешная регистрация сразу входит: в ответе те же токены, что у login. */
+  register(body: RegisterBody): Promise<RegisterResponse>
   confirmEmail(token: string): Promise<MessageResponse>
   /** Письмо с подтверждением ещё раз. Требует входа. */
   resendConfirmation(): Promise<MessageResponse>

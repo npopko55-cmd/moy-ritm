@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { api } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
 import { flowTarget } from '../auth/guards'
+import { errorText } from './Account'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
@@ -36,10 +38,31 @@ const FEATURES = [
 
 export default function Landing() {
   const navigate = useNavigate()
-  const { me, access, signOut } = useSession()
+  const { me, reload, signOut } = useSession()
 
-  // Не вошёл — на вход; вошёл без доступа — в тарифы; с доступом — в поток.
-  const start = () => navigate(flowTarget(Boolean(me), access))
+  // Не вошёл — на вход; вошёл — сразу в поток. На тарифы отсюда не уводим:
+  // пейволл живёт внутри тренировки.
+  const start = () => navigate(flowTarget(Boolean(me)))
+
+  /*
+   * Почта не подтверждена — тонкая строка под шапкой. Не всплывашка:
+   * окон на сайте нет, а мешать человеку заходить в поток нечему —
+   * подтверждение нужно только к оплате. Строка исчезает сама, как
+   * только почта подтверждена.
+   */
+  const [resend, setResend] = useState({ busy: false, ok: '', error: '' })
+  const sendAgain = async () => {
+    setResend({ busy: true, ok: '', error: '' })
+    try {
+      const res = await api.resendConfirmation()
+      setResend({ busy: false, ok: res.message, error: '' })
+      // В демо кнопка и подтверждает почту: перечитываем профиль, чтобы
+      // строка пропала сразу.
+      await reload()
+    } catch (e) {
+      setResend({ busy: false, ok: '', error: errorText(e) })
+    }
+  }
 
   // Маскот: ролик подгружается сам, уже после того как страница открылась.
   const mascot = useRef<HTMLVideoElement>(null)
@@ -105,6 +128,27 @@ export default function Landing() {
           </button>
         </div>
       </header>
+
+      {me && !me.user.email_verified && (
+        <p className="verify-note">
+          <span>
+            Мы отправили письмо для подтверждения почты. Без подтверждения нельзя будет оплатить.
+          </span>
+          <button
+            className="verify-note__btn"
+            type="button"
+            onClick={() => void sendAgain()}
+            disabled={resend.busy}
+          >
+            {resend.busy ? 'Отправляем…' : 'Отправить ещё раз'}
+          </button>
+          {(resend.ok || resend.error) && (
+            <span className={`verify-note__msg ${resend.error ? 'is-bad' : ''}`}>
+              {resend.error || resend.ok}
+            </span>
+          )}
+        </p>
+      )}
 
       <main className="landing__hero">
         <div className="hero__copy">

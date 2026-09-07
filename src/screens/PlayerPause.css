@@ -382,6 +382,11 @@
 .dot.is-today .dot__label { color: var(--green-600); font-weight: 700; }
 
 /* ——— Кнопки ——— */
+/* Блок разблокировки стоит прямо над «Продолжить»: у кнопки свой верхний
+   отступ, поэтому блоку хватает отступа карточки. */
+.pause__unlock { margin-top: clamp(18px, 2.2vw, 28px); }
+.pause__unlock + .pause__cta { margin-top: 12px; }
+
 .pause__cta {
   width: 100%;
   margin-top: clamp(18px, 2.2vw, 28px);

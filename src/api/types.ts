@@ -81,6 +81,21 @@ export type AuthUser = { id: string; email: string; role: string; created_at: st
 
 export type TokenResponse = { access_token: string; token_type: string; user: AuthUser }
 
+/**
+ * Ответ на регистрацию.
+ *
+ * `registered` — человек создан и сразу вошёл: токены те же, что у входа,
+ * refresh-cookie бэкенд уже поставил. Дальше он попадает на главную и сам
+ * жмёт «Влиться в поток».
+ *
+ * `check_email` — почта занята. Токенов нет, а текст не отличается от
+ * обычного «проверьте почту»: иначе по форме перебором узнали бы, кто у
+ * нас зарегистрирован.
+ */
+export type RegisterResponse =
+  | ({ status: 'registered' } & TokenResponse)
+  | { status: 'check_email'; message?: string }
+
 export type MessageResponse = { message: string }
 
 export type SessionRow = {
@@ -147,19 +162,42 @@ export type Track = {
   is_active: boolean
 }
 
+/**
+ * Поток в ответе bootstrap.
+ *
+ * У закрытого потока (человек без доступа, поток не бесплатный) приходят
+ * только код, название и признак `locked` — содержимого внутри нет. Поэтому
+ * почти все поля необязательные.
+ *
+ * Плеер рисует потоки из локальных данных (src/data/streams.ts), а отсюда
+ * берёт только правило доступа.
+ */
 export type PlayerStream = {
-  id: string
-  title: string
+  /** Код потока. У закрытого приходит `code`, у открытого — привычный `id`. */
+  id?: string
+  code?: string
+  title?: string
+  name?: string
   description: string | null
-  exercises: Exercise[]
-  tracks: Track[]
+  exercises?: Exercise[]
+  tracks?: Track[]
+  /** Поток закрыт: у человека без доступа открыт только бесплатный. */
+  locked?: boolean
 }
+
+/**
+ * Бесплатный уровень: какой поток и сколько его первых движений открыты
+ * человеку без доступа. Правило приходит с сервера — фронт его не выдумывает.
+ */
+export type FreeTier = { stream_code: string; exercise_limit: number }
 
 export type PlayerBootstrap = {
   streams: PlayerStream[]
   settings: Settings
   access: Access
   stats: StatsSummary
+  /** Нет поля или null — бесплатного уровня нет, всё закрыто оплатой. */
+  free_tier?: FreeTier | null
 }
 
 /** Один кусок движения. `client_chunk_id` плеер придумывает сам до отправки. */
