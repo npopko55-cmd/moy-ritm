@@ -12,7 +12,7 @@
  * во всей красе там, где бэкенда нет. Повторный вызов ничего не удваивает.
  */
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { IS_DEMO, api } from '../api/client'
 import type { StatsProgress } from '../api/types'
@@ -21,18 +21,20 @@ import { flowTarget } from '../auth/guards'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import {
+  Bars,
   Calendar,
   Check,
   Clock,
+  Flame,
   Gear,
   Heart,
   Home,
   PlayCircle,
-  PulseWave,
   Rocket,
   Sprout,
   Steps,
   Sun,
+  Trophy,
   User,
 } from '../components/Icons'
 import { getStream } from '../data/streams'
@@ -69,14 +71,18 @@ const MENU = [
   { icon: <Gear size={19} />, label: 'Настройки', to: '/settings' },
 ] as const
 
-/** Своя картинка у каждой награды: коды приходят с сервера, знаки — наши. */
-const BADGES: Record<string, ReactNode> = {
-  first_step: <Sprout size={22} />,
-  lets_go: <Rocket size={22} />,
-  twice_a_day: <Sun size={22} />,
-  five_days: <Check size={20} />,
-  week_rhythm: <Calendar size={22} />,
-  ten_days: <Heart size={22} />,
+/**
+ * Своя картинка и свой цвет у каждой награды: коды приходят с сервера,
+ * знаки и оттенки — наши. Цвет живёт только у полученной награды, у
+ * незаработанной знак серый — так видно, что до неё ещё идти.
+ */
+const BADGES: Record<string, { icon: ReactNode; tone: string }> = {
+  first_step: { icon: <Sprout size={21} />, tone: 'green' },
+  lets_go: { icon: <Rocket size={21} />, tone: 'orange' },
+  twice_a_day: { icon: <Sun size={21} />, tone: 'amber' },
+  five_days: { icon: <Check size={19} />, tone: 'green' },
+  week_rhythm: { icon: <Calendar size={21} />, tone: 'blue' },
+  ten_days: { icon: <Heart size={21} />, tone: 'pink' },
 }
 
 /** Месяц соседний: «2026-09» + 1 → «2026-10». */
@@ -266,16 +272,25 @@ export default function Progress() {
               </p>
             </div>
 
+            {/* Подписи стоят по бокам от фото: слева — про маленькие шаги,
+                справа — «Ты супер!». Пятно живёт в .dash__figure вместе со
+                снимком, иначе оно уезжает от него вслед за подписью. */}
             <div className="dash__visual">
-              <div className="dash__blob" />
-              <img
-                className="dash__photo"
-                src={asset('hero/hero.webp')}
-                alt="Девушка двигается под музыку"
-                decoding="async"
-              />
               <p className="dash__hand dash__hand--a">Маленькие шаги — большие результаты!</p>
-              <p className="dash__hand dash__hand--b">Ты супер!</p>
+              <div className="dash__figure">
+                <div className="dash__blob" />
+                <img
+                  className="dash__photo"
+                  src={asset('hero/hero.webp')}
+                  alt="Девушка двигается под музыку"
+                  decoding="async"
+                />
+              </div>
+              {/* «Ты супер!» с лучиками — восклицание, а не просто подпись. */}
+              <p className="dash__hand dash__hand--b">
+                Ты супер!
+                <Rays />
+              </p>
             </div>
           </header>
 
@@ -286,74 +301,85 @@ export default function Progress() {
           <ul className="tiles">
             <li className="tile">
               <span className="tile__icon tile__icon--pink">
-                <Clock size={19} />
+                <Clock size={20} />
               </span>
-              <span className="tile__label">Всего в движении</span>
-              <strong className="tile__value">
-                {totalMinutes} <i>мин</i>
-              </strong>
-              <span className="tile__note">
-                {totalHours > 0
-                  ? `За всё время: ${totalHours} ${pluralWord(totalHours, 'час', 'часа', 'часов')} заботы о себе 💗`
-                  : 'Каждая минута идёт в копилку 💗'}
+              <span className="tile__body">
+                <span className="tile__label">Всего в движении</span>
+                <strong className="tile__value">
+                  {totalMinutes} <i>мин</i>
+                </strong>
+                <span className="tile__note">
+                  {totalHours > 0
+                    ? `За все ${totalHours} ${pluralWord(totalHours, 'час', 'часа', 'часов')} заботы о себе 💗`
+                    : 'Каждая минута идёт в копилку 💗'}
+                </span>
               </span>
             </li>
 
             <li className="tile">
               <span className="tile__icon tile__icon--orange">
-                <PulseWave size={20} />
+                <Flame size={20} />
               </span>
-              <span className="tile__label">Текущая серия</span>
-              <strong className="tile__value">
-                {streak} <i>{pluralWord(streak, 'день', 'дня', 'дней')}</i>
-              </strong>
-              <span className="tile__note">
-                {streak > 0 ? 'Продолжай в том же ритме!' : 'Начни серию сегодня'}
+              <span className="tile__body">
+                <span className="tile__label">Текущая серия</span>
+                <strong className="tile__value">
+                  {streak} <i>{pluralWord(streak, 'день', 'дня', 'дней')}</i>
+                </strong>
+                <span className="tile__note">
+                  {streak > 0 ? 'Продолжай в том же ритме!' : 'Начни серию сегодня'}
+                </span>
+              </span>
+            </li>
+
+            <li className="tile">
+              <span className="tile__icon tile__icon--violet">
+                <Bars size={20} />
+              </span>
+              <span className="tile__body">
+                <span className="tile__label">В среднем в день</span>
+                <strong className="tile__value">
+                  {toMinutes(data?.averages.per_active_day_seconds ?? 0)} <i>мин</i>
+                </strong>
+                <span className="tile__note">Отличный результат! ⭐</span>
               </span>
             </li>
 
             <li className="tile">
               <span className="tile__icon tile__icon--green">
-                <Sun size={19} />
+                <Steps size={20} />
               </span>
-              <span className="tile__label">В среднем в день</span>
-              <strong className="tile__value">
-                {toMinutes(data?.averages.per_active_day_seconds ?? 0)} <i>мин</i>
-              </strong>
-              <span className="tile__note">Отличный результат! ⭐</span>
-            </li>
-
-            <li className="tile">
-              <span className="tile__icon tile__icon--violet">
-                <Steps size={19} />
+              <span className="tile__body">
+                <span className="tile__label">Всего шагов</span>
+                {/* «~»: шаги мы оцениваем по темпу движения, а не считаем. */}
+                <strong className="tile__value">~{data?.total_steps ?? 0}</strong>
+                <span className="tile__note">Шаг за шагом к лучшей тебе!</span>
               </span>
-              <span className="tile__label">Всего шагов</span>
-              {/* «~»: шаги мы оцениваем по темпу движения, а не считаем. */}
-              <strong className="tile__value">~{data?.total_steps ?? 0}</strong>
-              <span className="tile__note">Шаг за шагом к лучшей тебе!</span>
             </li>
           </ul>
 
           {/* ——— Календарь и «сегодня» ——— */}
           <div className="dash__cols">
             <section className="cal">
+              {/* Стрелки и название — одной группой слева, «Сегодня» — справа. */}
               <header className="cal__top">
-                <button
-                  className="cal__arrow"
-                  aria-label="Предыдущий месяц"
-                  onClick={() => setMonth(shiftMonth(month, -1))}
-                >
-                  ‹
-                </button>
-                <h2 className="cal__month">{formatMonth(data?.month ?? month)}</h2>
-                <button
-                  className="cal__arrow"
-                  aria-label="Следующий месяц"
-                  disabled={month >= maxMonth}
-                  onClick={() => month < maxMonth && setMonth(shiftMonth(month, 1))}
-                >
-                  ›
-                </button>
+                <div className="cal__pager">
+                  <button
+                    className="cal__arrow"
+                    aria-label="Предыдущий месяц"
+                    onClick={() => setMonth(shiftMonth(month, -1))}
+                  >
+                    ‹
+                  </button>
+                  <h2 className="cal__month">{formatMonth(data?.month ?? month)}</h2>
+                  <button
+                    className="cal__arrow"
+                    aria-label="Следующий месяц"
+                    disabled={month >= maxMonth}
+                    onClick={() => month < maxMonth && setMonth(shiftMonth(month, 1))}
+                  >
+                    ›
+                  </button>
+                </div>
                 <button
                   className="cal__now"
                   disabled={month === maxMonth}
@@ -375,16 +401,22 @@ export default function Progress() {
 
             <div className="dash__aside">
               <section className="today">
-                <h2 className="today__title">Сегодня, {formatDay(today)}</h2>
+                <header className="today__top">
+                  <h2 className="today__title">Сегодня, {formatDay(today)}</h2>
+                  <span className="today__pill">Сегодня</span>
+                </header>
 
+                {/* Число и подпись живут внутри кольца — так его центр занят
+                    смыслом, а не пустотой. */}
                 <div className="today__ring">
                   <Ring value={todayMinutes / DAY_GOAL_MINUTES} />
-                  <span className="today__num">{todayMinutes}</span>
+                  <span className="today__center">
+                    <span className="today__num">{todayMinutes}</span>
+                    <span className="today__unit">
+                      {pluralWord(todayMinutes, 'минута', 'минуты', 'минут')} в движении
+                    </span>
+                  </span>
                 </div>
-
-                <p className="today__unit">
-                  {pluralWord(todayMinutes, 'минута', 'минуты', 'минут')} в движении
-                </p>
 
                 <p className="today__note">
                   {todayMinutes > 0
@@ -393,7 +425,7 @@ export default function Progress() {
                 </p>
 
                 <button
-                  className="btn btn--pink today__cta"
+                  className="btn today__cta"
                   onClick={() => navigate(flowTarget(Boolean(me), access))}
                 >
                   Влиться в поток
@@ -401,12 +433,23 @@ export default function Progress() {
               </section>
 
               <section className="record">
-                <span className="record__label">Твой рекорд</span>
-                <strong className="record__value">
-                  {toMinutes(data?.records.best_day?.seconds ?? 0)} <i>мин</i>
-                </strong>
-                <span className="record__note">
-                  {data?.records.best_day ? formatDayShortYear(data.records.best_day.local_date) : 'пока не установлен'}
+                <span className="record__icon">
+                  <Trophy size={19} />
+                </span>
+                <span className="record__body">
+                  <span className="record__label">Твой рекорд</span>
+                  <strong className="record__value">
+                    {toMinutes(data?.records.best_day?.seconds ?? 0)} <i>мин</i>
+                  </strong>
+                  <span className="record__note">
+                    {data?.records.best_day
+                      ? formatDayShortYear(data.records.best_day.local_date)
+                      : 'пока не установлен'}
+                  </span>
+                </span>
+                {/* Стрелка — знак «здесь итог», а не кнопка: рекорд никуда не ведёт. */}
+                <span className="record__arrow" aria-hidden="true">
+                  ›
                 </span>
               </section>
             </div>
@@ -419,13 +462,13 @@ export default function Progress() {
             <div className="dash__weeks">
               <Weeks weeks={data?.weeks ?? []} />
 
-              <p className="dash__hint">
-                <span className="dash__hint-icon">
-                  <Sun size={19} />
-                </span>
-                Больше дней в движении — больше энергии и хорошего настроения! Даже несколько минут
-                имеют значение.
-              </p>
+              <aside className="dash__hint">
+                <HintArt />
+                <p className="dash__hint-title">
+                  Больше дней в движении — больше энергии и хорошего настроения!
+                </p>
+                <p className="dash__hint-text">Даже несколько минут имеют значение.</p>
+              </aside>
             </div>
           </section>
 
@@ -447,9 +490,13 @@ export default function Progress() {
                 const share = a.progress.target
                   ? Math.min(100, (a.progress.current / a.progress.target) * 100)
                   : 0
+                const badge = BADGES[a.code]
                 return (
-                  <li key={a.code} className={`award ${done ? 'is-done' : ''}`}>
-                    <span className="award__icon">{BADGES[a.code] ?? <Check size={20} />}</span>
+                  <li
+                    key={a.code}
+                    className={`award award--${badge?.tone ?? 'pink'} ${done ? 'is-done' : ''}`}
+                  >
+                    <span className="award__icon">{badge?.icon ?? <Check size={19} />}</span>
                     <span className="award__title">{a.title}</span>
                     <span className="award__text">{a.description}</span>
                     {done ? (
@@ -474,7 +521,12 @@ export default function Progress() {
 
           {/* ——— Потоки ——— */}
           <section className="dash__block">
-            <h2 className="dash__block-title">Твои потоки</h2>
+            <header className="dash__block-top">
+              <h2 className="dash__block-title">Твои потоки</h2>
+              <Link className="dash__more" to="/tariffs">
+                Смотреть все
+              </Link>
+            </header>
 
             {data && data.streams.length === 0 ? (
               <p className="dash__empty">Пока пусто — начни первую тренировку</p>
@@ -494,6 +546,7 @@ export default function Progress() {
                         <span className="flow__title">{stream.title}</span>
                         <span className="flow__nums">
                           <b>{toMinutes(s.seconds)} мин</b>
+                          <i>·</i>
                           <span>{sessionsWord(s.sessions)}</span>
                         </span>
                       </span>
@@ -568,41 +621,52 @@ function MonthGrid({
 }
 
 /**
- * Последние четыре недели. У последней завершённой — насколько она вышла
- * лучше или хуже предыдущей: это единственное сравнение на странице, и
- * считать его от текущей, ещё не дожитой недели было бы нечестно.
+ * Последние четыре недели. Тёплым градиентом и бейджем отмечена лучшая из
+ * показанных: рост считаем от недели, что шла прямо перед ней, — иначе
+ * проценту не от чего отталкиваться.
  */
 function Weeks({ weeks }: { weeks: StatsProgress['weeks'] }) {
   const shown = weeks.slice(-WEEKS_SHOWN)
   const top = Math.max(1, ...shown.map((w) => toMinutes(w.seconds)))
-  // Предпоследняя из всех двенадцати — последняя завершённая.
-  const doneIndex = shown.length - 2
-  const prev = weeks[weeks.length - 3]
-  const done = weeks[weeks.length - 2]
-  // Ноль процентов — не новость, бейдж в этом случае не показываем.
+
+  // Лучшая неделя: первая с наибольшими минутами — при равенстве берём
+  // раннюю, чтобы отметка не прыгала туда-сюда от недели к неделе.
+  const bestIndex = shown.reduce(
+    (best, w, i) => (toMinutes(w.seconds) > toMinutes(shown[best]?.seconds ?? 0) ? i : best),
+    0,
+  )
+  // Предыдущая неделя лежит в полном списке — она может быть и за пределами
+  // четырёх показанных.
+  const before = weeks[weeks.length - shown.length + bestIndex - 1]
+  const best = shown[bestIndex]
   const raw =
-    prev && done && prev.seconds > 0
-      ? Math.round(((done.seconds - prev.seconds) / prev.seconds) * 100)
+    before && best && before.seconds > 0
+      ? Math.round(((best.seconds - before.seconds) / before.seconds) * 100)
       : 0
+  // Ноль процентов — не новость, бейдж в этом случае не показываем.
   const change = raw === 0 ? null : raw
 
   return (
     <div className="weeks">
       {shown.map((w, i) => {
         const minutes = toMinutes(w.seconds)
+        const isBest = i === bestIndex && minutes > 0
+        // Долю храним в переменной: от неё зависит и высота столбика, и
+        // высота, на которой висит подпись, — они обязаны совпадать.
+        const height = { '--h': `${Math.round((minutes / top) * 100)}%` } as CSSProperties
         return (
           <div key={w.week_start} className="weeks__col">
-            <span className="weeks__value">{minutes || ''}</span>
-            <div
-              className={`weeks__bar ${i === shown.length - 1 ? 'is-now' : ''}`}
-              style={{ height: `${Math.round((minutes / top) * 100)}%` }}
-            >
-              {i === doneIndex && change !== null && (
-                <span className={`weeks__badge ${change < 0 ? 'is-down' : ''}`}>
-                  {change < 0 ? '−' : '+'}
-                  {Math.abs(change)}%
-                </span>
-              )}
+            <div className="weeks__plot" style={height}>
+              <span className="weeks__cap">
+                {isBest && change !== null && (
+                  <span className={`weeks__badge ${change < 0 ? 'is-down' : ''}`}>
+                    {change < 0 ? '−' : '+'}
+                    {Math.abs(change)}%
+                  </span>
+                )}
+                <span className="weeks__value">{minutes ? `${minutes} мин` : ''}</span>
+              </span>
+              <div className={`weeks__bar ${isBest ? 'is-best' : ''}`} />
             </div>
             <span className="weeks__label">{weekRange(w.week_start)}</span>
           </div>
@@ -612,9 +676,9 @@ function Weeks({ weeks }: { weeks: StatsProgress['weeks'] }) {
   )
 }
 
-/** Кольцо в карточке «Сегодня». */
+/** Кольцо в карточке «Сегодня». Дуга толстая: она — главное в карточке. */
 function Ring({ value }: { value: number }) {
-  const r = 52
+  const r = 51
   const c = 2 * Math.PI * r
   return (
     <svg className="ring" viewBox="0 0 120 120" aria-hidden="true">
@@ -624,19 +688,77 @@ function Ring({ value }: { value: number }) {
           <stop offset="100%" stopColor="#ff7a18" />
         </linearGradient>
       </defs>
-      <circle cx="60" cy="60" r={r} fill="none" stroke="#f1f2f5" strokeWidth="10" />
+      <circle cx="60" cy="60" r={r} fill="none" stroke="#ffe1ee" strokeWidth="12" />
       <circle
         cx="60"
         cy="60"
         r={r}
         fill="none"
         stroke="url(#ring-today)"
-        strokeWidth="10"
+        strokeWidth="12"
         strokeLinecap="round"
         strokeDasharray={c}
         strokeDashoffset={c * (1 - Math.max(0, Math.min(1, value)))}
         transform="rotate(-90 60 60)"
       />
+    </svg>
+  )
+}
+
+/**
+ * Лучики у «Ты супер!»: три розовые чёрточки, какие рисуют от руки рядом
+ * с восклицанием. Знак только для глаз, в текст страницы не попадает.
+ */
+function Rays() {
+  return (
+    <svg className="dash__rays" viewBox="0 0 26 30" fill="none" aria-hidden="true">
+      <path
+        d="M3 21.5 8.5 18M4.5 12.5h6.5M8 3.5l4.5 4"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+/**
+ * Картинка к заметке о неделях: солнце и растущий график. Рисуем прямо
+ * здесь — знак живёт только на этой странице и в общий набор иконок,
+ * где всё одноцветное и 24×24, он не укладывается.
+ */
+function HintArt() {
+  return (
+    <svg className="dash__hint-art" viewBox="0 0 132 76" fill="none" aria-hidden="true">
+      {/* Солнце с лучами */}
+      <circle cx="27" cy="25" r="11.5" fill="#ffd75e" />
+      <path
+        d="M27 5.5v4.6M27 40v4.6M7.5 25h4.6M41.9 25h4.6M13.2 11.2l3.3 3.3M37.5 35.5l3.3 3.3M40.8 11.2l-3.3 3.3M16.5 35.5l-3.3 3.3"
+        stroke="#f7bd24"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+      {/* Растущий график */}
+      <rect x="60" y="47" width="13" height="19" rx="4" fill="#cdb6ff" />
+      <rect x="79" y="36" width="13" height="30" rx="4" fill="#a983f5" />
+      <rect x="98" y="24" width="13" height="42" rx="4" fill="#7f4ee0" />
+      {/* Стрелка вверх над столбиками */}
+      <path
+        d="M60 30.5 79.5 20l9 6.5L110 8.5"
+        stroke="#46c98b"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M101.5 7.5h9.5V17"
+        stroke="#46c98b"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Земля под графиком */}
+      <path d="M56 68.5h59" stroke="#e6e8ec" strokeWidth="3" strokeLinecap="round" />
     </svg>
   )
 }

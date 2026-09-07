@@ -2,24 +2,32 @@
    Дашборд: узкое меню кабинета слева и одна большая белая карточка справа.
    Оболочка своя, а не Page.css: там одна колонка по центру, а здесь две.
    Все селекторы начинаются с .dash или относятся к его блокам — общий CSS
-   проекта не должен доставать до чужих экранов. */
+   проекта не должен доставать до чужих экранов.
+
+   Плотность здесь нарочно выше, чем на остальных экранах: это сводка, и
+   человек должен видеть месяц, недели и награды сразу, не пролистывая.
+   Отсюда базовые 13–14 px, заголовки блоков 18–20 px и низкие карточки. */
 
 .dash {
   --grad-warm: linear-gradient(92deg, var(--pink-500) 0%, var(--orange-500) 100%);
-  --photo-h: clamp(170px, 15vw, 240px);
+  --photo-h: clamp(150px, 14.5vw, 208px);
 
   position: relative;
   display: grid;
-  grid-template-columns: clamp(230px, 18vw, 280px) minmax(0, 1fr);
-  gap: clamp(16px, 1.8vw, 32px);
+  grid-template-columns: clamp(190px, 14vw, 216px) minmax(0, 1fr);
+  gap: clamp(14px, 1.8vw, 26px);
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg);
   padding:
-    calc(clamp(16px, 3vh, 36px) + env(safe-area-inset-top))
-    calc(clamp(12px, 2.2vw, 36px) + env(safe-area-inset-right))
-    calc(clamp(24px, 4vh, 44px) + env(safe-area-inset-bottom))
-    calc(clamp(12px, 2.2vw, 36px) + env(safe-area-inset-left));
+    calc(clamp(16px, 3vh, 32px) + env(safe-area-inset-top))
+    calc(clamp(12px, 2.2vw, 32px) + env(safe-area-inset-right))
+    calc(clamp(22px, 4vh, 40px) + env(safe-area-inset-bottom))
+    calc(clamp(12px, 2.2vw, 32px) + env(safe-area-inset-left));
+  /* Фото шапки выходит за верх карточки, а наклонные подписи — вправо.
+     Обрезаем только по горизонтали: `clip` не заводит свой скроллер, и
+     липкое меню слева продолжает липнуть к окну. */
+  overflow-x: clip;
 }
 
 .dash > *:not(.wave-bg) { position: relative; z-index: 1; }
@@ -31,36 +39,36 @@
 .dash__side {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   align-self: start;
   position: sticky;
-  top: clamp(16px, 3vh, 36px);
+  top: clamp(16px, 3vh, 32px);
 }
 
-.dash__logo { display: block; margin-bottom: 6px; }
+.dash__logo { display: block; margin-bottom: 4px; }
 
 .dash__back {
   align-self: flex-start;
-  min-height: 44px;
-  padding: 8px 16px;
+  min-height: 40px;
+  padding: 8px 14px;
   border-radius: var(--r-pill);
   border: 1px solid var(--gray-200);
   background: var(--white);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   box-shadow: var(--shadow-card);
 }
 
-.dash__nav { display: flex; flex-direction: column; gap: 2px; }
+.dash__nav { display: flex; flex-direction: column; gap: 1px; }
 
 .dash__nav-item {
   display: flex;
   align-items: center;
-  gap: 11px;
-  min-height: 44px;
-  padding: 10px 14px;
+  gap: 10px;
+  min-height: 38px;
+  padding: 8px 12px;
   border-radius: var(--r-md);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--gray-600);
   transition: background-color .15s ease, color .15s ease;
@@ -75,15 +83,15 @@
 
 /* ——— Промо и строка доступа ——— */
 .dash__promo {
-  margin-top: 12px;
-  padding: 18px 16px;
-  border-radius: 20px;
+  margin-top: 10px;
+  padding: 15px 14px;
+  border-radius: 18px;
   background: linear-gradient(150deg, #ffe3f0 0%, #ffeadf 100%);
 }
 
 .dash__promo-title {
   font-family: var(--font-head);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.3;
   color: var(--pink-700);
@@ -93,25 +101,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  margin-top: 12px;
-  padding: 10px 14px;
+  min-height: 40px;
+  margin-top: 10px;
+  padding: 9px 12px;
   border-radius: var(--r-pill);
   background: var(--grad-pink);
   color: var(--white);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   text-align: center;
   box-shadow: 0 6px 16px rgba(240, 23, 127, .28);
 }
 
 .dash__paid {
-  margin-top: 12px;
-  padding: 12px 14px;
+  margin-top: 10px;
+  padding: 11px 13px;
   border-radius: var(--r-md);
   background: var(--pink-50);
   color: var(--pink-700);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.4;
 }
@@ -120,42 +128,52 @@
 .dash__main { min-width: 0; }
 
 .dash__card {
-  padding: clamp(20px, 2.4vw, 36px) clamp(18px, 2.4vw, 38px) clamp(22px, 2.4vw, 34px);
+  padding: clamp(16px, 2vw, 30px) clamp(16px, 2vw, 30px) clamp(18px, 2vw, 28px);
   background: var(--white);
-  border-radius: 28px;
+  border-radius: 24px;
   box-shadow: 0 18px 60px rgba(20, 22, 26, .10), 0 2px 10px rgba(20, 22, 26, .04);
-  /* Наклонные подписи и фото не должны рождать боковую прокрутку. */
-  overflow: hidden;
 }
 
+/* ——— Шапка ——— */
 .dash__head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: clamp(12px, 2vw, 28px);
+  gap: clamp(12px, 2vw, 26px);
+  min-height: clamp(112px, 13.5vw, 196px);
 }
 
 .dash__title {
-  font-size: clamp(26px, 3.2vw, 44px);
+  font-size: clamp(25px, 2.9vw, 40px);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
 }
 
 .dash__lead {
-  margin-top: clamp(8px, 1vw, 14px);
-  font-size: clamp(13.5px, 1.2vw, 17px);
+  margin-top: clamp(6px, .8vw, 11px);
+  font-size: clamp(13px, 1.1vw, 15px);
   line-height: 1.5;
   color: var(--gray-500);
 }
 
-.dash__visual { position: relative; display: flex; align-items: center; gap: clamp(4px, 1vw, 16px); }
+.dash__visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 1vw, 14px);
+  /* Фото приподнято: в макете девушка чуть выступает над карточкой. */
+  margin-top: calc(var(--photo-h) * -0.33);
+}
+
+/* Снимок и пятно — одним куском: подпись слева не должна их разлучать. */
+.dash__figure { position: relative; flex: none; display: flex; }
 
 /* Пятно центрируем по фото: у hero.webp ширина — 0,496 высоты. */
 .dash__blob {
   position: absolute;
   top: 50%;
-  left: calc(var(--photo-h) * 0.248);
+  left: 50%;
   width: calc(var(--photo-h) * 0.9);
   height: calc(var(--photo-h) * 0.9);
   transform: translate(-50%, -52%);
@@ -183,63 +201,76 @@
 }
 
 .dash__hand--a {
-  position: relative;
-  width: clamp(120px, 11vw, 165px);
+  flex: none;
+  width: clamp(112px, 10.5vw, 158px);
   transform: rotate(-9deg);
-  font-size: clamp(17px, 1.5vw, 24px);
+  font-size: clamp(16px, 1.45vw, 23px);
 }
 
+/* Подпись стоит справа от фото и чуть выше низа — как приписка от руки. */
 .dash__hand--b {
-  position: absolute;
-  right: 0;
-  bottom: 2%;
+  flex: none;
+  align-self: flex-end;
+  margin-bottom: clamp(16px, 2.4vw, 38px);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   transform: rotate(6deg);
-  color: var(--orange-500);
-  font-size: clamp(16px, 1.4vw, 22px);
+  font-size: clamp(15px, 1.35vw, 21px);
+  white-space: nowrap;
+}
+
+/* Лучики у «Ты супер!»: три чёрточки веером, как дорисовывают от руки. */
+.dash__rays {
+  flex: none;
+  width: clamp(11px, .95vw, 15px);
+  height: auto;
 }
 
 .dash__hand--footer {
-  margin-top: clamp(18px, 2.2vw, 30px);
+  margin-top: clamp(14px, 1.8vw, 24px);
   text-align: center;
   color: var(--gray-400);
-  font-size: clamp(19px, 1.8vw, 26px);
+  font-size: clamp(18px, 1.6vw, 23px);
 }
 
 .dash__msg {
-  margin-top: 16px;
-  padding: 12px 16px;
+  margin-top: 14px;
+  padding: 10px 14px;
   border-radius: var(--r-md);
   background: var(--pink-50);
   color: var(--pink-700);
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.45;
 }
 
-/* ——— Четыре показателя ——— */
+/* ——— Четыре показателя ———
+   Карточки лежачие: знак слева, цифра и подпись справа. Стоячие занимали
+   вдвое больше высоты и пустовали внутри. */
 .tiles {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(10px, 1.2vw, 16px);
-  margin-top: clamp(18px, 2.2vw, 28px);
+  gap: clamp(8px, 1vw, 14px);
+  margin-top: clamp(12px, 1.5vw, 20px);
 }
 
 .tile {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: clamp(14px, 1.6vw, 20px) clamp(12px, 1.3vw, 18px);
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-height: 90px;
+  padding: 10px 13px;
   border: 1px solid var(--gray-200);
-  border-radius: 20px;
-  box-shadow: var(--shadow-card);
+  border-radius: 16px;
+  background: var(--white);
 }
 
 .tile__icon {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  margin-bottom: 8px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
 }
 
@@ -248,11 +279,13 @@
 .tile__icon--green  { background: #e4f7ed;           color: var(--green-600); }
 .tile__icon--violet { background: #f1ebff;           color: var(--violet-500); }
 
-.tile__label { font-size: clamp(12px, 1vw, 14px); color: var(--gray-500); }
+.tile__body { display: flex; flex-direction: column; min-width: 0; }
+
+.tile__label { font-size: 12px; line-height: 1.25; color: var(--gray-500); }
 
 .tile__value {
   font-family: var(--font-head);
-  font-size: clamp(23px, 2.4vw, 34px);
+  font-size: clamp(19px, 1.7vw, 24px);
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -260,41 +293,44 @@
 }
 
 /* Единица мельче числа: цифра должна читаться первой. */
-.tile__value i { font-style: normal; font-size: .5em; font-weight: 700; color: var(--gray-500); }
+.tile__value i { font-style: normal; font-size: .58em; font-weight: 700; color: var(--gray-500); }
 
-.tile__note { margin-top: 4px; font-size: clamp(11.5px, .95vw, 13px); line-height: 1.35; color: var(--gray-400); }
+.tile__note { margin-top: 2px; font-size: 11.5px; line-height: 1.3; color: var(--pink-600); }
 
 /* ——— Календарь и «сегодня» ——— */
 .dash__cols {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: clamp(12px, 1.6vw, 24px);
-  margin-top: clamp(16px, 2vw, 26px);
+  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
+  gap: clamp(10px, 1.4vw, 20px);
+  margin-top: clamp(10px, 1.3vw, 18px);
 }
 
 .cal {
-  padding: clamp(16px, 1.8vw, 24px);
+  padding: clamp(12px, 1.4vw, 20px);
   border: 1px solid var(--gray-200);
-  border-radius: 20px;
+  border-radius: 18px;
 }
 
+/* Стрелки и месяц — группой слева, «Сегодня» — у правого края. */
 .cal__top { display: flex; align-items: center; gap: 8px; }
 
+.cal__pager { display: flex; align-items: center; gap: 4px; }
+
 .cal__month {
-  flex: 1;
-  font-size: clamp(16px, 1.6vw, 21px);
+  min-width: clamp(120px, 11vw, 160px);
+  font-size: clamp(15px, 1.35vw, 19px);
   font-weight: 800;
   text-align: center;
 }
 
 .cal__arrow {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   flex: none;
   border-radius: 50%;
   border: 1px solid var(--gray-200);
   background: var(--white);
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
   color: var(--ink-800);
 }
@@ -303,12 +339,13 @@
 
 .cal__now {
   flex: none;
-  min-height: 36px;
-  padding: 8px 14px;
+  margin-left: auto;
+  min-height: 30px;
+  padding: 6px 13px;
   border-radius: var(--r-pill);
   border: 1px solid var(--gray-200);
   background: var(--white);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--ink-800);
 }
@@ -318,47 +355,54 @@
 .cal__grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: clamp(3px, .5vw, 6px);
-  margin-top: 14px;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 .cal__wd {
-  padding-bottom: 4px;
+  padding-bottom: 2px;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-weight: 600;
+  text-transform: capitalize;
   text-align: center;
   color: var(--gray-400);
 }
 
+/* Пустой день — белая клетка в тонкой рамке. Серая заливка на весь месяц
+   читалась как «здесь всё занято», хотя занято как раз наоборот. */
 .cal__day {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
-  aspect-ratio: 1;
-  border-radius: var(--r-md);
-  background: var(--gray-100);
-  color: var(--gray-500);
+  height: clamp(42px, 3.9vw, 56px);
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink-800);
   font-variant-numeric: tabular-nums;
 }
 
-.cal__day b { font-size: clamp(12px, 1.1vw, 15px); font-weight: 700; }
-.cal__day i { font-style: normal; font-size: clamp(8.5px, .75vw, 10.5px); line-height: 1; opacity: .85; }
+.cal__day b { font-size: clamp(12px, 1vw, 14px); font-weight: 700; }
+.cal__day i { font-style: normal; font-size: clamp(9px, .8vw, 11px); line-height: 1; opacity: .8; }
 
-/* Дни соседних месяцев: только число, приглушённое. */
-.cal__day.is-out { background: none; color: var(--gray-300); }
+/* Дни соседних месяцев: только число, приглушённое и без рамки. */
+.cal__day.is-out { background: none; border-color: transparent; color: var(--gray-300); }
 
-/* Три ступени зелёного: 1–9, 10–19 и 20+ минут. */
-.cal__day.is-l1 { background: #e4f7ed; color: var(--green-600); }
-.cal__day.is-l2 { background: #a9e6c6; color: #1c7a4e; }
-.cal__day.is-l3 { background: var(--green-500); color: var(--white); }
+/* Три ступени зелёного: 1–9, 10–19 и 20+ минут. Текст везде зелёный —
+   насыщенность заливки и так показывает, где день был длиннее. */
+.cal__day.is-l1 { background: #eaf9f1; border-color: #cdeedd; color: #2b8f60; }
+.cal__day.is-l2 { background: #c6efd9; border-color: #a3e2c0; color: #1c7a4e; }
+.cal__day.is-l3 { background: #8fe0b5; border-color: #6ed6a0; color: #106039; }
 
-.cal__day.is-today { outline: 2px solid var(--pink-500); outline-offset: 1px; }
+.cal__day.is-today {
+  background: var(--pink-50);
+  border-color: var(--pink-500);
+  color: var(--pink-600);
+}
 
-.dash__aside { display: flex; flex-direction: column; gap: clamp(12px, 1.4vw, 18px); }
+.dash__aside { display: flex; flex-direction: column; gap: clamp(10px, 1.2vw, 14px); }
 
 /* ——— Карточка «Сегодня» ——— */
 .today {
@@ -366,134 +410,203 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: clamp(16px, 1.8vw, 24px);
-  border-radius: 20px;
+  padding: clamp(14px, 1.6vw, 20px);
+  border-radius: 18px;
   background: var(--pink-50);
 }
 
-.today__title { font-size: clamp(15px, 1.4vw, 19px); font-weight: 800; }
+.today__top { display: flex; align-items: center; gap: 8px; }
 
-.today__ring { position: relative; display: grid; place-items: center; margin-top: 12px; }
+.today__title { font-size: clamp(14px, 1.2vw, 15px); font-weight: 700; }
 
-.ring { width: clamp(104px, 9vw, 132px); height: clamp(104px, 9vw, 132px); }
+.today__pill {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--white);
+  color: var(--pink-600);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.today__ring { position: relative; display: grid; place-items: center; margin-top: 10px; }
+
+.ring { display: block; width: clamp(108px, 9.5vw, 132px); height: clamp(108px, 9.5vw, 132px); }
+
+/* Число с подписью — внутри кольца: середина не должна пустовать. */
+.today__center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 66%;
+}
 
 .today__num {
-  position: absolute;
   font-family: var(--font-head);
-  font-size: clamp(28px, 2.6vw, 38px);
+  font-size: clamp(28px, 2.5vw, 36px);
   font-weight: 800;
+  line-height: 1.05;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
-.today__unit { margin-top: 8px; font-size: clamp(13px, 1.1vw, 15px); font-weight: 600; }
+.today__unit { margin-top: 2px; font-size: 11px; line-height: 1.2; color: var(--gray-600); }
 
 .today__note {
-  margin-top: 8px;
-  font-size: clamp(12px, 1vw, 14px);
+  margin-top: 10px;
+  font-size: clamp(12px, 1vw, 13px);
   line-height: 1.4;
   color: var(--gray-600);
 }
 
-.today__cta { width: 100%; margin-top: 14px; }
+/* Кнопка «Влиться в поток»: тёплый градиент от розового к оранжевому. */
+.today__cta {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: var(--grad-warm);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(240, 23, 127, .26);
+}
 
 /* ——— Рекорд ——— */
 .record {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: clamp(14px, 1.6vw, 20px) clamp(16px, 1.8vw, 22px);
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
   border: 1px solid var(--gray-200);
-  border-radius: 20px;
+  border-radius: 18px;
+  background: var(--white);
 }
 
-.record__label { font-size: clamp(12px, 1vw, 14px); color: var(--gray-500); }
+.record__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff2cf;
+  color: var(--amber-600);
+}
+
+.record__body { display: flex; flex-direction: column; min-width: 0; }
+
+.record__label { font-size: 12px; line-height: 1.25; color: var(--gray-500); }
 
 .record__value {
   font-family: var(--font-head);
-  font-size: clamp(24px, 2.4vw, 34px);
+  font-size: clamp(16px, 1.35vw, 18px);
   font-weight: 800;
+  line-height: 1.2;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
-.record__value i { font-style: normal; font-size: .5em; font-weight: 700; color: var(--gray-500); }
-.record__note { font-size: clamp(11.5px, 1vw, 13.5px); color: var(--gray-400); }
+.record__value i { font-style: normal; font-size: .62em; font-weight: 700; color: var(--gray-500); }
+.record__note { font-size: 12px; line-height: 1.25; color: var(--gray-400); }
+
+.record__arrow { flex: none; font-size: 20px; line-height: 1; color: var(--gray-300); }
 
 /* ——— Блоки со своим заголовком ——— */
-.dash__block { margin-top: clamp(20px, 2.4vw, 32px); }
+.dash__block { margin-top: clamp(16px, 1.8vw, 24px); }
 
 .dash__block-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 
-.dash__block-title { font-size: clamp(17px, 1.7vw, 23px); font-weight: 800; }
+.dash__block-title { font-size: clamp(15px, 1.5vw, 19px); font-weight: 800; }
 
 .dash__more {
   flex: none;
-  font-size: clamp(12.5px, 1.05vw, 14.5px);
+  font-size: 13px;
   font-weight: 600;
   color: var(--pink-600);
 }
 
-.dash__empty { margin-top: 12px; font-size: 14.5px; color: var(--gray-500); }
+.dash__empty { margin-top: 10px; font-size: 13.5px; color: var(--gray-500); }
 
 /* ——— Недели ——— */
 .dash__weeks {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, .8fr);
+  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
   align-items: center;
-  gap: clamp(12px, 1.8vw, 28px);
-  margin-top: 16px;
+  gap: clamp(12px, 1.6vw, 24px);
+  margin-top: 12px;
 }
 
 .weeks {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(10px, 1.4vw, 22px);
+  gap: clamp(8px, 1.2vw, 18px);
   align-items: end;
-  height: clamp(130px, 15vh, 175px);
+  height: clamp(132px, 11.5vw, 158px);
 }
 
+/* Верхняя дорожка — про запас под подпись самого высокого столбика:
+   она висит над ним и без этого зазора вылезла бы за график. */
 .weeks__col {
+  display: grid;
+  grid-template-rows: 42px minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: 5px;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Столбик и его подпись отмеряют одну и ту же долю --h от высоты графика,
+   поэтому «48 мин» всегда стоит ровно на макушке своего столбика. */
+.weeks__plot { grid-row: 2; position: relative; width: 100%; }
+
+.weeks__cap {
+  position: absolute;
+  left: 50%;
+  bottom: max(var(--h), 6px);
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  height: 100%;
-  justify-content: flex-end;
-  min-width: 0;
+  gap: 3px;
+  padding-bottom: 5px;
 }
 
 .weeks__value {
   font-family: var(--font-head);
-  font-size: clamp(13px, 1.2vw, 16px);
-  font-weight: 800;
-  color: var(--gray-500);
+  font-size: clamp(11.5px, 1.05vw, 13px);
+  font-weight: 700;
+  color: var(--gray-600);
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .weeks__bar {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
   width: 100%;
   max-width: 56px;
-  min-height: 8px;
-  border-radius: 12px 12px 4px 4px;
+  height: var(--h);
+  min-height: 6px;
+  border-radius: 14px 14px 6px 6px;
   background: var(--pink-200);
 }
 
-.weeks__bar.is-now { background: var(--grad-warm); }
+/* Тёплый градиент — у лучшей недели: она и есть новость этого графика. */
+.weeks__bar.is-best { background: var(--grad-warm); }
 
-/* Бейдж изменения сидит на столбике последней завершённой недели. */
+/* Бейдж роста стоит над значением лучшей недели. */
 .weeks__badge {
-  position: absolute;
-  top: -11px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 3px 8px;
+  padding: 2px 7px;
   border-radius: var(--r-pill);
   background: var(--green-500);
   color: var(--white);
   font-family: var(--font-head);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   white-space: nowrap;
   box-shadow: 0 4px 10px rgba(70, 201, 139, .3);
@@ -502,87 +615,112 @@
 .weeks__badge.is-down { background: var(--gray-400); box-shadow: none; }
 
 .weeks__label {
-  font-size: clamp(10px, .9vw, 12px);
+  grid-row: 3;
+  font-size: clamp(10px, .85vw, 11px);
   color: var(--gray-400);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
+/* ——— Заметка про недели ——— */
 .dash__hint {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: clamp(14px, 1.6vw, 20px);
-  border-radius: 20px;
+  padding: clamp(12px, 1.4vw, 18px) clamp(13px, 1.5vw, 20px);
+  border-radius: 16px;
   background: #fff8e3;
-  font-size: clamp(12.5px, 1.1vw, 15px);
-  line-height: 1.5;
-  color: var(--gray-600);
 }
 
-.dash__hint-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #ffeeb8;
-  color: var(--amber-600);
+.dash__hint-art { display: block; width: clamp(96px, 8.6vw, 124px); height: auto; margin-bottom: 8px; }
+
+.dash__hint-title {
+  font-size: clamp(12.5px, 1.1vw, 14px);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink-800);
 }
 
-/* ——— Награды ——— */
+.dash__hint-text { margin-top: 4px; font-size: 12px; line-height: 1.35; color: var(--gray-500); }
+
+/* ——— Награды ———
+   Все шесть в один ряд: это витрина, а не список задач, и полосой она
+   читается одним взглядом. */
 .awards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(10px, 1.2vw, 16px);
-  margin-top: 16px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(8px, .9vw, 12px);
+  margin-top: 12px;
 }
 
 .award {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: clamp(14px, 1.6vw, 20px);
+  align-items: center;
+  text-align: center;
+  gap: 3px;
+  min-height: 150px;
+  padding: 13px 9px 12px;
   border: 1px solid var(--gray-200);
-  border-radius: 20px;
-  /* Неполученные — приглушённые, но читаемые: это цель, а не запрет. */
-  opacity: .55;
+  border-radius: 16px;
+  background: var(--white);
 }
-
-.award.is-done { opacity: 1; border-color: var(--pink-100); background: var(--pink-50); }
 
 .award__icon {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  margin-bottom: 8px;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 5px;
   border-radius: 50%;
+  /* Незаработанная — серая: цель, а не запрет. */
   background: var(--gray-100);
+  color: var(--gray-400);
+}
+
+.award__title {
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
   color: var(--gray-500);
 }
 
-.award.is-done .award__icon { background: var(--grad-warm); color: var(--white); }
+/* Описание держим в двух строках, иначе карточки в ряду разъезжаются. */
+.award__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--gray-400);
+}
 
-.award__title { font-family: var(--font-head); font-size: clamp(14px, 1.2vw, 16.5px); font-weight: 800; }
-.award__text { font-size: clamp(11.5px, 1vw, 13.5px); line-height: 1.35; color: var(--gray-500); }
+.award.is-done .award__title { color: var(--ink-900); }
+.award.is-done .award__text { color: var(--gray-500); }
 
+/* Свой цвет знака — только у полученной награды. */
+.award.is-done.award--green  .award__icon { background: #e4f7ed;           color: var(--green-600); }
+.award.is-done.award--orange .award__icon { background: var(--orange-100); color: var(--orange-600); }
+.award.is-done.award--amber  .award__icon { background: #fff2cf;           color: var(--amber-600); }
+.award.is-done.award--blue   .award__icon { background: #e2f1ff;           color: var(--blue-600); }
+.award.is-done.award--pink   .award__icon { background: var(--pink-100);   color: var(--pink-600); }
+
+/* Дата и полоска прижаты к низу: у карточек разной длины подписи низ общий. */
 .award__date {
-  margin-top: 8px;
-  font-size: clamp(11.5px, 1vw, 13px);
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--pink-600);
 }
 
-.award__progress { width: 100%; margin-top: 10px; }
-.award__count { font-size: 12px; font-weight: 700; color: var(--gray-500); font-variant-numeric: tabular-nums; }
+.award__progress { width: 100%; margin-top: auto; padding-top: 8px; }
+.award__count { font-size: 11px; font-weight: 700; color: var(--gray-500); font-variant-numeric: tabular-nums; }
 
 .award__bar {
   display: block;
-  height: 5px;
-  margin-top: 5px;
+  height: 4px;
+  margin-top: 4px;
   border-radius: var(--r-pill);
   background: var(--gray-100);
   overflow: hidden;
@@ -593,18 +731,18 @@
 /* ——— Потоки ——— */
 .flows {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: clamp(10px, 1.2vw, 16px);
-  margin-top: 16px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(8px, 1vw, 14px);
+  margin-top: 12px;
 }
 
 .flow {
   position: relative;
   display: flex;
   align-items: flex-end;
-  height: 132px;
-  padding: 14px;
-  border-radius: 20px;
+  height: clamp(104px, 8.5vw, 120px);
+  padding: 12px;
+  border-radius: 14px;
   overflow: hidden;
   color: var(--white);
   background: var(--card-grad);
@@ -642,11 +780,12 @@
   background: linear-gradient(180deg, rgba(20, 22, 26, 0) 34%, rgba(20, 22, 26, .8) 100%);
 }
 
-.flow__body { position: relative; display: flex; flex-direction: column; gap: 2px; z-index: 1; }
-.flow__title { font-family: var(--font-head); font-size: 17px; font-weight: 800; }
-.flow__nums { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; }
-.flow__nums b { font-size: 15px; font-weight: 800; }
-.flow__nums span { opacity: .9; }
+.flow__body { position: relative; display: flex; flex-direction: column; gap: 2px; z-index: 1; min-width: 0; }
+.flow__title { font-family: var(--font-head); font-size: 14px; font-weight: 700; }
+.flow__nums { display: flex; align-items: baseline; gap: 5px; font-size: 12px; }
+.flow__nums b { font-weight: 700; }
+.flow__nums i { font-style: normal; opacity: .7; }
+.flow__nums span { opacity: .9; white-space: nowrap; }
 
 @media (hover: hover) {
   .dash__nav-item:hover { background: var(--gray-100); color: var(--ink-900); }
@@ -655,16 +794,21 @@
   .cal__arrow:not(:disabled):hover,
   .cal__now:not(:disabled):hover { border-color: var(--gray-300); }
   .dash__promo-btn:hover { box-shadow: 0 10px 22px rgba(240, 23, 127, .36); }
+  .today__cta:hover { box-shadow: 0 10px 22px rgba(240, 23, 127, .34); }
   .dash__more:hover { color: var(--pink-700); }
 }
 
-/* Палец меньше курсора: стрелки календаря, «Сегодня» и «Смотреть все»
-   получают гарантированные 44 px. Условия те же, что у .btn в global.css. */
+/* Палец меньше курсора: пункты меню, стрелки календаря, «Сегодня» и
+   «Смотреть все» получают гарантированные 44 px. Условия те же, что
+   у .btn в global.css. */
 @media (max-width: 1023.98px),
        (pointer: coarse),
        (max-width: 1179.98px) and (orientation: portrait) {
+  .dash__nav-item { min-height: 44px; }
+  .dash__back { min-height: 44px; }
   .cal__arrow { width: 44px; height: 44px; }
   .cal__now { min-height: 44px; }
+  .dash__promo-btn { min-height: 44px; }
   .dash__more { display: inline-flex; align-items: center; min-height: 44px; }
 }
 
@@ -698,7 +842,7 @@
 
   .dash__nav::-webkit-scrollbar { display: none; }
   .dash__nav > li { flex: none; }
-  .dash__nav-item { padding: 10px 12px; font-size: 14px; white-space: nowrap; }
+  .dash__nav-item { padding: 10px 12px; white-space: nowrap; }
 
   .dash__back { grid-column: 1; }
   .dash__promo,
@@ -715,25 +859,28 @@
   .dash__promo-btn { margin-top: 0; flex: none; padding: 10px 18px; }
 
   .dash__cols { grid-template-columns: minmax(0, 1fr); }
-  .dash__aside { flex-direction: row; }
+  .dash__aside { flex-direction: row; align-items: stretch; }
   .today, .record { flex: 1 1 0; }
-  .record { justify-content: center; }
+
+  /* Награды и потоки по трое: шестёрка в ряд тут уже нечитаема. */
+  .awards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .flows { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   До 900: показатели 2×2, награды в два столбца, фото прячем.
+   До 900: показатели 2×2, недели в столбик, фото прячем.
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 899.98px) {
-  .dash__head { grid-template-columns: minmax(0, 1fr); }
+  .dash__head { grid-template-columns: minmax(0, 1fr); min-height: 0; }
   .dash__visual { display: none; }
 
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .awards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dash__weeks { grid-template-columns: minmax(0, 1fr); }
+  .flows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   До 640: телефон. Всё в столбик, календарь плотнее.
+   До 640: телефон. Календарь плотнее, награды по двое.
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 639.98px) {
   .dash {
@@ -742,7 +889,7 @@
       calc(20px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
   }
 
-  .dash__card { padding: 18px 14px 22px; border-radius: 22px; }
+  .dash__card { padding: 16px 12px 20px; border-radius: 20px; }
 
   .dash .logo__word { font-size: 17px; }
   .dash .logo__tagline { display: none; }
@@ -751,47 +898,38 @@
   .dash__promo { flex-direction: column; align-items: stretch; }
   .dash__promo-btn { width: 100%; }
 
-  .cal { padding: 14px 12px; }
+  /* Знак ужимаем: иначе на 320 px подписи остаётся полоска в два слова. */
+  .tile { grid-template-columns: 34px minmax(0, 1fr); gap: 9px; padding: 10px; min-height: 82px; }
+  .tile__icon { width: 34px; height: 34px; }
+  .tile__icon svg { width: 17px; height: 17px; }
+  .tile__label { font-size: 11.5px; }
+  .tile__note { font-size: 11px; }
+
+  .cal { padding: 12px 10px; }
   /* Заголовок в одну строку: с двумя стрелками и «Сегодня» на 320 px
      «Сентябрь 2026» иначе ломается пополам. */
-  .cal__month { font-size: 15px; white-space: nowrap; }
+  .cal__month { min-width: 0; font-size: 15px; white-space: nowrap; }
   .cal__top { gap: 4px; }
   .cal__now { padding: 8px 10px; font-size: 12px; }
   .cal__grid { gap: 3px; }
   /* «12 мин» под числом на 320 px уже не читается — оставляем заливку. */
+  .cal__day { height: 40px; }
   .cal__day i { display: none; }
 
   .dash__aside { flex-direction: column; }
 
   .weeks { gap: 8px; height: 120px; }
-  .weeks__label { font-size: 9.5px; }
 
-  /* Награда в строку: знак слева, название и описание справа, а дата или
-     полоска прогресса — во всю ширину под ними. */
-  .awards { grid-template-columns: minmax(0, 1fr); }
+  .awards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .award { min-height: 142px; }
 
-  .award {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    align-items: center;
-    gap: 2px 12px;
-    padding: 14px;
-  }
-
-  .award__icon { grid-row: 1 / span 2; margin-bottom: 0; }
-  .award__title,
-  .award__text { grid-column: 2; }
-  .award__date,
-  .award__progress { grid-column: 1 / -1; margin-top: 8px; }
-
-  .flows { grid-template-columns: minmax(0, 1fr); }
-  .flow { height: 116px; }
+  .flow { height: 100px; padding: 10px; }
 }
 
 /* Совсем узкие экраны: заголовку месяца, двум стрелкам и «Сегодня» в одну
    строку места нет — название уходит на свою строку. */
 @media (max-width: 399.98px) {
   .cal__top { flex-wrap: wrap; }
-  .cal__month { order: -1; flex: 1 0 100%; text-align: left; margin-bottom: 6px; }
+  .cal__pager { flex: 1 0 100%; justify-content: space-between; margin-bottom: 6px; }
   .cal__now { margin-left: auto; }
 }

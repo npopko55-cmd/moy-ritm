@@ -347,3 +347,53 @@ export const Calendar = ({ size = 20, className }: I) => (
     <circle cx="15.6" cy="14" r="1.15" fill="currentColor" />
   </svg>
 )
+
+/** Огонёк — «текущая серия»: сколько дней подряд человек не сходит с ритма. */
+export const Flame = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M12.4 2.2c.3 2.4 1.5 3.8 2.9 5.2 1.4 1.4 2.8 2.9 2.8 5.4a6.1 6.1 0 1 1-12.2 0c0-1.4.4-2.7 1.3-3.8.3 1 .9 1.7 1.7 2-.5-3.3.8-6.4 3.5-8.8Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12 20.2a2.9 2.9 0 0 1-2.9-2.9c0-1.5 1.1-2.4 1.9-3.4.6.9 1.2 1.3 2 1.5.6.9.9 1.7.9 2.5a2.8 2.8 0 0 1-1.9 2.3Z"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** Столбики — «в среднем в день»: тот же знак, что и у графика недель. */
+export const Bars = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M6.4 19.4v-6.2M12 19.4V6.2M17.6 19.4v-3.8"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+    />
+  </svg>
+)
+
+/** Кубок — карточка «Твой рекорд». */
+export const Trophy = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M7.2 3.8h9.6v5.4a4.8 4.8 0 0 1-9.6 0V3.8Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M7.2 5.6H5.1a1.9 1.9 0 0 0 0 3.8h2.5M16.8 5.6h2.1a1.9 1.9 0 0 1 0 3.8h-2.5"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M12 14v3.2M8.8 20.2h6.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+)
