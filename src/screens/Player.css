@@ -561,6 +561,10 @@
      Ширину колонки ограничивает 100% в базовом правиле. */
   .player__stage { --stage-pad: 12px; }
 
+  /* Колонке потоков на 650 px высоты тесно — блок разблокировки ужимаем. */
+  .side__unlock .unlock { gap: 6px; padding: 10px 12px; }
+  .side__unlock .unlock__cta { padding: 5px 14px; }
+
   .stat { padding: 10px 14px; }
   .stat__big { font-size: clamp(30px, 6.4vh, 44px); margin: 4px 0 8px; }
   .stat__mid { font-size: clamp(24px, 5vh, 36px); }
