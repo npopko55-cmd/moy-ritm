@@ -1,12 +1,18 @@
 /**
  * «Нужна помощь?» (раздел 5.4 архитектуры).
  *
- * FAQ — статика фронтенда, бэкенду он не нужен. Обращение принимает
- * POST /support/requests, и оно требует входа: почту, тариф и срок доступа
- * сервер подставляет сам, подделать их нельзя.
+ * Главный способ связи — Telegram Димы. Это решение владельца, и оно
+ * опирается на факт: ящика поддержки пока не существует, а письма с сервера
+ * не уходят вовсе (MAIL_BACKEND=console). Поэтому кнопка «Написать в
+ * Telegram» стоит первой и видна **и гостю**: адрес есть в me.support, но
+ * гостю me недоступен, и тогда берётся константа из data/support.
  *
- * Контакты приходят только в me.support, то есть тоже после входа. Поэтому
- * гостю показываем FAQ и приглашение войти, а не пустые кнопки.
+ * FAQ — статика фронтенда, бэкенду он не нужен.
+ *
+ * Форма обращения — второй способ. Она принимается POST /support/requests и
+ * требует входа: почту, тариф и срок доступа сервер подставляет сам. Пока
+ * почта молчит, обращение просто ложится в базу, поэтому подпись у формы
+ * честная — без обещания срока ответа.
  */
 
 import { useState } from 'react'
@@ -15,6 +21,8 @@ import { api } from '../api/client'
 import type { SupportTopic } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { nextParam } from '../auth/guards'
+import { Telegram } from '../components/Icons'
+import { realSupportEmail, TELEGRAM_URL } from '../data/support'
 import { errorText, FormError, FormOk } from './Account'
 import PageShell, { Card, Row } from './Page'
 import './Account.css'
@@ -63,12 +71,31 @@ const FAQ = [
 
 export default function Help() {
   const { me } = useSession()
+  // Профиль важнее константы: адрес меняется на сервере, а не выкладкой
+  // фронтенда. Константа — запасной вариант для гостя, у которого me нет.
+  const telegram = me?.support.telegram_url || TELEGRAM_URL
+  const email = realSupportEmail(me?.support.email)
 
   return (
     <PageShell
       title="Нужна помощь?"
-      lead="Сначала короткие ответы — скорее всего, ваш вопрос здесь. Если нет, напишите нам."
+      lead="Быстрее всего — написать нам в Telegram. Ниже короткие ответы на частые вопросы: возможно, ваш уже там."
     >
+      <Card
+        title="Написать в Telegram"
+        text="Отвечает живой человек. Это основной способ связи с нами."
+      >
+        <a
+          className="btn btn--pink-lg help__tg"
+          href={telegram}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Telegram size={22} />
+          Написать в Telegram
+        </a>
+      </Card>
+
       <Card title="Частые вопросы">
         <div className="faq">
           {FAQ.map((item) => (
@@ -82,36 +109,29 @@ export default function Help() {
 
       {me ? (
         <>
-          <Card title="Написать нам" text={`Ответим на ${me.user.email}. Тариф и срок доступа подставим сами.`}>
-            <SupportForm email={me.user.email} />
+          <Card
+            title="Или оставить обращение"
+            text="Ответим в Telegram или на почту профиля. Тариф и срок доступа подставим сами."
+          >
+            <SupportForm />
           </Card>
 
-          <Card title="Другие способы">
-            <Row label="Почта поддержки" hint={me.support.email}>
-              <a className="page__btn" href={`mailto:${me.support.email}`}>
-                Написать письмо
-              </a>
-            </Row>
-            {me.support.telegram_url && (
-              <Row label="Telegram" hint="Ответим там же, где вам удобнее.">
-                <a
-                  className="page__btn"
-                  href={me.support.telegram_url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Открыть Telegram
+          {email && (
+            <Card title="Другие способы">
+              <Row label="Почта поддержки" hint={email}>
+                <a className="page__btn" href={`mailto:${email}`}>
+                  Написать письмо
                 </a>
               </Row>
-            )}
-          </Card>
+            </Card>
+          )}
         </>
       ) : (
-        <Card title="Написать нам">
+        <Card title="Или оставить обращение">
           <div className="page__empty">
             <p>
-              Войдите, чтобы написать нам: так мы сразу увидим вашу почту и тариф и не будем
-              переспрашивать.
+              Войдите, чтобы оставить обращение: так мы сразу увидим вашу почту и тариф и не будем
+              переспрашивать. Написать в Telegram можно и без входа.
             </p>
             <Link className="btn btn--pink-lg" to={`/login${nextParam('/help')}`}>
               Войти
@@ -123,7 +143,7 @@ export default function Help() {
   )
 }
 
-function SupportForm({ email }: { email: string }) {
+function SupportForm() {
   const [topic, setTopic] = useState<SupportTopic>('other')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
@@ -140,7 +160,9 @@ function SupportForm({ email }: { email: string }) {
     setBad('')
     try {
       const res = await api.supportRequest(topic, text)
-      setOk(`Отправлено, ответим на ${email}. Номер обращения — ${res.id}`)
+      // Про срок ответа молчим: письма с сервера не уходят, обращение
+      // читает человек. Обещать «ответим за час» было бы неправдой.
+      setOk(`Отправлено. Номер обращения — ${res.id}`)
       setMessage('')
     } catch (e) {
       setBad(errorText(e))

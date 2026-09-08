@@ -14,6 +14,7 @@
 
 import { loopSrc } from '../data/loops'
 import { STREAMS } from '../data/streams'
+import { PLACEHOLDER_EMAIL, TELEGRAM_URL } from '../data/support'
 import { TARIFFS } from '../data/tariffs'
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
 import {
@@ -563,7 +564,9 @@ export function createDemoApi(): Api {
       settings: read<Settings>(`settings.${user.email}`, DEFAULT_SETTINGS),
       access: accessInfo(user.email),
       totals: aggregate(user.email).totals,
-      support: { email: 'support@ritmritm.ru', telegram_url: null },
+      // Тот же Telegram, что и на боевом сервере: демо-режим должен
+      // показывать страницу помощи ровно так же, как настоящий вход.
+      support: { email: PLACEHOLDER_EMAIL, telegram_url: TELEGRAM_URL },
     }
   }
 

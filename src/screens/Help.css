@@ -88,3 +88,22 @@
   font-variant-numeric: tabular-nums;
 }
 
+
+/* — Кнопка «Написать в Telegram» —
+   Значок и подпись в одну строку; на узком экране кнопка во всю ширину,
+   чтобы попасть пальцем было некуда мимо. */
+.help__tg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  /* Основная кнопка проекта сдвинута вправо под стрелку; здесь слева значок,
+     поэтому отступы выравниваем. */
+  padding-left: 24px;
+  margin-top: 4px;
+  text-decoration: none;
+}
+
+@media (max-width: 560px) {
+  .help__tg { display: flex; width: 100%; }
+}

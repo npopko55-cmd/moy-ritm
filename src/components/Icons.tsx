@@ -405,3 +405,19 @@ export const Trophy = ({ size = 20, className }: I) => (
     <path d="M12 14v3.2M8.8 20.2h6.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 )
+
+/**
+ * Telegram — кнопка «Написать в Telegram» на странице помощи.
+ *
+ * Заливка, а не обводка: это знак чужого сервиса, его узнают по силуэту
+ * бумажного самолётика. Цвет берётся у кнопки (currentColor), поэтому на
+ * розовой кнопке значок белый, а в тексте — цвета текста.
+ */
+export const Telegram = ({ size = 22, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M21.3 4.3 2.9 11.4c-.9.35-.86 1.65.06 1.94l4.6 1.45 1.75 5.3c.25.75 1.2.95 1.73.37l2.5-2.7 4.6 3.38c.63.46 1.53.12 1.7-.65l3.1-14.4c.18-.83-.63-1.5-1.4-1.19Z"
+      fill="currentColor"
+    />
+  </svg>
+)
