@@ -29,11 +29,13 @@ cp .env.example .env.local     # VITE_API_URL=http://localhost:8000/api/v1
 
 Переменные читаются при старте dev-сервера — после правки перезапустите его.
 
-Сборка с настоящим API:
+Сборка для боевого сервера (сайт и API на одном домене):
 
 ```bash
-VITE_API_URL=https://api.ritmritm.ru/api/v1 GITHUB_PAGES=true npm run build
+VITE_API_URL=https://ritmritm.ru/api/v1 npm run build
 ```
+
+Этим занимается `scripts/deploy-server.sh` — см. «Деплой».
 
 **Без `VITE_API_URL` включается демо-режим** (`src/api/demo.ts`): регистрация,
 вход, тарифы, «оплата» и статистика живут в `localStorage` этого браузера.
@@ -205,8 +207,45 @@ public/loops/      готовые ролики (webm + mp4)
 
 ## Деплой
 
-Сайт публикуется на GitHub Pages автоматически: любой push в `main` запускает
+Мест два, и они не связаны между собой.
+
+### Боевой сервер — `ritmritm.ru`
+
+Настоящий сайт с настоящим бэкендом. Статику отдаёт nginx из `/opt/moyritm/www`
+на той же машине, где живёт API, поэтому адрес API — `/api/v1` того же домена:
+так cookie refresh-токена остаётся однодоменной, а CORS вообще не участвует.
+
+```bash
+scripts/deploy-server.sh                      # собрать и выложить
+DRY_RUN=1 scripts/deploy-server.sh            # посмотреть, что изменится
+SERVER=root@1.2.3.4 scripts/deploy-server.sh  # на другой хост
+```
+
+Скрипт сам собирает проект с `VITE_API_URL=https://ritmritm.ru/api/v1` (без
+`GITHUB_PAGES`), проверяет сборку и синхронизирует `dist/` в
+`/opt/moyritm/www` с `--delete`. Проверки не косметические: они не дают уехать
+на сервер сборке с базой `/moy-ritm/` или с адресом `localhost:8000` в бандле —
+обе выглядят как «сайт открылся, но ничего не работает».
+
+Разложить руками, если нужно:
+
+```bash
+VITE_API_URL=https://ritmritm.ru/api/v1 npm run build
+rsync -az --delete dist/ root@ritmritm.ru:/opt/moyritm/www/
+```
+
+Проверить после выкладки:
+
+```bash
+curl -sI https://ritmritm.ru/ | head -3
+curl -s  https://ritmritm.ru/api/v1/health
+```
+
+### GitHub Pages — витрина
+
+Демо без бэкенда. Публикуется автоматически: любой push в `main` запускает
 `.github/workflows/deploy.yml`, который собирает проект и выкладывает `dist/`.
+Выкладка на свой сервер Pages не трогает и наоборот.
 
 Две особенности подпапки `/moy-ritm/`, о которых стоит помнить при правках:
 
