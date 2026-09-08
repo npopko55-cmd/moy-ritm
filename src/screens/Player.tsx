@@ -675,6 +675,9 @@ export default function Player() {
           </h1>
         </header>
 
+        {/* Круг и кнопка паузы лежат в одной обёртке: от неё считается и
+            угол квадрата, и строка под кругом. */}
+        <div className="stage__area">
         <div className="stage__figure">
           <svg className="stage__ring" viewBox="0 0 400 400" aria-hidden="true">
             <defs>
@@ -718,22 +721,24 @@ export default function Player() {
           <FloatNote size={30} className="stage__note stage__note--a" />
           <MusicNote size={24} className="stage__note stage__note--b" />
           <Sparkle size={15} className="stage__note stage__note--c" />
+        </div>
 
-          {/*
-            Пауза лежит в правом нижнем углу квадрата, в который вписан круг:
-            угол всё равно пустой, поэтому кнопка не отнимает у круга ни
-            пикселя. Подпись слева от кнопки — снизу её было бы негде разместить.
-          */}
-          <div className="stage__pause">
-            <span>{playing ? 'Пауза' : 'Играть'}</span>
-            <button
-              className="ctrl ctrl--main"
-              onClick={() => setPlaying((p) => !p)}
-              aria-label={playing ? 'Пауза' : 'Играть'}
-            >
-              {playing ? <Pause size={30} /> : <Play size={30} />}
-            </button>
-          </div>
+        {/*
+          Пауза: на большом круге — в правом нижнем углу квадрата, в который
+          он вписан (угол всё равно пустой, и кнопка не отнимает у круга ни
+          пикселя), на маленьком — отдельной строкой под кругом. Выбирает
+          размещение CSS по размеру окна, разметка одна и та же.
+        */}
+        <div className="stage__pause">
+          <span>{playing ? 'Пауза' : 'Играть'}</span>
+          <button
+            className="ctrl ctrl--main"
+            onClick={() => setPlaying((p) => !p)}
+            aria-label={playing ? 'Пауза' : 'Играть'}
+          >
+            {playing ? <Pause size={30} /> : <Play size={30} />}
+          </button>
+        </div>
         </div>
       </main>
 
