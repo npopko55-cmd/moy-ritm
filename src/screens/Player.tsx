@@ -900,8 +900,6 @@ export default function Player() {
               <strong className="stat__mid">~{sessionSteps}</strong>
               <span>за эту сессию</span>
             </span>
-            {/* Кольцо осталось индикатором: сколько ещё крутится это движение. */}
-            <Donut value={1 - moveProgress} small />
           </div>
         </section>
 
