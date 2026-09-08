@@ -25,6 +25,7 @@ import Unlock from '../components/Unlock'
 import { STREAMS, getStream } from '../data/streams'
 import { loopPoster, loopSrc, stepRate, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
+import { useFlow, type FlowSession } from '../flow/FlowSession'
 import { createChunkQueue, uuid, type ChunkQueue } from '../lib/chunks'
 import { createDeck, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
@@ -105,6 +106,22 @@ export default function Player() {
   const stream = getStream(streamId)
   const { access, me, reload } = useSession()
 
+  /* ─────────────  Продолжение начатой тренировки  ───────────── */
+
+  const { session: flow, begin: beginFlow, save: saveFlow, finish: finishFlow } = useFlow()
+
+  /**
+   * Снимок сохранённой тренировки — берётся ОДИН раз, в первом рендере.
+   *
+   * Дальше состояние ведёт сам плеер и каждую секунду переписывает
+   * сохранённое; читать его снова означало бы возвращаться назад.
+   */
+  const resumeRef = useRef<FlowSession | null | undefined>(undefined)
+  if (resumeRef.current === undefined) {
+    resumeRef.current = flow && flow.streamId === stream.id ? flow : null
+  }
+  const resume = resumeRef.current
+
   // Плашка о конце доступа: строкой в колонке, а не всплывающим окном.
   const notice =
     access?.status === 'expiring'
@@ -133,8 +150,8 @@ export default function Player() {
 
   // Счётчик смен движения. Не заворачивается по кругу нарочно: по его
   // чётности выбирается, какой из двух <video> сейчас на виду.
-  const [step, setStep] = useState(0)
-  const [inMove, setInMove] = useState(0)
+  const [step, setStep] = useState(() => resume?.moveIndex ?? 0)
+  const [inMove, setInMove] = useState(() => resume?.moveSeconds ?? 0)
   const [playing, setPlaying] = useState(true)
   // Вкладку свернули — движение не считается, даже если ролик крутится.
   const [visible, setVisible] = useState(() => document.visibilityState !== 'hidden')
@@ -150,10 +167,12 @@ export default function Player() {
   const [motivation, setMotivation] = useState(() => picker.next(0))
 
   // Секунды В ДВИЖЕНИИ в этой тренировке: с нуля при открытии плеера, на
-  // паузе не растут. Тот же счётчик продублирован в ref, чтобы обработчики
-  // кнопок читали свежее значение и не пересоздавались каждую секунду.
-  const [sessionSeconds, setSessionSeconds] = useState(0)
-  const sessionRef = useRef(0)
+  // паузе не растут. Возвращение в начатый заход подхватывает их с той
+  // секунды, на которой человек ушёл. Тот же счётчик продублирован в ref,
+  // чтобы обработчики кнопок читали свежее значение и не пересоздавались
+  // каждую секунду.
+  const [sessionSeconds, setSessionSeconds] = useState(() => resume?.sessionSeconds ?? 0)
+  const sessionRef = useRef(resume?.sessionSeconds ?? 0)
 
   // Шаги этой тренировки — их показывает экран паузы. Идут от того же
   // секундного тика, что и «В этой сессии», и по темпу текущего движения.
@@ -162,8 +181,8 @@ export default function Player() {
   // только при видимой вкладке: при паузе на восьмой секунде время было уже
   // 0:08, а шаги стояли на «~0». Здесь счётчики разъехаться не могут — у них
   // один источник секунд. Дробная часть копится в ref, округляем при показе.
-  const stepsRef = useRef(0)
-  const [sessionSteps, setSessionSteps] = useState(0)
+  const stepsRef = useRef(resume?.sessionSteps ?? 0)
+  const [sessionSteps, setSessionSteps] = useState(() => resume?.sessionSteps ?? 0)
 
   // Фразу меняем не чаще раза в секунду: смена движения и переход в новый
   // ярус времени могут совпасть, а прочитать фразу надо успеть.
@@ -201,7 +220,19 @@ export default function Player() {
    * колоду — иначе «следующее» менялось бы на каждом рендере.
    */
   const orderRef = useRef<{ deck: Deck<Loop>; list: Loop[] } | null>(null)
-  if (!orderRef.current) orderRef.current = { deck: createDeck(moves), list: [] }
+  if (!orderRef.current) {
+    // Возвращение в начатый заход: выданные движения восстанавливаем по
+    // сохранённому порядку, чтобы человек увидел ровно то, на чём ушёл.
+    // Незнакомый идентификатор обрывает восстановление — дальше колода
+    // сдаёт сама (набор движений мог измениться вместе с доступом).
+    const list: Loop[] = []
+    for (const id of resume?.deck ?? []) {
+      const found = moves.find((m) => m.id === id)
+      if (!found) break
+      list.push(found)
+    }
+    orderRef.current = { deck: createDeck(moves), list }
+  }
 
   const moveAt = (n: number): Loop => {
     const order = orderRef.current as { deck: Deck<Loop>; list: Loop[] }
@@ -284,10 +315,14 @@ export default function Player() {
     queueRef.current = q
     recount()
     return () => {
+      // Уход из плеера — та же пауза: кусок закрываем и отправляем сразу,
+      // и только потом снимаем таймеры очереди.
+      closeChunk()
+      q.flush()
       q.stop()
       queueRef.current = null
     }
-  }, [recount, reload])
+  }, [recount, reload, closeChunk])
 
   // Один кусок на движение. Уборка эффекта закрывает его при смене движения,
   // паузе, сворачивании вкладки и уходе с экрана.
@@ -511,6 +546,16 @@ export default function Player() {
     setMusicPlaying(playing)
   }, [playing, setMusicPlaying])
 
+  /**
+   * Уход из плеера тоже останавливает музыку: человек ушёл в меню, а не
+   * остался в потоке. Трек при этом не перематывается — вернувшись, он
+   * продолжится с той же секунды и с плавным входом.
+   *
+   * Ролики отдельно останавливать не нужно: вместе с плеером они уходят
+   * из DOM и замирают сами.
+   */
+  useEffect(() => () => setMusicPlaying(false), [setMusicPlaying])
+
   // Следующий ролик уже лежит во втором <video>, поэтому вперёд заглядываем
   // через один: к его очереди файл успеет докачаться.
   useEffect(() => {
@@ -553,18 +598,83 @@ export default function Player() {
     [],
   )
 
+  /* ─────────────  Сохранение тренировки  ───────────── */
+
+  // Шаг и секунды внутри движения — в ref: их читает обработчик ухода со
+  // страницы, а он не должен пересоздаваться каждую секунду.
+  const stepRef = useRef(step)
+  stepRef.current = step
+  const inMoveRef = useRef(inMove)
+  inMoveRef.current = inMove
+
+  /** «Вернусь позже» уже нажали — заход закончен, сохранять нечего. */
+  const ended = useRef(false)
+
+  /**
+   * Запомнить тренировку. pausedAt = null, пока плеер открыт; при уходе
+   * ставим время — с него пойдут те самые тридцать минут.
+   */
+  const store = useCallback(
+    (pausedAt: number | null) => {
+      if (ended.current) return
+      saveFlow({
+        streamId: stream.id,
+        sessionSeconds: sessionRef.current,
+        sessionSteps: Math.round(stepsRef.current),
+        deck: (orderRef.current?.list ?? []).map((l) => l.id),
+        moveIndex: stepRef.current,
+        moveSeconds: inMoveRef.current,
+        pausedAt,
+      })
+    },
+    [saveFlow, stream.id],
+  )
+
+  // Плеер открылся: продолжаем начатое или начинаем новый заход. Новый
+  // заход стирает прошлый — в том числе чужого потока.
+  useEffect(() => {
+    if (resume) store(null)
+    else beginFlow(stream.id)
+    // Ровно один раз на открытие плеера: дальше состояние ведут эффекты ниже.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Каждая пауза и каждая смена движения — повод переписать состояние.
+  useEffect(() => {
+    store(null)
+  }, [playing, step, store])
+
+  /**
+   * Уход из плеера: в меню, в прогресс, в настройки, перезагрузкой вкладки.
+   * Штампуем время паузы — тренировка ждёт возвращения полчаса, и всё это
+   * время кнопки зовут «Вернуться в поток».
+   */
+  useEffect(() => {
+    const leave = () => store(Date.now())
+    window.addEventListener('pagehide', leave)
+    return () => {
+      window.removeEventListener('pagehide', leave)
+      leave()
+    }
+  }, [store])
+
   /* ─────────────  Пауза  ───────────── */
 
   /**
    * «Вернусь позже»: закрываем открытый кусок, не ждём склейку — и уходим
    * на прогресс. Кусок уже в буфере, поэтому минуты этой тренировки там
    * будут даже если сеть ответит не сразу.
+   *
+   * Это единственный выход, который заканчивает тренировку: после него
+   * кнопка снова зовёт «Влиться в поток», а не «Вернуться».
    */
   const goLater = useCallback(() => {
+    ended.current = true
     closeChunk()
     queueRef.current?.flush()
+    finishFlow()
     navigate('/progress', { state: { from: stream.id } })
-  }, [closeChunk, navigate, stream.id])
+  }, [closeChunk, finishFlow, navigate, stream.id])
 
   // Пробел — та же пауза, что и кнопка. Когда в фокусе кнопка или поле,
   // пробел уже что-то значит для них: второй раз его перехватывать нельзя.

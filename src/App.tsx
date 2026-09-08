@@ -17,12 +17,16 @@ import Progress from './screens/Progress'
 import Help from './screens/Help'
 import { SessionProvider } from './auth/SessionProvider'
 import { RequireAuth } from './auth/guards'
+import { FlowProvider } from './flow/FlowSession'
 import { MusicProvider } from './music/MusicProvider'
 
 export default function App() {
   return (
     <SessionProvider>
       <MusicProvider>
+        {/* Тренировка живёт выше маршрутов: плеер размонтируется при уходе
+            в меню, а заход при этом не заканчивается. */}
+        <FlowProvider>
         <Routes>
           <Route path="/" element={<Landing />} />
 
@@ -100,6 +104,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </FlowProvider>
       </MusicProvider>
     </SessionProvider>
   )

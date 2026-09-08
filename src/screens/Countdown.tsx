@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { FloatNote, MusicNote, Sparkle } from '../components/Icons'
 import { STREAMS, getStream } from '../data/streams'
 import { loopPoster, loopSrc } from '../data/loops'
+import { useFlow } from '../flow/FlowSession'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
@@ -38,29 +39,51 @@ export default function Countdown() {
   const { streamId } = useParams()
   const [left, setLeft] = useState(START_FROM)
   const { start } = useMusic()
+  const { session: flow } = useFlow()
+
+  const target = streamId ?? 'cardio'
+
+  /**
+   * Тренировка этого потока уже идёт — отсчёта не будет.
+   *
+   * «Три… два… один…» перед стартом нужен, чтобы человек встал и
+   * приготовился. Тот, кто просто заглянул в прогресс и вернулся,
+   * приготовился полчаса назад: его пускаем в плеер сразу, и музыка
+   * продолжается с той же секунды, а не начинается заново.
+   *
+   * Другой поток — это новый заход: отсчёт на месте, а прошлую тренировку
+   * плеер закроет сам, когда откроется.
+   */
+  const resume = flow?.streamId === target
 
   // Музыка включается сразу на отсчёте, а не при появлении плеера.
-  useEffect(() => { start() }, [start])
+  useEffect(() => {
+    if (!resume) start()
+  }, [resume, start])
 
   // Три секунды отсчёта — единственная пауза, когда можно качать без спешки:
   // к открытию плеера фото, постеры и первые два ролика уже в кэше.
   useEffect(() => {
+    if (resume) return
     const stream = getStream(streamId)
     prefetchImages([
       ...STREAMS.map((s) => s.cover),
       ...stream.loops.map((l) => loopPoster(l.id)),
     ])
     prefetchFiles(stream.loops.slice(0, 2).map((l) => loopSrc(l.id)))
-  }, [streamId])
+  }, [streamId, resume])
 
   useEffect(() => {
+    if (resume) return
     if (left <= 0) {
-      navigate(`/player/${streamId ?? 'cardio'}`, { replace: true })
+      navigate(`/player/${target}`, { replace: true })
       return
     }
     const t = setTimeout(() => setLeft((n) => n - 1), 1000)
     return () => clearTimeout(t)
-  }, [left, navigate, streamId])
+  }, [left, navigate, target, resume])
+
+  if (resume) return <Navigate to={`/player/${target}`} replace />
 
   return (
     <div className="countdown">

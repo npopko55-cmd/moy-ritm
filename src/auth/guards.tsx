@@ -9,6 +9,7 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { STREAMS } from '../data/streams'
+import type { FlowSession } from '../flow/FlowSession'
 import { Waiting } from '../screens/Account'
 import { useSession } from './SessionProvider'
 
@@ -23,12 +24,22 @@ export const FIRST_STREAM = `/start/${STREAMS[0].id}`
  * Куда ведёт «Влиться в поток»: не вошёл — на вход и обратно сюда,
  * вошёл — сразу в отсчёт, оплачено или нет.
  *
+ * Тренировка уже идёт (человек вышел из плеера в меню и вернулся) — ведём
+ * прямо в плеер, минуя отсчёт: он и так в потоке, музыка стоит на своей
+ * секунде, и начинать заново нечего.
+ *
  * На тарифы отсюда больше не уводим. Пейволл живёт внутри тренировки —
  * ярким блоком разблокировки: человек сначала пробует бесплатный поток и
  * только потом решает, платить ли.
  */
-export function flowTarget(signedIn: boolean): string {
-  return signedIn ? FIRST_STREAM : `/login${nextParam(FIRST_STREAM)}`
+export function flowTarget(signedIn: boolean, flow?: FlowSession | null): string {
+  const target = flow ? `/player/${flow.streamId}` : FIRST_STREAM
+  return signedIn ? target : `/login${nextParam(target)}`
+}
+
+/** Подпись той же кнопки: заход продолжается — значит, «вернуться». */
+export function flowLabel(flow?: FlowSession | null): string {
+  return flow ? 'Вернуться в поток' : 'Влиться в поток'
 }
 
 /** Не вошёл — на вход, с адресом возврата. */

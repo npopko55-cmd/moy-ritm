@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
-import { flowTarget } from '../auth/guards'
+import { flowLabel, flowTarget } from '../auth/guards'
+import { useFlow } from '../flow/FlowSession'
 import { errorText } from './Account'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
@@ -41,8 +42,10 @@ export default function Landing() {
   const { me, reload, signOut } = useSession()
 
   // Не вошёл — на вход; вошёл — сразу в поток. На тарифы отсюда не уводим:
-  // пейволл живёт внутри тренировки.
-  const start = () => navigate(flowTarget(Boolean(me)))
+  // пейволл живёт внутри тренировки. Тренировка уже идёт — та же кнопка
+  // зовёт вернуться и ведёт в плеер, минуя отсчёт.
+  const { session: flow } = useFlow()
+  const start = () => navigate(flowTarget(Boolean(me), flow))
 
   /*
    * Почта не подтверждена — тонкая строка под шапкой. Не всплывашка:
@@ -124,7 +127,7 @@ export default function Landing() {
             </Link>
           )}
           <button className="btn btn--pink" onClick={start}>
-            Влиться в поток
+            {flowLabel(flow)}
           </button>
         </div>
       </header>
@@ -166,7 +169,7 @@ export default function Landing() {
           </p>
 
           <button className="btn btn--pink-lg hero__cta" onClick={start}>
-            Влиться в поток
+            {flowLabel(flow)}
             <span className="hero__cta-arrow">
               <ArrowRight size={19} />
             </span>

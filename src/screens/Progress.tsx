@@ -17,7 +17,8 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { IS_DEMO, api } from '../api/client'
 import type { StatsProgress } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { flowTarget } from '../auth/guards'
+import { flowLabel, flowTarget } from '../auth/guards'
+import { useFlow } from '../flow/FlowSession'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import {
@@ -134,6 +135,7 @@ export default function Progress() {
   const { pathname } = useLocation()
   const back = useBack()
   const { me, access, reload } = useSession()
+  const { session: flow } = useFlow()
   const [params] = useSearchParams()
 
   // «Сегодня» и «текущий месяц» считаем в поясе профиля, а не браузера:
@@ -424,11 +426,13 @@ export default function Progress() {
                     : 'Сегодня ещё не двигалась — самое время начать'}
                 </p>
 
+                {/* Тренировка ещё идёт (сюда заглянули из плеера) — кнопка
+                    зовёт вернуться и ведёт в тот же поток без отсчёта. */}
                 <button
                   className="btn today__cta"
-                  onClick={() => navigate(flowTarget(Boolean(me)))}
+                  onClick={() => navigate(flowTarget(Boolean(me), flow))}
                 >
-                  Влиться в поток
+                  {flowLabel(flow)}
                 </button>
               </section>
 
