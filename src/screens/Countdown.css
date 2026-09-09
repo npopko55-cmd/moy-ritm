@@ -19,11 +19,16 @@
 .countdown > *:not(.wave-bg) { position: relative; z-index: 1; }
 
 .countdown__title {
+  /* Переноса вручную больше нет: фраза владельца длиннее прежней, и в одну
+     строку она не встаёт нигде. Ширина в ch держит её в две строки, balance
+     делит их поровну. */
+  max-width: min(94vw, 24ch);
   margin-top: clamp(20px, 3vh, 44px);
   font-size: clamp(26px, 3.8vh, 54px);
   font-weight: 800;
   line-height: 1.14;
   text-align: center;
+  text-wrap: balance;
   letter-spacing: -0.025em;
   color: var(--ink-900);
 }
