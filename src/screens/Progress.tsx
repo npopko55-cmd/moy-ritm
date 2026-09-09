@@ -52,7 +52,7 @@ import {
 } from '../lib/date'
 import { demoHistoryChunks } from '../lib/demoHistory'
 import { errorText } from './Account'
-import { useBack } from './Page'
+import { useBack, useHome } from './Page'
 import '../components/Logo.css'
 import './Progress.css'
 
@@ -134,6 +134,7 @@ export default function Progress() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const back = useBack()
+  const home = useHome()
   const { me, access, reload } = useSession()
   const { session: flow } = useFlow()
   const [params] = useSearchParams()
@@ -227,16 +228,16 @@ export default function Progress() {
 
       {/* ——— Меню кабинета ——— */}
       <aside className="dash__side">
-        <Link className="dash__logo" to="/" aria-label="На главную">
+        <Link className="dash__logo" to={home} aria-label="На главную">
           <Logo />
         </Link>
 
-        {/* Пришли из плеера — оставляем дорогу назад в ту же тренировку. */}
-        {back.fromPlayer && (
-          <button className="dash__back" onClick={back.go}>
-            {back.label}
-          </button>
-        )}
+        {/* Кнопка возврата у левого края, сразу под знаком. Пришли из плеера —
+            она зовёт назад в ту же тренировку, иначе на главную, а главная
+            для вошедшего — тоже тренер. */}
+        <button className="dash__back" onClick={back.go}>
+          {back.label}
+        </button>
 
         <ul className="dash__nav">
           {MENU.map((m) => (

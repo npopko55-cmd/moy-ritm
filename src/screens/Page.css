@@ -15,11 +15,12 @@
 
 .page > *:not(.wave-bg) { position: relative; z-index: 1; }
 
+/* Логотип и кнопка возврата — оба слева, кнопка сразу за знаком. */
 .page__header {
   display: flex;
   align-items: start;
-  justify-content: space-between;
-  gap: 24px;
+  justify-content: flex-start;
+  gap: clamp(14px, 1.6vw, 24px);
   width: 100%;
   max-width: 1720px;
   margin: 0 auto;
