@@ -14,8 +14,7 @@ import type { StatsSummary } from '../api/types'
 import Logo from '../components/Logo'
 import Unlock from '../components/Unlock'
 import WaveBg from '../components/WaveBg'
-import { Check, Clock, Close, FloatNote, Moon, MusicNote, Play, PulseWave, Steps, Sun, SunHalf } from '../components/Icons'
-import { asset } from '../lib/asset'
+import { Check, Clock, Close, Moon, Play, PulseWave, Steps, Sun, SunHalf } from '../components/Icons'
 import { parseLocalDate, pluralWord, toMinutes } from '../lib/date'
 import './PlayerPause.css'
 
@@ -72,25 +71,27 @@ function weekDates(today: string): string[] {
 type Props = {
   /** Секунды в движении за эту тренировку. */
   sessionSeconds: number
-  /** Шаги за эту тренировку — оценка, поэтому печатается с «~». */
-  sessionSteps: number
+  /** Шаги за сегодня целиком — оценка, поэтому печатается с «~». */
+  todaySteps: number
   /** Сегодня всего, вместе с тем, что сервер ещё не видел. */
   todaySeconds: number
   summary: StatsSummary | null
-  /** Доступа нет: показываем блок разблокировки над «Продолжить». */
+  /** Доступа нет: показываем блок разблокировки под полосой дня. */
   locked?: boolean
+  /** «Продолжить сейчас» — снять паузу и вернуться в тренировку. */
   onResume(): void
-  onLater(): void
+  /** Крестик и «Вернусь позже» — закрыть экран, оставшись на паузе. */
+  onClose(): void
 }
 
 export default function PlayerPause({
   sessionSeconds,
-  sessionSteps,
+  todaySteps,
   todaySeconds,
   summary,
   locked = false,
   onResume,
-  onLater,
+  onClose,
 }: Props) {
   const todayMinutes = toMinutes(todaySeconds)
   const fill = Math.min(100, (todayMinutes / BAR_SCALE) * 100)
@@ -104,33 +105,22 @@ export default function PlayerPause({
       <WaveBg opacity={0.85} />
 
       <div className="pause__card">
-        <button className="pause__close" onClick={onResume} aria-label="Вернуться к тренировке">
+        <button className="pause__close" onClick={onClose} aria-label="Закрыть и вернуться в плеер">
           <Close size={20} />
         </button>
 
+        {/* Шапка текстовая: фотографию, розовое пятно, нотки и подпись рядом
+            с ними убрал заказчик — заголовок и две строки под ним остались. */}
         <header className="pause__head">
           <div className="pause__intro">
             <Logo />
-            <h1 className="pause__title">Отличный заход! 🔥</h1>
+            {/* Текст владельца, дословно: без восклицательного знака и эмодзи. */}
+            <h1 className="pause__title">Возвращайтесь сегодня и продвигайтесь еще</h1>
             <p className="pause__lead">
               Ты уже в движении, и это здорово!
               <br />
               Даже несколько минут имеют значение.
             </p>
-          </div>
-
-          <div className="pause__visual">
-            <div className="pause__blob" />
-            <MusicNote size={24} className="pause__note pause__note--a" />
-            <FloatNote size={20} className="pause__note pause__note--b" />
-            <MusicNote size={17} className="pause__note pause__note--c" />
-            <img
-              className="pause__photo"
-              src={asset('hero/hero.webp')}
-              alt="Девушка двигается под музыку"
-              decoding="async"
-            />
-            <p className="pause__hand pause__hand--side">Движение делает день лучше! ♡</p>
           </div>
         </header>
 
@@ -149,8 +139,8 @@ export default function PlayerPause({
             </span>
             <span className="sum__label">Шагов набрано</span>
             {/* «~» здесь и везде: шаги мы оцениваем по темпу движения. */}
-            <strong className="sum__value">~{sessionSteps}</strong>
-            <span className="sum__unit">шагов</span>
+            <strong className="sum__value">~{todaySteps}</strong>
+            <span className="sum__unit">шагов сегодня</span>
           </li>
           <li className="sum">
             <span className="sum__icon sum__icon--green">
@@ -196,6 +186,15 @@ export default function PlayerPause({
             ))}
           </ul>
         </section>
+
+        {/* Тот же блок, что в правой колонке плеера, только строкой. Стоит
+            сразу под полосой дня: человек только что увидел свои минуты — это
+            и есть момент, когда он думает, продолжать ли. */}
+        {locked && (
+          <div className="pause__unlock">
+            <Unlock compact />
+          </div>
+        )}
 
         <section className="pause__tip">
           <div className="pause__tip-text">
@@ -248,20 +247,14 @@ export default function PlayerPause({
           </ul>
         </section>
 
-        {/* Тот же блок, что в сайдбаре плеера, только строкой: пауза —
-            второй момент, когда человек думает, продолжать ли. */}
-        {locked && (
-          <div className="pause__unlock">
-            <Unlock compact />
-          </div>
-        )}
-
         <button className="btn btn--pink-lg pause__cta" onClick={onResume}>
           <Play size={20} />
           Продолжить сейчас
         </button>
 
-        <button className="pause__later" onClick={onLater}>
+        {/* «Вернусь позже» никуда не уводит: экран закрывается, а плеер
+            остаётся на паузе — тем же, чем его закрывает крестик. */}
+        <button className="pause__later" onClick={onClose}>
           Вернусь позже
         </button>
 

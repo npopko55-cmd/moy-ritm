@@ -4,7 +4,6 @@
    обычная — со своей прокруткой и без затемнения. */
 
 .pause {
-  --photo-h: clamp(190px, 18vw, 260px);
   --grad-warm: linear-gradient(92deg, var(--pink-500) 0%, var(--orange-500) 100%);
 
   position: relative;
@@ -55,20 +54,19 @@
 }
 
 /* ——— Шапка ——— */
-.pause__head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: clamp(12px, 2vw, 32px);
-  /* Место справа под крестик. */
-  padding-right: 52px;
-}
+/* Фотографии в шапке больше нет — остался только текст, поэтому колонка одна.
+   Отступ справа держит место под крестик. */
+.pause__head { padding-right: 52px; }
 
 .pause__title {
+  /* Заголовок длинный и в одну строку не встаёт: ограничиваем ширину в ch
+     и делим строки поровну, иначе последнее слово свисает одно. */
+  max-width: 26ch;
   margin-top: clamp(12px, 1.8vw, 22px);
   font-size: clamp(26px, 3.6vw, 48px);
   font-weight: 800;
   line-height: 1.05;
+  text-wrap: balance;
   letter-spacing: -0.03em;
 }
 
@@ -79,56 +77,11 @@
   color: var(--gray-500);
 }
 
-/* ——— Фото с пятном и нотками ——— */
-.pause__visual {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: clamp(2px, 1vw, 14px);
-}
-
-/* Пятно центрируем по фото: у hero.webp ширина — 0,496 высоты. */
-.pause__blob {
-  position: absolute;
-  top: 50%;
-  left: calc(var(--photo-h) * 0.248);
-  width: calc(var(--photo-h) * 0.88);
-  height: calc(var(--photo-h) * 0.88);
-  transform: translate(-50%, -52%);
-  border-radius: 50%;
-  filter: blur(2px);
-  background:
-    radial-gradient(circle at 32% 26%, #ffe9f3 0%, rgba(255, 233, 243, 0) 62%),
-    linear-gradient(150deg, #fdeaf4 0%, #ffe4f0 54%, #ffeedf 100%);
-}
-
-.pause__photo {
-  position: relative;
-  flex: none;
-  height: var(--photo-h);
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 14px 24px rgba(20, 22, 26, .14));
-}
-
-.pause__note { position: absolute; }
-.pause__note--a { top: 6%;  left: calc(var(--photo-h) * 0.40); color: var(--pink-400); }
-.pause__note--b { top: 30%; left: calc(var(--photo-h) * -0.04); color: var(--orange-400); }
-.pause__note--c { top: 66%; left: calc(var(--photo-h) * 0.46); color: var(--pink-200); }
-
 /* ——— Рукописные подписи ——— */
 .pause__hand {
   font-family: var(--font-hand);
   font-weight: 600;
   line-height: 1.15;
-}
-
-.pause__hand--side {
-  position: relative;
-  width: clamp(130px, 12vw, 180px);
-  transform: rotate(-10deg);
-  color: var(--pink-500);
-  font-size: clamp(18px, 1.7vw, 26px);
 }
 
 .pause__hand--footer {
@@ -381,12 +334,12 @@
 .dot__label { font-size: clamp(10px, .9vw, 12px); color: var(--gray-500); text-transform: uppercase; }
 .dot.is-today .dot__label { color: var(--green-600); font-weight: 700; }
 
-/* ——— Кнопки ——— */
-/* Блок разблокировки стоит прямо над «Продолжить»: у кнопки свой верхний
-   отступ, поэтому блоку хватает отступа карточки. */
+/* ——— Разблокировка ——— */
+/* Стоит между полосой дня и подсказками: отступ тот же, что у остальных
+   блоков карточки, чтобы ритм не сбивался. */
 .pause__unlock { margin-top: clamp(18px, 2.2vw, 28px); }
-.pause__unlock + .pause__cta { margin-top: 12px; }
 
+/* ——— Кнопки ——— */
 .pause__cta {
   width: 100%;
   margin-top: clamp(18px, 2.2vw, 28px);
@@ -409,11 +362,10 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   До 900: фото уходит, подсказки перестраиваются в две строки.
+   До 900: подсказки перестраиваются в две строки.
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 899.98px) {
-  .pause__head { grid-template-columns: minmax(0, 1fr); padding-right: 48px; }
-  .pause__visual { display: none; }
+  .pause__head { padding-right: 48px; }
 
   .pause__tip { grid-template-columns: minmax(0, 1fr); }
   .pause__hand--tip { justify-self: start; width: auto; transform: rotate(-3deg); text-align: left; }

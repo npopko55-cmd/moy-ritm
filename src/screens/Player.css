@@ -128,10 +128,6 @@
   color: var(--white);
 }
 
-/* Блок разблокировки последним в ленте потоков — своей высоты,
-   список его не растягивает. */
-.side__streams > li.side__unlock { flex: 0 0 auto; }
-
 /*
  * Фото кладётся в плашку как есть, фон не вырезается.
  * Правый край растушёван маской: без неё на границе снимка и заливки
@@ -274,7 +270,8 @@
   text-wrap: balance;
 }
 
-.stats__top { display: flex; gap: 10px; }
+/* В строке осталась одна карточка трека: кнопку «на весь экран» убрали. */
+.stats__top { display: flex; }
 
 .track {
   display: flex;
@@ -317,19 +314,6 @@
 
 .track__text strong { font-size: clamp(13px, 1.3vh, 16px); font-weight: 700; }
 .track__text span { font-size: clamp(12px, 1.2vh, 14.5px); color: var(--pink-500); }
-
-.icon-btn {
-  display: grid;
-  place-items: center;
-  width: 50px;
-  height: 50px;
-  border-radius: var(--r-md);
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  color: var(--ink-800);
-  box-shadow: var(--shadow-card);
-  transition: border-color .15s ease;
-}
 
 /* ——— Персонаж в кольце ——— */
 /*
@@ -509,21 +493,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.stat__foot {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding-top: 11px;
-  border-top: 1px solid var(--gray-100);
-  font-size: clamp(11.5px, 1.15vh, 14.5px);
-  line-height: 1.35;
-  color: var(--gray-500);
-}
-
-.stat__foot svg { color: var(--pink-500); flex: none; }
-
 .stat__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
-.stat__row--gap { justify-content: flex-start; gap: 12px; }
 
 .stat__mid {
   font-family: var(--font-head);
@@ -533,31 +503,32 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* «Шагов набрано»: цифра и подпись столбиком, кольцо справа от них. */
+/* «Шагов набрано»: цифра и подпись столбиком. */
 .stat__steps { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .stat__steps > span { font-size: clamp(11.5px, 1.15vh, 14.5px); color: var(--gray-500); }
 
-.stat__today { display: flex; flex-direction: column; line-height: 1.25; }
-.stat__today strong { font-family: var(--font-head); font-size: clamp(19px, 2.2vh, 28px); font-weight: 800; }
-.stat__today span { font-size: clamp(11.5px, 1.15vh, 14.5px); color: var(--gray-500); }
-
-.donut { width: clamp(46px, 5vh, 66px); height: clamp(46px, 5vh, 66px); flex: none; }
-.donut--sm { width: clamp(42px, 4.6vh, 60px); height: clamp(42px, 4.6vh, 60px); }
-
 /* ——— Недельный график ——— */
-/* Карточка «Сегодня» намеренно компактная, колонка не растягивает её. */
+/* График живёт в той же карточке, что и время за сегодня: колонка её не
+   растягивает, высоту задаёт содержимое. */
 .stat--chart { flex: 0 0 auto; }
 
 .week {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
-  align-items: end;
-  height: clamp(74px, 9vh, 118px);
-  margin-top: clamp(12px, 1.4vh, 20px);
+  height: clamp(86px, 10.4vh, 132px);
+  margin-top: clamp(8px, 1vh, 14px);
 }
 
-.week__col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+.week__col { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; min-height: 0; }
+
+/*
+ * Столбику отдана вся высота, которая осталась от подписей, и проценты
+ * считаются от неё. Без этой обёртки высота столбика бралась бы от колонки
+ * целиком, вместе с двумя строками подписей, и шкала перестала бы быть
+ * линейной: низкие столбики рисовались бы честно, а высокие сжимались.
+ */
+.week__track { flex: 1 1 auto; display: flex; align-items: flex-end; justify-content: center; width: 100%; min-height: 0; }
 
 .week__bar {
   width: clamp(8px, .8vh, 11px);
@@ -568,8 +539,15 @@
 
 .week__bar.is-today { background: var(--grad-pink); }
 
-.week__col span { font-size: clamp(9.5px, 1vh, 12.5px); color: var(--gray-400); text-transform: uppercase; }
+.week__col span { font-size: clamp(9.5px, 1vh, 12.5px); color: var(--gray-400); text-transform: uppercase; line-height: 1.1; }
 .week__col span.is-today { color: var(--pink-500); font-weight: 700; }
+
+/* Минуты этого дня — мельче подписи дня и без верхнего регистра: это цифра,
+   а не сокращение. */
+.week__min { font-size: clamp(9px, .95vh, 11.5px); font-variant-numeric: tabular-nums; }
+
+/* ——— Разблокировка под карточками ——— */
+.stats__unlock { flex: 0 0 auto; }
 
 /* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
 @media (hover: hover) {
@@ -578,7 +556,6 @@
   .stream-card.is-locked:hover { transform: none; }
   .side__menu-item:hover { background: var(--white); color: var(--ink-900); }
   .track:hover { border-color: var(--gray-300); }
-  .icon-btn:hover { border-color: var(--gray-300); }
   .ctrl--main:hover { box-shadow: 0 14px 32px rgba(251, 59, 33, 0.45); }
 }
 
@@ -608,8 +585,10 @@
   .stat { padding: 12px 14px; }
   .stat__big { font-size: clamp(34px, 4.6vh, 46px); }
   .stat__mid { font-size: clamp(26px, 3.4vh, 38px); }
-  .stat__foot { padding-top: 8px; }
-  .week { height: 66px; margin-top: 10px; }
+  .week { height: 78px; margin-top: 8px; }
+
+  .stats__unlock .unlock { gap: 6px; padding: 10px 12px; }
+  .stats__unlock .unlock__cta { padding: 5px 14px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -623,21 +602,20 @@
      Ширину колонки ограничивает 100% в базовом правиле. */
   .player__stage { --stage-pad: 12px; }
 
-  /* Колонке потоков на 650 px высоты тесно — блок разблокировки ужимаем. */
-  .side__unlock .unlock { gap: 6px; padding: 10px 12px; }
-  .side__unlock .unlock__cta { padding: 5px 14px; }
+  /* Правой колонке на 650 px высоты тесно — блок разблокировки ужимаем. */
+  .stats__unlock .unlock { flex-direction: row; align-items: center; gap: 10px; padding: 9px 12px; }
+  .stats__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 5px 14px; }
 
   .stat { padding: 10px 14px; }
   .stat__big { font-size: clamp(30px, 6.4vh, 44px); margin: 4px 0 8px; }
   .stat__mid { font-size: clamp(24px, 5vh, 36px); }
-  .stat__foot { padding-top: 8px; }
   .stream-card { min-height: 64px; }
   .side__menu-item { padding: 4px 6px; }
 }
 
-/* График недели на низком экране: 56 px хватает, чтобы прочитать столбики. */
+/* График недели на низком экране: 70 px хватает на столбики и две подписи. */
 @media (max-height: 759.98px) {
-  .week { height: 56px; margin-top: 10px; }
+  .week { height: 70px; margin-top: 8px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -659,11 +637,13 @@
     overflow-y: visible;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    /* Карточек статистики теперь две: время с графиком занимает две трети
+       ряда, шаги — оставшуюся треть. */
     grid-template-areas:
       "top     top     top"
       "streams streams streams"
       "stage   stage   stage"
-      "s1      s2      s3"
+      "s1      s1      s2"
       "menu    menu    menu";
     gap: clamp(8px, 1.2vh, 14px) 12px;
     padding:
@@ -708,20 +688,6 @@
     padding-right: 10px;
   }
 
-  /* Блок разблокировки в горизонтальной ленте: строкой, высотой с
-     карточку потока. */
-  .side__unlock { width: 264px; }
-  .side__unlock .unlock {
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    height: 100%;
-    padding: 8px 12px;
-  }
-  .side__unlock .unlock__title { font-size: 13px; }
-  .side__unlock .unlock__price { font-size: 11px; }
-  .side__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 6px 13px; font-size: 12.5px; }
-
   .stream-card__text { width: 54%; gap: 1px; }
   .stream-card__title { font-size: 15px; }
   .stream-card__sub {
@@ -756,7 +722,27 @@
   /* ——— Статистика строкой ——— */
   .player__stats > .stat:nth-of-type(1) { grid-area: s1; }
   .player__stats > .stat:nth-of-type(2) { grid-area: s2; }
-  .player__stats > .stat:nth-of-type(3) { grid-area: s3; }
+
+  /* Разблокировка — последней в ленте статистики, во всю ширину. Ряд под неё
+     заводится только вместе с ней: без доступа и с доступом сетка разная,
+     поэтому пустой строки в раскладке не остаётся. */
+  .stats__unlock { grid-area: unlock; }
+
+  .player--locked {
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "top     top     top"
+      "streams streams streams"
+      "stage   stage   stage"
+      "s1      s1      s2"
+      "unlock  unlock  unlock"
+      "menu    menu    menu";
+  }
+
+  .stats__unlock .unlock { flex-direction: row; align-items: center; gap: 10px; padding: 9px 12px; }
+  .stats__unlock .unlock__title { font-size: 13px; }
+  .stats__unlock .unlock__price { font-size: 11px; }
+  .stats__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 6px 13px; font-size: 12.5px; }
 
   .track { min-height: 44px; }
 
@@ -764,16 +750,11 @@
   .stat__head { font-size: 10px; letter-spacing: 0.05em; }
   .stat__big { font-size: clamp(26px, 5.2vw, 40px); margin: 4px 0 8px; }
   .stat__mid { font-size: clamp(22px, 4.4vw, 34px); }
-  .stat__foot { padding-top: 8px; gap: 6px; font-size: 11px; }
-  .stat__foot svg { width: 18px; height: 18px; }
   .stat__row { margin-top: 4px; }
-  .stat__today strong { font-size: 17px; }
-  .stat__today span { font-size: 11px; }
-  .donut { width: 40px; height: 40px; }
-  .donut--sm { width: 36px; height: 36px; }
-  .week { height: 52px; margin-top: 8px; }
+  .week { height: 66px; margin-top: 6px; }
   .week__bar { width: 7px; }
   .week__col span { font-size: 9.5px; }
+  .week__min { font-size: 9px; }
 
   /* ——— Меню строкой ——— */
   .side__menu { grid-area: menu; flex-direction: row; gap: 6px; padding-top: 0; }
@@ -791,7 +772,9 @@
   }
 
   /* Колонки распущены в сетку, поэтому плашке нужен свой ряд. Он заводится
-     только вместе с ней: без неё сетка та же, что была. */
+     только вместе с ней: без неё сетка та же, что была.
+     С .player--locked она не встречается: плашка висит на «доступ вот-вот
+     кончится», а разблокировка — на «доступа нет». */
   .player--notice {
     grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
     grid-template-areas:
@@ -799,7 +782,7 @@
       "note    note    note"
       "streams streams streams"
       "stage   stage   stage"
-      "s1      s2      s3"
+      "s1      s1      s2"
       "menu    menu    menu";
   }
 
@@ -817,8 +800,7 @@
       "top     top"
       "streams streams"
       "stage   stage"
-      "s1      s2"
-      "s3      s3";
+      "s1      s2";
     gap: 10px;
     padding:
       calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
@@ -831,11 +813,10 @@
 
   .stream-card { width: 150px; height: 64px; min-height: 64px; }
 
-  .side__unlock { width: 238px; }
-  .side__unlock .unlock { padding: 7px 10px; }
-  .side__unlock .unlock__title { font-size: 12px; }
-  .side__unlock .unlock__price { font-size: 10.5px; }
-  .side__unlock .unlock__cta { padding: 5px 12px; font-size: 12px; }
+  .stats__unlock .unlock { padding: 8px 10px; }
+  .stats__unlock .unlock__title { font-size: 12.5px; }
+  .stats__unlock .unlock__price { font-size: 10.5px; }
+  .stats__unlock .unlock__cta { padding: 6px 12px; font-size: 12px; }
 
   .stream-card__text { width: 56%; }
   .stream-card__title { font-size: 13.5px; }
@@ -854,6 +835,10 @@
 
   .stat__big { font-size: clamp(28px, 8vw, 38px); }
   .stat__mid { font-size: clamp(24px, 7vw, 32px); }
+
+  /* Карточка с графиком занимает половину ширины экрана: зазоры между
+     столбиками ужимаем, иначе трёхзначным минутам не хватает колонки. */
+  .week { gap: 4px; }
 
   /* Нижняя панель вкладок. Это тот же ul.side__menu — переставлен стилями. */
   .side__menu {
@@ -879,15 +864,24 @@
     gap: 2px;
   }
 
-  /* Тот же ряд «note», но сетка здесь в две колонки. */
+  /* Те же дополнительные ряды, но сетка здесь в две колонки. */
   .player--notice {
     grid-template-areas:
       "top     top"
       "note    note"
       "streams streams"
       "stage   stage"
+      "s1      s2";
+  }
+
+  .player--locked {
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "top     top"
+      "streams streams"
+      "stage   stage"
       "s1      s2"
-      "s3      s3";
+      "unlock  unlock";
   }
 
   .access-note { font-size: 12px; padding: 8px 10px; }
@@ -907,6 +901,17 @@
       "stage   s1"
       "stage   s2";
     gap: 6px 10px;
+  }
+
+  /* Разблокировка встаёт четвёртой в правый столбец. */
+  .player--locked {
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "streams menu"
+      "stage   top"
+      "stage   s1"
+      "stage   s2"
+      "stage   unlock";
     padding:
       calc(4px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
       calc(4px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
@@ -924,12 +929,11 @@
   .stream-card__text { width: 52%; }
   .side__streams { gap: 8px; }
 
-  /* Пилюля высотой 44 px: цена в неё уже не влезает, остаётся суть и кнопка. */
-  .side__unlock { width: 196px; }
-  .side__unlock .unlock { gap: 6px; padding: 4px 8px; border-radius: var(--r-md); }
-  .side__unlock .unlock__title { font-size: 11px; }
-  .side__unlock .unlock__price { display: none; }
-  .side__unlock .unlock__cta { padding: 4px 10px; font-size: 11px; }
+  /* Пилюля в правом столбце: цена в неё уже не влезает, остаётся суть и кнопка. */
+  .stats__unlock .unlock { flex-direction: row; align-items: center; gap: 6px; padding: 5px 8px; border-radius: var(--r-md); }
+  .stats__unlock .unlock__title { font-size: 11px; }
+  .stats__unlock .unlock__price { display: none; }
+  .stats__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 4px 10px; font-size: 11px; }
 
   /* На 390 px высоты полноразмерная строка съела бы круг: здесь она ниже,
      вместе с уменьшенной кнопкой. */
@@ -946,14 +950,13 @@
 
   .track { min-height: 44px; padding: 5px 10px 5px 7px; }
   .track__icon { width: 26px; height: 26px; }
-  .icon-btn { width: 44px; height: 44px; }
 
   .stat { padding: 7px 10px; }
   .stat__big { font-size: 26px; margin: 2px 0 6px; }
   .stat__mid { font-size: 22px; }
-  .stat__foot { padding-top: 6px; font-size: 10px; }
-  /* Недельный график в ландшафте не помещается — время и остаток важнее. */
-  .stat--chart { display: none; }
+  /* Недельный график в ландшафте не помещается — сама цифра за сегодня
+     важнее. Карточку не прячем: время в движении теперь живёт в ней. */
+  .week { display: none; }
 
   /* Меню — маленькими иконками в правом верхнем углу. */
   .side__menu {

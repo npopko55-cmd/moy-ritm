@@ -116,18 +116,9 @@ export const Play = ({ size = 30, className }: I) => (
   </svg>
 )
 
-export const Fullscreen = ({ size = 20, className }: I) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-    <path
-      d="M4 9V5.6c0-.9.7-1.6 1.6-1.6H9M15 4h3.4c.9 0 1.6.7 1.6 1.6V9M20 15v3.4c0 .9-.7 1.6-1.6 1.6H15M9 20H5.6A1.6 1.6 0 0 1 4 18.4V15"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-  </svg>
-)
+/* Кнопки «на весь экран» в плеере больше нет — вместе с ней ушёл и её знак. */
 
-/** Розовая волна в карточке «Время в движении вчера». */
+/** Розовая волна: карточки итогов на экране паузы. */
 export const PulseWave = ({ size = 22, className }: I) => (
   <svg width={size} height={size * 0.55} viewBox="0 0 24 13" fill="none" className={className} aria-hidden="true">
     <path

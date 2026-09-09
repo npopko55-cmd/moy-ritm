@@ -3,27 +3,25 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { hasAccess, type DayStats, type FreeTier, type Settings, type StatsSummary } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { days, minutes, toMinutes, weekdayShort } from '../lib/date'
+import { days, toMinutes, weekdayShort } from '../lib/date'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import {
   Clock,
   FloatNote,
-  Fullscreen,
   Gear,
   Info,
   Lock,
   MusicNote,
   Pause,
   Play,
-  PulseWave,
   Question,
   Sparkle,
   User,
 } from '../components/Icons'
 import Unlock from '../components/Unlock'
 import { STREAMS, getStream } from '../data/streams'
-import { loopPoster, loopSrc, stepRate, type Loop } from '../data/loops'
+import { loopPoster, loopSrc, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
 import { useFlow, type FlowSession } from '../flow/FlowSession'
 import { createChunkQueue, uuid, type ChunkQueue } from '../lib/chunks'
@@ -50,12 +48,6 @@ const FORCE_CLOSE_MS = 60_000
 
 /** Длиннее сервер не примет: такой кусок означает спящую вкладку. */
 const MAX_CHUNK_SECONDS = 300
-
-/**
- * Дневной ориентир для кольца в карточке «Сегодня» — полчаса движения.
- * Это не цель и не обещание, просто шкала, по которой кольцо заполняется.
- */
-const DAY_GOAL_SECONDS = 1800
 
 /**
  * Бесплатный уровень, пока bootstrap не ответил.
@@ -108,7 +100,7 @@ export default function Player() {
 
   /* ─────────────  Продолжение начатой тренировки  ───────────── */
 
-  const { session: flow, begin: beginFlow, save: saveFlow, finish: finishFlow } = useFlow()
+  const { session: flow, begin: beginFlow, save: saveFlow } = useFlow()
 
   /**
    * Снимок сохранённой тренировки — берётся ОДИН раз, в первом рендере.
@@ -153,13 +145,23 @@ export default function Player() {
   const [step, setStep] = useState(() => resume?.moveIndex ?? 0)
   const [inMove, setInMove] = useState(() => resume?.moveSeconds ?? 0)
   const [playing, setPlaying] = useState(true)
+  /**
+   * Показан ли экран паузы.
+   *
+   * Отдельно от `playing`, потому что состояний три, а не два: тренировка
+   * идёт; тренировка на паузе и поверх неё экран паузы; тренировка на паузе,
+   * а экран закрыт крестиком или «Вернусь позже» — виден сам плеер со
+   * стоящим роликом и кнопкой «Играть».
+   */
+  const [showPause, setShowPause] = useState(false)
   // Вкладку свернули — движение не считается, даже если ролик крутится.
   const [visible, setVisible] = useState(() => document.visibilityState !== 'hidden')
 
   // Цифры правой колонки. Серверная сводка — основа, к ней прибавляются
-  // секунды, которые сервер ещё не видел (раздел 6.5 архитектуры).
+  // секунды и шаги, которые сервер ещё не видел (раздел 6.5 архитектуры).
   const [summary, setSummary] = useState<StatsSummary | null>(null)
   const [pendingSeconds, setPendingSeconds] = useState(0)
+  const [pendingSteps, setPendingSteps] = useState(0)
   const [openSeconds, setOpenSeconds] = useState(0)
 
   // Колода фраз одна на всё время жизни экрана, иначе они пошли бы по кругу.
@@ -174,15 +176,11 @@ export default function Player() {
   const [sessionSeconds, setSessionSeconds] = useState(() => resume?.sessionSeconds ?? 0)
   const sessionRef = useRef(resume?.sessionSeconds ?? 0)
 
-  // Шаги этой тренировки — их показывает экран паузы. Идут от того же
-  // секундного тика, что и «В этой сессии», и по темпу текущего движения.
-  //
-  // Раньше они складывались из кусков, которые уходят на сервер, а те живут
-  // только при видимой вкладке: при паузе на восьмой секунде время было уже
-  // 0:08, а шаги стояли на «~0». Здесь счётчики разъехаться не могут — у них
-  // один источник секунд. Дробная часть копится в ref, округляем при показе.
+  // Шаги этой тренировки. На экране их больше не показывают — и в плеере, и
+  // на паузе стоят шаги за сегодня, — но заход их всё равно копит: они уходят
+  // в сохранённую тренировку и возвращаются, когда человек вернулся в поток.
+  // Дробная часть копится в ref, округляем при записи.
   const stepsRef = useRef(resume?.sessionSteps ?? 0)
-  const [sessionSteps, setSessionSteps] = useState(() => resume?.sessionSteps ?? 0)
 
   // Фразу меняем не чаще раза в секунду: смена движения и переход в новый
   // ярус времени могут совпасть, а прочитать фразу надо успеть.
@@ -262,21 +260,15 @@ export default function Player() {
   const queueRef = useRef<ChunkQueue | null>(null)
   const openRef = useRef<OpenChunk | null>(null)
 
-  // Секунды в буфере считаем только за сегодня: кусок, застрявший с вечера,
-  // не должен приписываться к новому дню.
+  // Секунды и шаги в буфере считаем только за сегодня: кусок, застрявший с
+  // вечера, не должен приписываться к новому дню.
   const recount = useCallback(() => {
     const q = queueRef.current
     if (!q) return
     const today = new Date().toDateString()
-    setPendingSeconds(
-      q
-        .pending()
-        .reduce(
-          (sum, c) =>
-            new Date(c.started_at).toDateString() === today ? sum + c.duration_seconds : sum,
-          0,
-        ),
-    )
+    const mine = q.pending().filter((c) => new Date(c.started_at).toDateString() === today)
+    setPendingSeconds(mine.reduce((sum, c) => sum + c.duration_seconds, 0))
+    setPendingSteps(mine.reduce((sum, c) => sum + (c.steps ?? 0), 0))
   }, [])
 
   const openChunk = useCallback((streamCode: string, moveId: string) => {
@@ -494,7 +486,6 @@ export default function Player() {
       sessionRef.current += 1
       setSessionSeconds(sessionRef.current)
       stepsRef.current += stepRate(moveRef.current)
-      setSessionSteps(Math.round(stepsRef.current))
       if (openRef.current) {
         openRef.current.seconds += 1
         setOpenSeconds(openRef.current.seconds)
@@ -575,7 +566,7 @@ export default function Player() {
 
   // Клик по закрытому потоку не переключает поток, а показывает, что делать:
   // подводит к блоку разблокировки и коротко его подсвечивает.
-  const unlockRef = useRef<HTMLLIElement>(null)
+  const unlockRef = useRef<HTMLDivElement>(null)
   const pulseTimer = useRef<number | null>(null)
   const [pulse, setPulse] = useState(false)
 
@@ -607,16 +598,12 @@ export default function Player() {
   const inMoveRef = useRef(inMove)
   inMoveRef.current = inMove
 
-  /** «Вернусь позже» уже нажали — заход закончен, сохранять нечего. */
-  const ended = useRef(false)
-
   /**
    * Запомнить тренировку. pausedAt = null, пока плеер открыт; при уходе
    * ставим время — с него пойдут те самые тридцать минут.
    */
   const store = useCallback(
     (pausedAt: number | null) => {
-      if (ended.current) return
       saveFlow({
         streamId: stream.id,
         sessionSeconds: sessionRef.current,
@@ -661,20 +648,40 @@ export default function Player() {
   /* ─────────────  Пауза  ───────────── */
 
   /**
-   * «Вернусь позже»: закрываем открытый кусок, не ждём склейку — и уходим
-   * на прогресс. Кусок уже в буфере, поэтому минуты этой тренировки там
-   * будут даже если сеть ответит не сразу.
+   * Кнопка паузы и пробел. Пауза не просто останавливает ролик, а поднимает
+   * экран паузы; снятие паузы его закрывает.
    *
-   * Это единственный выход, который заканчивает тренировку: после него
-   * кнопка снова зовёт «Влиться в поток», а не «Вернуться».
+   * Состояние читается из ref, а не из замыкания: обработчик пробела висит
+   * на окне и не должен пересоздаваться на каждое переключение.
    */
-  const goLater = useCallback(() => {
-    ended.current = true
+  const playingRef = useRef(playing)
+  playingRef.current = playing
+
+  const toggle = useCallback(() => {
+    if (playingRef.current) {
+      setPlaying(false)
+      setShowPause(true)
+    } else {
+      setPlaying(true)
+      setShowPause(false)
+    }
+  }, [])
+
+  /**
+   * Крестик и «Вернусь позже» на экране паузы.
+   *
+   * Оба закрывают экран и оставляют человека в плеере на паузе: ролик и
+   * музыка стоят, кнопка зовёт «Играть». Тренировка при этом продолжается —
+   * закончить её нельзя ни одной кнопкой, она сама истекает через полчаса.
+   *
+   * Открытый кусок закрыл эффект паузы; здесь остаётся отправить буфер, не
+   * дожидаясь склейки, — минуты этого захода уйдут на сервер сразу.
+   */
+  const closePause = useCallback(() => {
     closeChunk()
     queueRef.current?.flush()
-    finishFlow()
-    navigate('/progress', { state: { from: stream.id } })
-  }, [closeChunk, finishFlow, navigate, stream.id])
+    setShowPause(false)
+  }, [closeChunk])
 
   // Пробел — та же пауза, что и кнопка. Когда в фокусе кнопка или поле,
   // пробел уже что-то значит для них: второй раз его перехватывать нельзя.
@@ -684,11 +691,11 @@ export default function Player() {
       const el = document.activeElement
       if (el instanceof HTMLElement && (el.isContentEditable || /^(BUTTON|INPUT|TEXTAREA|SELECT|A)$/.test(el.tagName))) return
       e.preventDefault()
-      setPlaying((p) => !p)
+      toggle()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [toggle])
 
   /* ─────────────  Цифры для правой колонки  ───────────── */
 
@@ -698,14 +705,30 @@ export default function Player() {
   const weekMinutes = week.map((d) => (isToday(d.local_date) ? toMinutes(todaySeconds) : toMinutes(d.seconds)))
   const weekTop = Math.max(1, ...weekMinutes)
 
+  /**
+   * Шаги за сегодня, а не за этот заход: заказчик хочет видеть день целиком.
+   *
+   * Складываются ровно так же, как секунды: серверное значение сегодняшнего
+   * дня плюс то, что сервер ещё не видел, — закрытые куски из буфера и
+   * открытый кусок. Складывать сюда весь счётчик захода нельзя: куски,
+   * которые уже ушли, сервер вернул бы вторым слагаемым, и шаги удвоились бы.
+   */
+  const todayServerSteps = week.find((d) => isToday(d.local_date))?.steps ?? 0
+  const todaySteps = todayServerSteps + pendingSteps + stepsFor(loop.id, openSeconds)
+
   return (
     <>
       {/*
-        Игровая раскладка не размонтируется на паузе, а прячется: ролики
-        остаются в DOM вместе с закачанным буфером и текущей секундой,
-        поэтому «Продолжить» возвращает ровно туда, где остановились.
+        Игровая раскладка не размонтируется, а прячется на то время, пока
+        поверх неё стоит экран паузы: ролики остаются в DOM вместе с
+        закачанным буфером и текущей секундой, поэтому «Продолжить»
+        возвращает ровно туда, где остановились. Закрыли экран крестиком —
+        раскладка видна снова, только ролик стоит.
       */}
-      <div className={`player ${notice ? 'player--notice' : ''}`} hidden={!playing}>
+      <div
+        className={`player ${notice ? 'player--notice' : ''} ${limited ? 'player--locked' : ''}`}
+        hidden={showPause}
+      >
       <WaveBg opacity={0.28} />
 
       {/* ——— Левая колонка ——— */}
@@ -749,14 +772,6 @@ export default function Player() {
               </li>
             )
           })}
-
-          {/* Единственный вход в тарифы из тренировки. На телефоне лента
-              потоков горизонтальная, и блок встаёт в ней последним. */}
-          {limited && (
-            <li className="side__unlock" ref={unlockRef}>
-              <Unlock pulse={pulse} />
-            </li>
-          )}
         </ul>
 
         <ul className="side__menu">
@@ -841,11 +856,7 @@ export default function Player() {
         */}
         <div className="stage__pause">
           <span>{playing ? 'Пауза' : 'Играть'}</span>
-          <button
-            className="ctrl ctrl--main"
-            onClick={() => setPlaying((p) => !p)}
-            aria-label={playing ? 'Пауза' : 'Играть'}
-          >
+          <button className="ctrl ctrl--main" onClick={toggle} aria-label={playing ? 'Пауза' : 'Играть'}>
             {playing ? <Pause size={30} /> : <Play size={30} />}
           </button>
         </div>
@@ -868,25 +879,37 @@ export default function Player() {
               <span>{soundBlocked ? 'нажмите, чтобы включить звук' : track.artist}</span>
             </span>
           </button>
-          <button className="icon-btn" title="На весь экран">
-            <Fullscreen size={19} />
-          </button>
         </div>
 
-        <section className="stat stat--accent">
+        {/* Время за сегодня и неделя одной карточкой: раньше это были два
+            блока с одной и той же цифрой в разном виде. */}
+        <section className="stat stat--accent stat--chart">
           <header className="stat__head">
             <span>Время в движении сегодня</span>
             <Info size={15} />
           </header>
           <strong className="stat__big">{mmss(todaySeconds)}</strong>
-          <footer className="stat__foot">
-            <PulseWave size={22} />
-            <span>
-              Время в движении вчера:
-              <br />
-              {minutes(toMinutes(summary?.yesterday_seconds ?? 0))}
-            </span>
-          </footer>
+          <div className="week">
+            {week.map((d, i) => {
+              const today = isToday(d.local_date)
+              return (
+                <div key={d.local_date} className="week__col">
+                  <div className="week__track">
+                    <div
+                      className={`week__bar ${today ? 'is-today' : ''}`}
+                      style={{ height: `${Math.round((weekMinutes[i] / weekTop) * 100)}%` }}
+                    />
+                  </div>
+                  <span className={today ? 'is-today' : ''}>{weekdayShort(d.local_date)}</span>
+                  {/* Минуты этого дня. День без движения — прочерк: ноль в
+                      столбце цифр читается как результат, а его не было. */}
+                  <span className={`week__min ${today ? 'is-today' : ''}`}>
+                    {weekMinutes[i] > 0 ? weekMinutes[i] : '—'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </section>
 
         {/* Шаги те же, что на экране паузы: один счётчик, одна величина. */}
@@ -897,81 +920,38 @@ export default function Player() {
           <div className="stat__row">
             <span className="stat__steps">
               {/* «~» здесь и везде: шаги мы оцениваем по темпу движения. */}
-              <strong className="stat__mid">~{sessionSteps}</strong>
-              <span>за эту сессию</span>
+              <strong className="stat__mid">~{todaySteps}</strong>
+              <span>сегодня</span>
             </span>
           </div>
         </section>
 
-        <section className="stat stat--chart">
-          <header className="stat__head">
-            <span>Сегодня</span>
-          </header>
-          <div className="stat__row stat__row--gap">
-            <Donut value={todaySeconds / DAY_GOAL_SECONDS} small />
-            <span className="stat__today">
-              <strong>{toMinutes(todaySeconds)} мин</strong>
-              <span>в движении</span>
-            </span>
+        {/* Единственный вход в тарифы из тренировки. На телефоне и планшете
+            правой колонки нет, и блок встаёт последним в ленте статистики —
+            но остаётся тем же самым узлом, второго в разметке нет. */}
+        {limited && (
+          <div className="stats__unlock" ref={unlockRef}>
+            <Unlock pulse={pulse} />
           </div>
-          <div className="week">
-            {week.map((d, i) => (
-              <div key={d.local_date} className="week__col">
-                <div
-                  className={`week__bar ${isToday(d.local_date) ? 'is-today' : ''}`}
-                  style={{ height: `${Math.round((weekMinutes[i] / weekTop) * 100)}%` }}
-                />
-                <span className={isToday(d.local_date) ? 'is-today' : ''}>
-                  {weekdayShort(d.local_date)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+        )}
       </aside>
 
       </div>
 
-      {!playing && (
+      {showPause && (
         <PlayerPause
           sessionSeconds={sessionSeconds}
-          sessionSteps={sessionSteps}
+          todaySteps={todaySteps}
           todaySeconds={todaySeconds}
           summary={summary}
           locked={limited}
-          onResume={() => setPlaying(true)}
-          onLater={goLater}
+          onResume={() => {
+            setShowPause(false)
+            setPlaying(true)
+          }}
+          onClose={closePause}
         />
       )}
     </>
-  )
-}
-
-/** Маленькое кольцо прогресса в карточках справа. */
-function Donut({ value, small = false }: { value: number; small?: boolean }) {
-  const r = 21
-  const c = 2 * Math.PI * r
-  return (
-    <svg className={`donut ${small ? 'donut--sm' : ''}`} viewBox="0 0 52 52" aria-hidden="true">
-      <defs>
-        <linearGradient id="donut-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#ff2d8e" />
-          <stop offset="100%" stopColor="#ff7a18" />
-        </linearGradient>
-      </defs>
-      <circle cx="26" cy="26" r={r} fill="none" stroke="#eeeff2" strokeWidth="5" />
-      <circle
-        cx="26"
-        cy="26"
-        r={r}
-        fill="none"
-        stroke="url(#donut-grad)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeDasharray={c}
-        strokeDashoffset={c * (1 - Math.max(0, Math.min(1, value)))}
-        transform="rotate(-90 26 26)"
-      />
-    </svg>
   )
 }
