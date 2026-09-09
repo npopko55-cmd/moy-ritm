@@ -153,9 +153,9 @@ const emptyStats = (): DemoStats => ({
  * Порядок постоянный — карточки на «Моём прогрессе» не должны прыгать.
  */
 const ACHIEVEMENTS = [
-  { code: 'first_step', title: 'Первый шаг', description: 'Попробовала новый формат тренировки', target: 1 },
-  { code: 'lets_go', title: 'Поехали!', description: 'Завершила первую тренировку', target: 1 },
-  { code: 'twice_a_day', title: 'В ритме дня', description: 'Зашла в поток 2 раза за день', target: 2 },
+  { code: 'first_step', title: 'Первый шаг', description: 'Попробовали новый формат тренировки', target: 1 },
+  { code: 'lets_go', title: 'Поехали!', description: 'Завершили первую тренировку', target: 1 },
+  { code: 'twice_a_day', title: 'В ритме дня', description: 'Зашли в поток 2 раза за день', target: 2 },
   { code: 'five_days', title: 'Каждый день считается', description: '5 дней подряд в движении', target: 5 },
   { code: 'week_rhythm', title: 'Неделя в ритме', description: '7 дней подряд в движении', target: 7 },
   { code: 'ten_days', title: 'Возвращаюсь к себе', description: '10 разных дней в потоке', target: 10 },

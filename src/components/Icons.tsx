@@ -377,7 +377,7 @@ export const Bars = ({ size = 20, className }: I) => (
   </svg>
 )
 
-/** Кубок — карточка «Твой рекорд». */
+/** Кубок — карточка «Ваш рекорд». */
 export const Trophy = ({ size = 20, className }: I) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <path

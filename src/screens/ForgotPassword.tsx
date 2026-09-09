@@ -75,7 +75,7 @@ export default function ForgotPassword() {
       </Form>
 
       <nav className="account__links">
-        <Link to="/login">Вспомнил пароль</Link>
+        <Link to="/login">Вспомнили пароль</Link>
         <Link to="/register">Регистрация</Link>
       </nav>
     </AccountShell>

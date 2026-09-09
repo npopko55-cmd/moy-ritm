@@ -77,10 +77,20 @@ function emptyWeek(): DayStats[] {
 }
 
 /**
- * Длинную фразу показываем мельче и в две строки. Считаем по код-поинтам,
- * иначе эмодзи в конце тянет на два знака.
+ * Кегль фразы по её длине. Считаем по код-поинтам, иначе эмодзи в конце
+ * тянет на два знака.
+ *
+ * Длинную показываем мельче и в две строки; совсем длинную — ещё мельче.
+ * Второй порог появился вместе с обращением на «вы»: «Хотите продолжать —
+ * кайфуйте…» в «длинном» кегле уходило в третью строку на узком экране, а
+ * высота блока над кругом жёстко равна двум строкам и трогать её нельзя —
+ * от неё считается размер круга.
  */
-const isLongPhrase = (text: string) => [...text].length > 40
+const phraseClass = (text: string): string => {
+  const length = [...text].length
+  if (length > 56) return ' is-long is-xlong'
+  return length > 40 ? ' is-long' : ''
+}
 
 const MENU = [
   { icon: <Clock size={19} />, label: 'Мой прогресс', to: '/progress' },
@@ -795,7 +805,7 @@ export default function Player() {
         <header className="stage__top">
           {/* Фразы выключены в настройках — блок остаётся на месте пустым,
               иначе круг подпрыгивал бы вверх. */}
-          <h1 className={`stage__headline ${motivationOn && isLongPhrase(motivation) ? 'is-long' : ''}`}>
+          <h1 className={`stage__headline${motivationOn ? phraseClass(motivation) : ''}`}>
             {motivationOn ? motivation : ' '}
           </h1>
         </header>

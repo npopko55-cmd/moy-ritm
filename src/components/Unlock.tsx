@@ -28,7 +28,7 @@ export default function Unlock({ compact = false, pulse = false }: Props) {
   return (
     <div className={`unlock ${compact ? 'unlock--compact' : ''} ${pulse ? 'is-pulse' : ''}`}>
       <span className="unlock__text">
-        <span className="unlock__title">Открой все потоки и {ALL_MOVES.length} движений</span>
+        <span className="unlock__title">Откройте все потоки и {ALL_MOVES.length} движений</span>
         <span className="unlock__price">от {rub(FROM_PRICE)} в месяц</span>
       </span>
       <Link className="unlock__cta" to="/tariffs">

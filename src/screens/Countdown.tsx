@@ -136,8 +136,8 @@ export default function Countdown() {
           <MusicNote size={22} />
         </span>
         <div className="countdown__card-body">
-          <strong>Приготовься!</strong>
-          <span>Включай музыку погромче, и мы начинаем ⚡</span>
+          <strong>Приготовьтесь!</strong>
+          <span>Включайте музыку погромче, и мы начинаем ⚡</span>
         </div>
       </div>
     </div>

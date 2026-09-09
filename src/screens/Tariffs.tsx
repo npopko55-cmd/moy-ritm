@@ -184,12 +184,12 @@ export default function Tariffs() {
             <Logo />
 
             <h1 className="tariffs__title">
-              Открой больше
+              Откройте больше
               <br />
               <span className="tariffs__title-accent">движений!</span>
             </h1>
 
-            <p className="tariffs__lead">Все потоки, все движения и всё новое — сразу твоё.</p>
+            <p className="tariffs__lead">Все потоки, все движения и всё новое — сразу ваше.</p>
           </div>
 
           <div className="tariffs__visual">

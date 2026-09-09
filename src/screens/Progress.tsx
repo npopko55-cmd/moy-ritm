@@ -271,12 +271,12 @@ export default function Progress() {
               <p className="dash__lead">
                 Каждая минута в движении — это забота о себе.
                 <br />
-                И ты делаешь это отлично! 💗
+                И вы делаете это отлично! 💗
               </p>
             </div>
 
             {/* Подписи стоят по бокам от фото: слева — про маленькие шаги,
-                справа — «Ты супер!». Пятно живёт в .dash__figure вместе со
+                справа — «Вы супер!». Пятно живёт в .dash__figure вместе со
                 снимком, иначе оно уезжает от него вслед за подписью. */}
             <div className="dash__visual">
               <p className="dash__hand dash__hand--a">Маленькие шаги — большие результаты!</p>
@@ -289,9 +289,9 @@ export default function Progress() {
                   decoding="async"
                 />
               </div>
-              {/* «Ты супер!» с лучиками — восклицание, а не просто подпись. */}
+              {/* «Вы супер!» с лучиками — восклицание, а не просто подпись. */}
               <p className="dash__hand dash__hand--b">
-                Ты супер!
+                Вы супер!
                 <Rays />
               </p>
             </div>
@@ -329,7 +329,7 @@ export default function Progress() {
                   {streak} <i>{pluralWord(streak, 'день', 'дня', 'дней')}</i>
                 </strong>
                 <span className="tile__note">
-                  {streak > 0 ? 'Продолжай в том же ритме!' : 'Начни серию сегодня'}
+                  {streak > 0 ? 'Продолжайте в том же ритме!' : 'Начните серию сегодня'}
                 </span>
               </span>
             </li>
@@ -355,7 +355,7 @@ export default function Progress() {
                 <span className="tile__label">Всего шагов</span>
                 {/* «~»: шаги мы оцениваем по темпу движения, а не считаем. */}
                 <strong className="tile__value">~{data?.total_steps ?? 0}</strong>
-                <span className="tile__note">Шаг за шагом к лучшей тебе!</span>
+                <span className="tile__note">Шаг за шагом к лучшей версии себя!</span>
               </span>
             </li>
           </ul>
@@ -423,8 +423,8 @@ export default function Progress() {
 
                 <p className="today__note">
                   {todayMinutes > 0
-                    ? 'Отличное начало дня! 🎉 Будет время — загляни ещё и набирай минуты.'
-                    : 'Сегодня ещё не двигалась — самое время начать'}
+                    ? 'Отличное начало дня! 🎉 Будет время — загляните ещё и наберите минуты.'
+                    : 'Сегодня вы ещё не двигались — самое время начать'}
                 </p>
 
                 {/* Тренировка ещё идёт (сюда заглянули из плеера) — кнопка
@@ -442,7 +442,7 @@ export default function Progress() {
                   <Trophy size={19} />
                 </span>
                 <span className="record__body">
-                  <span className="record__label">Твой рекорд</span>
+                  <span className="record__label">Ваш рекорд</span>
                   <strong className="record__value">
                     {toMinutes(data?.records.best_day?.seconds ?? 0)} <i>мин</i>
                   </strong>
@@ -462,7 +462,7 @@ export default function Progress() {
 
           {/* ——— Недели ——— */}
           <section className="dash__block">
-            <h2 className="dash__block-title">Твоя активность по неделям</h2>
+            <h2 className="dash__block-title">Ваша активность по неделям</h2>
 
             <div className="dash__weeks">
               <Weeks weeks={data?.weeks ?? []} />
@@ -527,14 +527,14 @@ export default function Progress() {
           {/* ——— Потоки ——— */}
           <section className="dash__block">
             <header className="dash__block-top">
-              <h2 className="dash__block-title">Твои потоки</h2>
+              <h2 className="dash__block-title">Ваши потоки</h2>
               <Link className="dash__more" to="/tariffs">
                 Смотреть все
               </Link>
             </header>
 
             {data && data.streams.length === 0 ? (
-              <p className="dash__empty">Пока пусто — начни первую тренировку</p>
+              <p className="dash__empty">Пока пусто — начните первую тренировку</p>
             ) : (
               <ul className="flows">
                 {(data?.streams ?? []).map((s) => {
@@ -711,7 +711,7 @@ function Ring({ value }: { value: number }) {
 }
 
 /**
- * Лучики у «Ты супер!»: три розовые чёрточки, какие рисуют от руки рядом
+ * Лучики у «Вы супер!»: три розовые чёрточки, какие рисуют от руки рядом
  * с восклицанием. Знак только для глаз, в текст страницы не попадает.
  */
 function Rays() {

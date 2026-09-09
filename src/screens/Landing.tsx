@@ -27,12 +27,12 @@ const FEATURES = [
     icon: <Bolt size={22} />,
     tone: 'orange',
     title: 'Просто начать',
-    text: 'Один клик — и ты\nуже в движении',
+    text: 'Один клик — и вы\nуже в движении',
   },
   {
     icon: <Heart size={22} />,
     tone: 'pink',
-    title: 'Для тебя',
+    title: 'Для вас',
     text: 'Потоки на любой вкус\nи уровень',
   },
 ] as const
@@ -155,16 +155,16 @@ export default function Landing() {
 
       <main className="landing__hero">
         <div className="hero__copy">
-          <p className="hero__kicker">Двигайся. Чувствуй. Живи.</p>
+          <p className="hero__kicker">Двигайтесь. Чувствуйте. Живите.</p>
 
           <h1 className="hero__title">
-            Твой поток
+            Ваш поток
             <br />
             движений под музыку
           </h1>
 
           <p className="hero__lead">
-            Просто включай и двигайся в ритме.
+            Просто включайте и двигайтесь в ритме.
             <br />В любое время. В любом месте.
           </p>
 
