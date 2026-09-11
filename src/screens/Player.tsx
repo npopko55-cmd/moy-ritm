@@ -868,16 +868,17 @@ export default function Player() {
           </div>
         </section>
 
-        {/* Шаги те же, что на экране паузы: один счётчик, одна величина. */}
+        {/* Шаги те же, что на экране паузы: один счётчик, одна величина.
+            «Сегодня» стоит в заголовке, поэтому под цифрой его нет: дважды
+            одно и то же в одной карточке только путает. */}
         <section className="stat">
           <header className="stat__head">
-            <span>Шагов набрано</span>
+            <span>Шагов набрано сегодня</span>
           </header>
           <div className="stat__row">
             <span className="stat__steps">
               {/* «~» здесь и везде: шаги мы оцениваем по темпу движения. */}
               <strong className="stat__mid">~{todaySteps}</strong>
-              <span>сегодня</span>
             </span>
           </div>
         </section>

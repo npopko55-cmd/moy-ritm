@@ -69,7 +69,7 @@ function weekDates(today: string): string[] {
 }
 
 type Props = {
-  /** Секунды в движении за эту тренировку. */
+  /** Секунды в движении в этом заходе. */
   sessionSeconds: number
   /** Шаги за сегодня целиком — оценка, поэтому печатается с «~». */
   todaySteps: number
@@ -124,33 +124,35 @@ export default function PlayerPause({
           </div>
         </header>
 
+        {/*
+          Подписи — дословно те, что продиктовал владелец. Единиц под
+          цифрами больше нет: «шагов сегодня» под заголовком «Шагов набрано
+          сегодня» повторяло его же. Осталось только число.
+        */}
         <ul className="pause__cards">
           <li className="sum">
             <span className="sum__icon sum__icon--pink">
               <Clock size={19} />
             </span>
-            <span className="sum__label">В этой сессии</span>
+            <span className="sum__label">Минут в движении в этом заходе</span>
+            {/* Минуты и секунды: за короткий заход «0» выглядело бы так,
+                будто движение не засчиталось. */}
             <strong className="sum__value">{mmss(sessionSeconds)}</strong>
-            <span className="sum__unit">минут в движении</span>
           </li>
           <li className="sum">
             <span className="sum__icon sum__icon--orange">
               <Steps size={19} />
             </span>
-            <span className="sum__label">Шагов набрано</span>
+            <span className="sum__label">Шагов набрано сегодня</span>
             {/* «~» здесь и везде: шаги мы оцениваем по темпу движения. */}
             <strong className="sum__value">~{todaySteps}</strong>
-            <span className="sum__unit">шагов сегодня</span>
           </li>
           <li className="sum">
             <span className="sum__icon sum__icon--green">
               <PulseWave size={20} />
             </span>
-            <span className="sum__label">Сегодня уже</span>
+            <span className="sum__label">Минут в движении сегодня</span>
             <strong className="sum__value">{todayMinutes}</strong>
-            {/* Здесь под цифрой стоит именно число минут, поэтому слово склоняем:
-                «1 минут в движении» читается как машинный перевод. */}
-            <span className="sum__unit">{pluralWord(todayMinutes, 'минута', 'минуты', 'минут')} в движении</span>
           </li>
         </ul>
 
