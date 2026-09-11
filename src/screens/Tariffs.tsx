@@ -30,9 +30,9 @@ import './Tariffs.css'
 
 /** Что входит в подписку — строка под заголовком. */
 const PERKS = [
-  { icon: <PlayCircle size={19} />, tone: 'pink', text: 'Все потоки\nи движения' },
+  { icon: <PlayCircle size={19} />, tone: 'pink', text: 'Все движения\nбез ограничений' },
   { icon: <Star size={19} />, tone: 'violet', text: 'Все новые\nдвижения' },
-  { icon: <InfinityMark size={19} />, tone: 'orange', text: 'Все будущие\nпотоки' },
+  { icon: <InfinityMark size={19} />, tone: 'orange', text: 'Всё, что\nпоявится дальше' },
   { icon: <Phone size={19} />, tone: 'blue', text: 'На любом\nустройстве' },
   { icon: <Heart size={19} />, tone: 'pink', text: 'Без\nавтосписаний' },
 ] as const
@@ -189,7 +189,7 @@ export default function Tariffs() {
               <span className="tariffs__title-accent">движений!</span>
             </h1>
 
-            <p className="tariffs__lead">Все потоки, все движения и всё новое — сразу ваше.</p>
+            <p className="tariffs__lead">Все движения и всё новое — сразу ваши.</p>
           </div>
 
           <div className="tariffs__visual">

@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { FloatNote, MusicNote, Sparkle } from '../components/Icons'
-import { STREAMS, getStream } from '../data/streams'
+import { getStream } from '../data/streams'
 import { loopPoster, loopSrc } from '../data/loops'
 import { useFlow } from '../flow/FlowSession'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
@@ -42,7 +42,10 @@ export default function Countdown() {
   const { start } = useMusic()
   const { session: flow } = useFlow()
 
-  const target = streamId ?? 'cardio'
+  // Ссылка на скрытый поток ведёт в поток по умолчанию — это решает
+  // getStream. Дальше по коду идёт уже существующий идентификатор.
+  const stream = getStream(streamId)
+  const target = stream.id
 
   /**
    * Тренировка этого потока уже идёт — отсчёта не будет.
@@ -66,13 +69,9 @@ export default function Countdown() {
   // к открытию плеера фото, постеры и первые два ролика уже в кэше.
   useEffect(() => {
     if (resume) return
-    const stream = getStream(streamId)
-    prefetchImages([
-      ...STREAMS.map((s) => s.cover),
-      ...stream.loops.map((l) => loopPoster(l.id)),
-    ])
+    prefetchImages(stream.loops.map((l) => loopPoster(l.id)))
     prefetchFiles(stream.loops.slice(0, 2).map((l) => loopSrc(l.id)))
-  }, [streamId, resume])
+  }, [stream, resume])
 
   useEffect(() => {
     if (resume) return

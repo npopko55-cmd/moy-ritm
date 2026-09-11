@@ -12,7 +12,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { ApiError, hasAccess, type Access } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { STREAMS } from '../data/streams'
+import { DEFAULT_STREAM } from '../data/streams'
 import { formatDate } from '../lib/date'
 import { AccountShell, FormError, errorText } from './Account'
 import './PaymentSuccess.css'
@@ -97,7 +97,7 @@ export default function PaymentSuccess() {
   // Оплата прошла — показали и ушли в поток.
   useEffect(() => {
     if (stage !== 'paid') return
-    const id = window.setTimeout(() => navigate(`/start/${STREAMS[0].id}`), LEAVE_MS)
+    const id = window.setTimeout(() => navigate(`/start/${DEFAULT_STREAM.id}`), LEAVE_MS)
     return () => window.clearTimeout(id)
   }, [stage, navigate])
 
@@ -124,7 +124,7 @@ export default function PaymentSuccess() {
           <Ring done />
         </div>
         <nav className="account__links">
-          <Link to={`/start/${STREAMS[0].id}`}>Влиться в поток</Link>
+          <Link to={`/start/${DEFAULT_STREAM.id}`}>Влиться в поток</Link>
           <Link to="/">На главную</Link>
         </nav>
       </AccountShell>

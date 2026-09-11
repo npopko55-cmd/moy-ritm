@@ -8,7 +8,7 @@
 
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { STREAMS } from '../data/streams'
+import { DEFAULT_STREAM } from '../data/streams'
 import type { FlowSession } from '../flow/FlowSession'
 import { Waiting } from '../screens/Account'
 import { useSession } from './SessionProvider'
@@ -17,8 +17,8 @@ import { useSession } from './SessionProvider'
 export const nextParam = (pathname: string, search = '') =>
   `?next=${encodeURIComponent(pathname + search)}`
 
-/** Первый поток — с него начинается тренировка по умолчанию. */
-export const FIRST_STREAM = `/start/${STREAMS[0].id}`
+/** Поток по умолчанию — с него начинается тренировка. Выбора больше нет. */
+export const FIRST_STREAM = `/start/${DEFAULT_STREAM.id}`
 
 /**
  * Куда ведёт «Влиться в поток»: не вошёл — на вход и обратно сюда,

@@ -38,7 +38,7 @@ import {
   Trophy,
   User,
 } from '../components/Icons'
-import { getStream } from '../data/streams'
+import { DEFAULT_STREAM, VISIBLE_STREAMS, getStream } from '../data/streams'
 import { asset } from '../lib/asset'
 import {
   formatDate,
@@ -67,7 +67,7 @@ const WEEKDAYS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']
 const MENU = [
   { icon: <Home size={19} />, label: 'Главная', to: '/' },
   { icon: <Clock size={19} />, label: 'Мой прогресс', to: '/progress' },
-  { icon: <PlayCircle size={19} />, label: 'Потоки', to: '/player/cardio' },
+  { icon: <PlayCircle size={19} />, label: 'Тренировка', to: `/player/${DEFAULT_STREAM.id}` },
   { icon: <User size={19} />, label: 'Профиль', to: '/profile' },
   { icon: <Gear size={19} />, label: 'Настройки', to: '/settings' },
 ] as const
@@ -129,6 +129,15 @@ function weekRange(weekStart: string): string {
 
 /** «164 мин» и «32 занятия» — в карточке потока. */
 const sessionsWord = (n: number) => `${n} ${pluralWord(n, 'занятие', 'занятия', 'занятий')}`
+
+/**
+ * Показывать ли блок «Ваши потоки».
+ *
+ * Пока поток один, разбивка по потокам — это та же цифра, что уже стоит
+ * выше в общих итогах, только в карточке. Появится второй видимый поток —
+ * блок вернётся сам.
+ */
+const SHOW_STREAMS = VISIBLE_STREAMS.length > 1
 
 export default function Progress() {
   const navigate = useNavigate()
@@ -256,7 +265,7 @@ export default function Progress() {
           <div className="dash__promo">
             <p className="dash__promo-title">Больше движений — больше возможностей!</p>
             <Link className="dash__promo-btn" to="/tariffs">
-              Открыть все потоки
+              Открыть все движения
             </Link>
           </div>
         )}
@@ -525,6 +534,7 @@ export default function Progress() {
           </section>
 
           {/* ——— Потоки ——— */}
+          {SHOW_STREAMS && (
           <section className="dash__block">
             <header className="dash__block-top">
               <h2 className="dash__block-title">Ваши потоки</h2>
@@ -561,6 +571,7 @@ export default function Progress() {
               </ul>
             )}
           </section>
+          )}
 
           <p className="dash__hand dash__hand--footer">Движение — это забота о себе ♡</p>
         </div>

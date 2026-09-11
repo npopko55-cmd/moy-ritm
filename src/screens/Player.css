@@ -10,13 +10,15 @@
   height: 100dvh;
   min-height: 620px;
   display: grid;
-  grid-template-columns: clamp(250px, 16vw, 330px) minmax(0, 1fr) clamp(262px, 16vw, 330px);
+  /* Левая колонка сузилась под меню: карточек потоков в ней больше нет,
+     и всё, что они занимали, ушло центру. */
+  grid-template-columns: clamp(186px, 12vw, 226px) minmax(0, 1fr) clamp(262px, 16vw, 330px);
   gap: clamp(20px, 1.6vw, 34px);
   /* env(...) на десктопе равен нулю — отступы те же, что были. */
   padding:
-    calc(clamp(18px, 2vh, 28px) + env(safe-area-inset-top))
+    calc(clamp(14px, 1.6vh, 24px) + env(safe-area-inset-top))
     calc(clamp(20px, 1.8vw, 36px) + env(safe-area-inset-right))
-    calc(clamp(18px, 2vh, 28px) + env(safe-area-inset-bottom))
+    calc(clamp(14px, 1.6vh, 24px) + env(safe-area-inset-bottom))
     calc(clamp(20px, 1.8vw, 36px) + env(safe-area-inset-left));
   background: var(--bg-warm);
   overflow: hidden;
@@ -33,15 +35,6 @@
 
 /* ═══════ Левая колонка ═══════ */
 .player__side { display: flex; flex-direction: column; gap: clamp(12px, 1.4vh, 18px); min-height: 0; overflow: hidden; }
-
-.side__label {
-  margin-top: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--gray-400);
-}
 
 /*
  * Плашка «доступ заканчивается». Обычная строка в колонке, а не всплывающее
@@ -70,122 +63,8 @@
   .access-note:hover { background: #ffdcbe; }
 }
 
-.side__streams {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 1vh, 14px);
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.side__streams > li { flex: 1 1 0; min-height: 0; display: flex; }
-
-.side__streams::-webkit-scrollbar { display: none; }
-
-.stream-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  width: 100%;
-  height: 100%;
-  min-height: 84px;
-  max-height: 160px;
-  padding: 0 14px 0 0;
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  text-align: left;
-  color: var(--white);
-  background: var(--card-grad);
-  transition: transform .16s ease, box-shadow .16s ease;
-}
-
-.stream-card.is-active {
-  box-shadow: 0 8px 20px rgba(20, 22, 26, .16);
-  transform: translateY(-1px);
-}
-
-/*
- * Закрытый поток. Не прячем и не отключаем кнопку: по ней и надо кликнуть,
- * чтобы увидеть, что делать дальше, — клик подсвечивает блок разблокировки
- * ниже. Поэтому приглушение и замок, а не disabled.
- */
-.stream-card.is-locked { opacity: .58; filter: saturate(.55); cursor: default; }
-
-.stream-card__lock {
-  position: absolute;
-  top: 8px;
-  right: 9px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  border-radius: 50%;
-  background: rgba(20, 22, 26, .38);
-  color: var(--white);
-}
-
-/*
- * Фото кладётся в плашку как есть, фон не вырезается.
- * Правый край растушёван маской: без неё на границе снимка и заливки
- * была видна жёсткая вертикальная линия.
- */
-.stream-card__photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 46%, rgba(0, 0, 0, .5) 74%, transparent 96%);
-  mask-image: linear-gradient(90deg, #000 0%, #000 46%, rgba(0, 0, 0, .5) 74%, transparent 96%);
-}
-
-/*
- * Два слоя поверх фото.
- * tint: подменяет цвет снимка на цвет потока, оставляя светотень. Снимки
- *   сняты на разных подложках (коралл, бирюза, охра), и без этого слоя
- *   плашки спорили бы между собой по цвету.
- * fade: сплошная заливка справа, чтобы текст читался.
- */
-.stream-card__tint {
-  position: absolute;
-  inset: 0;
-  background: var(--card-grad);
-  mix-blend-mode: color;
-  opacity: .72;
-}
-
-.stream-card__fade {
-  position: absolute;
-  inset: 0;
-  background: var(--card-grad);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .1) 34%, rgba(0, 0, 0, .45) 54%, rgba(0, 0, 0, .85) 72%, #000 86%);
-  mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .1) 34%, rgba(0, 0, 0, .45) 54%, rgba(0, 0, 0, .85) 72%, #000 86%);
-}
-
-.stream-card__text {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  width: 44%;
-  z-index: 1;
-}
-
-.stream-card__title { font-family: var(--font-head); font-weight: 800; font-size: clamp(16px, 1.7vh, 23px); }
-.stream-card__sub { font-size: clamp(11px, 1.1vh, 14.5px); line-height: 1.3; opacity: .95; }
-
-.stream-card--cardio { --card-grad: linear-gradient(100deg, #ff2d8e 0%, #f9552f 100%); }
-.stream-card--back   { --card-grad: linear-gradient(100deg, #2f9bf5 0%, #7ec8ff 100%); }
-.stream-card--office { --card-grad: linear-gradient(100deg, #9b6cf0 0%, #c4a4ff 100%); }
-.stream-card--dance  { --card-grad: linear-gradient(100deg, #f5b322 0%, #ffd76a 100%); }
-.stream-card--senior { --card-grad: linear-gradient(100deg, #46c98b 0%, #93e2bd 100%); }
-
-.side__menu { display: flex; flex-direction: column; gap: 1px; padding-top: clamp(8px, 1vh, 14px); }
+/* Меню стоит сразу под логотипом: в колонке кроме них ничего не осталось. */
+.side__menu { display: flex; flex-direction: column; gap: 1px; padding-top: clamp(4px, .6vh, 10px); }
 
 .side__menu-item {
   display: flex;
@@ -209,7 +88,7 @@
   --headline-sm: clamp(17px, 2.17vh, 32px); /* ≈0,7 от обычного размера */
   --headline-lh: 1.2;
   /* Тот же вертикальный отступ, что и в padding у .player. */
-  --stage-pad: clamp(18px, 2vh, 28px);
+  --stage-pad: clamp(14px, 1.6vh, 24px);
   /*
    * Высота строки с кнопкой паузы под кругом. В режиме «угол» (большой
    * круг, правило ниже) обнуляется: там кнопка лежит в пустом углу
@@ -401,13 +280,14 @@
  * в --stage-chrome, поэтому круг заранее ужимается на неё, и кнопка не
  * ложится ни на карточки статистики, ни на нижнюю панель вкладок.
  *
- * УГОЛ (правило ниже, от 1180×860) — как было: кнопка в правом нижнем углу
- * квадрата, описанного вокруг круга. Свободный угол там — квадрат со
- * стороной (1 − 1/√2)/2 ≈ 0,146 от диаметра круга, и кнопке 72 px с
- * запасом 12 px он годится только начиная с D ≈ 574 px. При 1180×860 круг
- * равен 585 px, при 1440×900 — 813 px, при 2000×1235 — 1117 px: с запасом.
- * Ниже этих порогов круг становится меньше, кнопка вылезала бы за его низ
- * и ложилась на карточку «Сегодня» — поэтому там строка.
+ * УГОЛ (правило ниже, от 1180×640) — кнопка в правом нижнем углу квадрата,
+ * описанного вокруг круга. Свободный угол там — квадрат со стороной
+ * (1 − 1/√2)/2 ≈ 0,146 от диаметра круга, и кнопке 72 px с запасом 12 px он
+ * годится начиная с D ≈ 574 px. Порог по высоте опущен с 860 до 640 вместе
+ * с сужением левой колонки: при 1180×640 круг равен 571 px, при 1280×650 —
+ * 581 px, при 1440×900 — 824 px, при 2000×1235 — 1131 px. Ниже 640 круг
+ * становится меньше, кнопка вылезала бы за его низ и ложилась на карточку
+ * «Сегодня» — поэтому там строка.
  */
 .stage__pause {
   z-index: 2;
@@ -445,7 +325,7 @@
    в пустом углу квадрата вокруг него. Пороги подобраны по кругу,
    а не по «на глаз»: см. расчёт выше.
    ═══════════════════════════════════════════════════════════════ */
-@media (min-width: 1180px) and (min-height: 860px) {
+@media (min-width: 1180px) and (min-height: 640px) {
   /* Строки под кругом нет — её высота возвращается кругу. */
   .player__stage { --pause-row: 0px; }
 
@@ -562,9 +442,6 @@
 
 /* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
 @media (hover: hover) {
-  .stream-card:hover { transform: translateY(-1px); }
-  /* Закрытый поток не «приподнимается»: переключать нечего. */
-  .stream-card.is-locked:hover { transform: none; }
   .side__menu-item:hover { background: var(--white); color: var(--ink-900); }
   .track:hover { border-color: var(--gray-300); }
   .ctrl--main:hover { box-shadow: 0 14px 32px rgba(251, 59, 33, 0.45); }
@@ -585,11 +462,6 @@
 
   /* Отступы плеера здесь свои — круг считается от них. */
   .player__stage { --stage-pad: 14px; }
-
-  .stream-card { min-height: 66px; padding-right: 10px; }
-  .stream-card__text { width: 48%; }
-  .stream-card__title { font-size: 15px; }
-  .stream-card__sub { font-size: 11px; }
 
   .side__menu-item { padding: 6px; font-size: 13px; gap: 9px; }
 
@@ -620,7 +492,6 @@
   .stat { padding: 10px 14px; }
   .stat__big { font-size: clamp(30px, 6.4vh, 44px); margin: 4px 0 8px; }
   .stat__mid { font-size: clamp(24px, 5vh, 36px); }
-  .stream-card { min-height: 64px; }
   .side__menu-item { padding: 4px 6px; }
 }
 
@@ -647,15 +518,15 @@
     overflow-x: clip;
     overflow-y: visible;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     /* Карточек статистики теперь две: время с графиком занимает две трети
-       ряда, шаги — оставшуюся треть. */
+       ряда, шаги — оставшуюся треть. Ряда с лентой потоков больше нет —
+       его высота ушла кругу. */
     grid-template-areas:
-      "top     top     top"
-      "streams streams streams"
-      "stage   stage   stage"
-      "s1      s1      s2"
-      "menu    menu    menu";
+      "top   top   top"
+      "stage stage stage"
+      "s1    s1    s2"
+      "menu  menu  menu";
     gap: clamp(8px, 1.2vh, 14px) 12px;
     padding:
       calc(10px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
@@ -672,44 +543,6 @@
   .player .logo { grid-area: top; align-self: center; justify-self: start; z-index: 2; }
   .player .logo__tagline { display: none; }
   .stats__top { grid-area: top; align-self: center; padding-left: 116px; }
-  .side__label { display: none; }
-
-  /* ——— Лента потоков ——— */
-  .side__streams {
-    grid-area: streams;
-    flex: none;
-    flex-direction: row;
-    gap: 10px;
-    padding: 0 4px 2px 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
-    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
-  }
-
-  .side__streams > li { flex: 0 0 auto; scroll-snap-align: start; }
-
-  .stream-card {
-    width: 180px;
-    height: 72px;
-    min-height: 72px;
-    max-height: none;
-    padding-right: 10px;
-  }
-
-  .stream-card__text { width: 54%; gap: 1px; }
-  .stream-card__title { font-size: 15px; }
-  .stream-card__sub {
-    font-size: 10.5px;
-    line-height: 1.22;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-  }
-
   /* ——— Центр ——— */
   .player__stage {
     grid-area: stage;
@@ -720,12 +553,14 @@
   .player__stage { --headline-sm: clamp(16px, 4.6vw, 20px); }
   .stage__headline { font-size: var(--headline-sm); -webkit-line-clamp: 2; text-wrap: balance; }
 
-  /* Круг = остаток высоты после шапки, ленты, статистики и меню.
-     Было 566: ряд с кнопками управления забирал около 110 px, а его больше нет.
-     К 456 прибавляется строка с паузой: здесь она всегда под кругом. */
+  /* Круг = остаток высоты после шапки, статистики и меню. Лента потоков
+     забирала здесь около 86 px — половину этого отдали кругу, половину
+     вернули странице, которая на планшете была выше экрана.
+     К 414 прибавляется строка с паузой: здесь она всегда под кругом.
+     Предел по ширине поднят с 70vw: без ленты по бокам круга пусто. */
   .stage__figure {
-    --stage-chrome: calc(456px + var(--pause-row));
-    width: min(70vw, calc(100dvh - var(--stage-chrome)), 100%);
+    --stage-chrome: calc(414px + var(--pause-row));
+    width: min(78vw, calc(100dvh - var(--stage-chrome)), 100%);
   }
 
   .stage__pause { gap: 10px; font-size: 12px; }
@@ -740,14 +575,13 @@
   .stats__unlock { grid-area: unlock; }
 
   .player--locked {
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
-      "top     top     top"
-      "streams streams streams"
-      "stage   stage   stage"
-      "s1      s1      s2"
-      "unlock  unlock  unlock"
-      "menu    menu    menu";
+      "top    top    top"
+      "stage  stage  stage"
+      "s1     s1     s2"
+      "unlock unlock unlock"
+      "menu   menu   menu";
   }
 
   .stats__unlock .unlock { flex-direction: row; align-items: center; gap: 10px; padding: 9px 12px; }
@@ -787,14 +621,13 @@
      С .player--locked она не встречается: плашка висит на «доступ вот-вот
      кончится», а разблокировка — на «доступа нет». */
   .player--notice {
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
     grid-template-areas:
-      "top     top     top"
-      "note    note    note"
-      "streams streams streams"
-      "stage   stage   stage"
-      "s1      s1      s2"
-      "menu    menu    menu";
+      "top   top   top"
+      "note  note  note"
+      "stage stage stage"
+      "s1    s1    s2"
+      "menu  menu  menu";
   }
 
   .access-note { grid-area: note; }
@@ -808,10 +641,9 @@
   .player {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      "top     top"
-      "streams streams"
-      "stage   stage"
-      "s1      s2";
+      "top   top"
+      "stage stage"
+      "s1    s2";
     gap: 10px;
     padding:
       calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
@@ -822,23 +654,19 @@
   .player .logo__word { display: none; }
   .stats__top { padding-left: 46px; gap: 8px; }
 
-  .stream-card { width: 150px; height: 64px; min-height: 64px; }
-
   .stats__unlock .unlock { padding: 8px 10px; }
   .stats__unlock .unlock__title { font-size: 12.5px; }
   .stats__unlock .unlock__price { font-size: 10.5px; }
   .stats__unlock .unlock__cta { padding: 6px 12px; font-size: 12px; }
 
-  .stream-card__text { width: 56%; }
-  .stream-card__title { font-size: 13.5px; }
-  .stream-card__sub { font-size: 10px; }
-
   /* Ноты по бокам круга на узком экране только лезут за край. */
   .stage__note { display: none; }
 
-  /* Ширина круга прежняя — 86vw; предел по высоте ужат на строку с паузой,
-     чтобы она не отодвигала статистику под нижнюю панель. */
-  .stage__figure { width: min(86vw, calc(52dvh - var(--pause-row)), 100%); }
+  /* Ленты потоков над кругом больше нет, и круг забрал её место: по ширине
+     86vw → 92vw, по высоте 52dvh → 58dvh. Строка с паузой из предела по
+     высоте по-прежнему вычитается, чтобы не отодвигать статистику под
+     нижнюю панель. */
+  .stage__figure { width: min(92vw, calc(58dvh - var(--pause-row)), 100%); }
 
   /* Подпись рядом с кнопкой снова видна: в строке под кругом ей есть где
      встать — раньше её прятали, потому что круг занимал всю ширину. */
@@ -878,21 +706,19 @@
   /* Те же дополнительные ряды, но сетка здесь в две колонки. */
   .player--notice {
     grid-template-areas:
-      "top     top"
-      "note    note"
-      "streams streams"
-      "stage   stage"
-      "s1      s2";
+      "top   top"
+      "note  note"
+      "stage stage"
+      "s1    s2";
   }
 
   .player--locked {
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
-      "top     top"
-      "streams streams"
-      "stage   stage"
-      "s1      s2"
-      "unlock  unlock";
+      "top   top"
+      "stage stage"
+      "s1    s2"
+      "unlock unlock";
   }
 
   .access-note { font-size: 12px; padding: 8px 10px; }
@@ -907,10 +733,10 @@
     grid-template-columns: minmax(0, 1fr) clamp(150px, 24vw, 210px);
     grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
-      "streams menu"
-      "stage   top"
-      "stage   s1"
-      "stage   s2";
+      "stage menu"
+      "stage top"
+      "stage s1"
+      "stage s2";
     gap: 6px 10px;
   }
 
@@ -918,11 +744,11 @@
   .player--locked {
     grid-template-rows: auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
-      "streams menu"
-      "stage   top"
-      "stage   s1"
-      "stage   s2"
-      "stage   unlock";
+      "stage menu"
+      "stage top"
+      "stage s1"
+      "stage s2"
+      "stage unlock";
     padding:
       calc(4px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
       calc(4px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
@@ -931,14 +757,6 @@
   /* Логотип на 390 px высоты съедает место, нужное кругу. */
   .player .logo { display: none; }
   .stats__top { grid-area: top; align-self: start; padding-left: 0; }
-
-  /* Лента становится узкими пилюлями. */
-  /* 44 px — минимум под палец; круг при этом остаётся выше 60 % высоты. */
-  .stream-card { width: 128px; height: 44px; min-height: 44px; border-radius: var(--r-md); }
-  .stream-card__sub { display: none; }
-  .stream-card__title { font-size: 12px; }
-  .stream-card__text { width: 52%; }
-  .side__streams { gap: 8px; }
 
   /* Пилюля в правом столбце: цена в неё уже не влезает, остаётся суть и кнопка. */
   .stats__unlock .unlock { flex-direction: row; align-items: center; gap: 6px; padding: 5px 8px; border-radius: var(--r-md); }
@@ -951,9 +769,10 @@
   .player__stage { --headline-sm: 13px; --pause-row: 56px; }
   .stage__top { height: 22px; }
   .stage__headline { font-size: 14px; -webkit-line-clamp: 1; }
-  /* Ряд кнопок под кругом убрали — освободившуюся высоту забирает круг
-     (было 62dvh); строку с паузой из этой высоты вычитаем. */
-  .stage__figure { width: min(calc(76dvh - var(--pause-row)), 40vw, 100%); }
+  /* Ряд кнопок под кругом убрали, а следом и ленту потоков — освободившуюся
+     высоту забирает круг (было 62dvh, потом 76dvh); строку с паузой из этой
+     высоты вычитаем. */
+  .stage__figure { width: min(calc(86dvh - var(--pause-row)), 40vw, 100%); }
   .stage__note { display: none; }
 
   .stage__pause { gap: 8px; font-size: 11.5px; }

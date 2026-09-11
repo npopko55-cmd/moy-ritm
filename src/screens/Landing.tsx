@@ -12,7 +12,7 @@ import { asset } from '../lib/asset'
 import { loopPoster, loopSrc } from '../data/loops'
 import { useMascotVideo } from '../lib/mascot'
 import { prefetchFiles, prefetchImages, whenIdle } from '../lib/prefetch'
-import { STREAMS } from '../data/streams'
+import { DEFAULT_STREAM } from '../data/streams'
 import '../components/Logo.css'
 import './Landing.css'
 
@@ -21,7 +21,7 @@ const FEATURES = [
     icon: <MusicNote size={22} />,
     tone: 'pink',
     title: 'Музыка ведёт',
-    text: 'Энергия и настроение\nв каждом потоке',
+    text: 'Энергия и настроение\nв каждом движении',
   },
   {
     icon: <Bolt size={22} />,
@@ -33,7 +33,7 @@ const FEATURES = [
     icon: <Heart size={22} />,
     tone: 'pink',
     title: 'Для вас',
-    text: 'Потоки на любой вкус\nи уровень',
+    text: 'Движения и музыка\nна любой вкус',
   },
 ] as const
 
@@ -78,12 +78,8 @@ export default function Landing() {
     let stopIdle: (() => void) | undefined
     const warmUp = () => {
       stopIdle = whenIdle(() => {
-        const first = STREAMS[0]
-        prefetchImages([
-          ...STREAMS.map((s) => s.cover),
-          ...first.loops.map((l) => loopPoster(l.id)),
-        ])
-        prefetchFiles(first.loops.slice(0, 2).map((l) => loopSrc(l.id)))
+        prefetchImages(DEFAULT_STREAM.loops.map((l) => loopPoster(l.id)))
+        prefetchFiles(DEFAULT_STREAM.loops.slice(0, 2).map((l) => loopSrc(l.id)))
       })
     }
     if (document.readyState === 'complete') warmUp()
@@ -103,7 +99,6 @@ export default function Landing() {
 
         <nav className="landing__nav">
           <a href="#about">О нас</a>
-          <a href="#streams">Потоки</a>
           {/* Тарифы — отдельная страница. href настоящий (Pages живёт
               в подпапке), клик перехватываем, чтобы не перезагружать сайт. */}
           <a href={asset('tariffs')} onClick={(e) => { e.preventDefault(); navigate('/tariffs') }}>

@@ -13,7 +13,7 @@
 
 import type { Chunk } from '../api/types'
 import { stepsFor } from '../data/loops'
-import { getStream } from '../data/streams'
+import { DEFAULT_STREAM, getStream } from '../data/streams'
 
 /** Сколько дней истории строим, считая сегодняшний. */
 const DAYS = 30
@@ -27,8 +27,12 @@ const DAYS = 30
  */
 const REST_DAYS = new Set([27, 26, 20, 19, 13, 12, 6])
 
-/** Из каких потоков состоит история. Кардио и танцы — чаще остальных. */
-const FLOWS = ['cardio', 'cardio', 'dance', 'office', 'cardio', 'back', 'dance', '60plus']
+/**
+ * Из каких потоков состоит история. Сейчас поток один — скрытые в неё не
+ * попадают, иначе в «Моём прогрессе» всплыли бы занятия в потоках, которых
+ * человек нигде не видит.
+ */
+const FLOWS = [DEFAULT_STREAM.id]
 
 /** Во сколько начинаются заходы: утро, день, вечер. */
 const HOURS = [8, 13, 20]
