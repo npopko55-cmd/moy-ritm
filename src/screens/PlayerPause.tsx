@@ -15,7 +15,7 @@ import Logo from '../components/Logo'
 import Unlock from '../components/Unlock'
 import WaveBg from '../components/WaveBg'
 import { Check, Clock, Close, Moon, Play, PulseWave, Steps, Sun, SunHalf } from '../components/Icons'
-import { parseLocalDate, pluralWord, toMinutes } from '../lib/date'
+import { duration, durationText, parseLocalDate, pluralWord, toMinutes } from '../lib/date'
 import './PlayerPause.css'
 
 /** Шкала полосы «сегодня в движении»: полчаса — это уже полная полоса. */
@@ -93,7 +93,10 @@ export default function PlayerPause({
   onResume,
   onClose,
 }: Props) {
+  // Минуты — для шкалы полосы и отметок на ней, `todayTime` — для показа:
+  // за короткий заход в нём стоят секунды, а не ноль минут.
   const todayMinutes = toMinutes(todaySeconds)
+  const todayTime = duration(todaySeconds)
   const fill = Math.min(100, (todayMinutes / BAR_SCALE) * 100)
 
   const today = summary?.local_today ?? browserToday()
@@ -151,15 +154,20 @@ export default function PlayerPause({
             <span className="sum__icon sum__icon--green">
               <PulseWave size={20} />
             </span>
-            <span className="sum__label">Минут в движении сегодня</span>
-            <strong className="sum__value">{todayMinutes}</strong>
+            {/* Единица уехала из подписи к числу: заход короче минуты теперь
+                печатается секундами, и «Минут в движении сегодня — 48 сек» не
+                сходилось бы само с собой. */}
+            <span className="sum__label">В движении сегодня</span>
+            <strong className="sum__value">
+              {todayTime.value} <i className="sum__unit">{todayTime.unit}</i>
+            </strong>
           </li>
         </ul>
 
         <section className="pause__bar">
           <header className="pause__bar-top">
             <span>
-              Сегодня в движении — <strong>{todayMinutes} мин</strong>
+              Сегодня в движении — <strong>{durationText(todaySeconds)}</strong>
             </span>
             <span className="pause__bar-note">{barNote(todayMinutes)}</span>
           </header>

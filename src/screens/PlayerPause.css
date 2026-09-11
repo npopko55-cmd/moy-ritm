@@ -135,7 +135,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-.sum__unit { font-size: clamp(12px, 1vw, 14px); color: var(--gray-400); }
+/* Единица рядом с числом: мельче и спокойнее его, курсив <i> снимаем. */
+.sum__unit {
+  font-size: clamp(12px, 1vw, 14px);
+  font-style: normal;
+  font-weight: 700;
+  color: var(--gray-400);
+}
 
 /* ——— Полоса «сегодня в движении» ——— */
 .pause__bar {

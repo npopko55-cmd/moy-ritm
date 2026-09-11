@@ -14,7 +14,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, IS_DEMO } from '../api/client'
 import type { Me, SessionRow } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { days, formatDate, formatWhen, pluralWord, toMinutes } from '../lib/date'
+import { days, duration, durationWord, formatDate, formatWhen, pluralWord } from '../lib/date'
 import {
   errorText,
   Field,
@@ -168,8 +168,8 @@ export default function Profile() {
       <Card title="Итоги">
         <ul className="totals">
           <li className="totals__item">
-            <strong>{toMinutes(totals.total_seconds)}</strong>
-            <span>{pluralWord(toMinutes(totals.total_seconds), 'минута', 'минуты', 'минут')} в движении</span>
+            <strong>{duration(totals.total_seconds).value}</strong>
+            <span>{durationWord(totals.total_seconds)} в движении</span>
           </li>
           <li className="totals__item">
             <strong>{totals.total_workouts}</strong>

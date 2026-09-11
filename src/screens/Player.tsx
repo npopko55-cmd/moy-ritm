@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { hasAccess, type DayStats, type FreeTier, type Settings, type StatsSummary } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { days, toMinutes, weekdayShort } from '../lib/date'
+import { days, durationTight, toMinutes, weekdayShort } from '../lib/date'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import {
@@ -699,7 +699,8 @@ export default function Player() {
   const todaySeconds = (summary?.today_seconds ?? 0) + pendingSeconds + openSeconds
   const week = summary?.week ?? emptyWeek()
   const isToday = (date: string) => date === (summary?.local_today ?? week[week.length - 1].local_date)
-  const weekMinutes = week.map((d) => (isToday(d.local_date) ? toMinutes(todaySeconds) : toMinutes(d.seconds)))
+  const weekSeconds = week.map((d) => (isToday(d.local_date) ? todaySeconds : d.seconds))
+  const weekMinutes = weekSeconds.map(toMinutes)
   const weekTop = Math.max(1, ...weekMinutes)
 
   /**
@@ -871,9 +872,11 @@ export default function Player() {
                   </div>
                   <span className={today ? 'is-today' : ''}>{weekdayShort(d.local_date)}</span>
                   {/* Минуты этого дня. День без движения — прочерк: ноль в
-                      столбце цифр читается как результат, а его не было. */}
+                      столбце цифр читается как результат, а его не было. Заход
+                      короче минуты — «<1»: секунды в такую колонку не влезают,
+                      но и нулём этот день называть нельзя. */}
                   <span className={`week__min ${today ? 'is-today' : ''}`}>
-                    {weekMinutes[i] > 0 ? weekMinutes[i] : '—'}
+                    {weekSeconds[i] > 0 ? durationTight(weekSeconds[i]).value : '—'}
                   </span>
                 </div>
               )

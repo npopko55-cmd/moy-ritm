@@ -41,6 +41,10 @@ import {
 import { DEFAULT_STREAM, VISIBLE_STREAMS, getStream } from '../data/streams'
 import { asset } from '../lib/asset'
 import {
+  duration,
+  durationText,
+  durationTightText,
+  durationWord,
   formatDate,
   formatDay,
   formatDayShort,
@@ -108,8 +112,10 @@ function todayIn(timezone: string): string {
 
 /** Насколько густо закрашен день календаря: 0 — пусто, дальше три ступени. */
 function level(seconds: number): number {
+  // Пусто или нет — смотрим по секундам: заход короче минуты это тоже день в
+  // движении, и клетка календаря должна быть закрашена, а не белой.
+  if (seconds <= 0) return 0
   const m = toMinutes(seconds)
-  if (m <= 0) return 0
   if (m < 10) return 1
   if (m < 20) return 2
   return 3
@@ -225,10 +231,15 @@ export default function Progress() {
     }
   }, [month, refresh, today, fill])
 
-  const totalMinutes = toMinutes(me?.totals.total_seconds ?? 0)
-  const totalHours = Math.floor(totalMinutes / 60)
+  const totalSeconds = me?.totals.total_seconds ?? 0
+  const totalTime = duration(totalSeconds)
+  const totalHours = Math.floor(toMinutes(totalSeconds) / 60)
   const streak = me?.totals.current_streak_days ?? 0
+  // Минуты — только для шкалы кольца, всё остальное печатается из `todayTime`.
   const todayMinutes = toMinutes(todaySeconds)
+  const todayTime = duration(todaySeconds)
+  const avgTime = duration(data?.averages.per_active_day_seconds ?? 0)
+  const recordTime = duration(data?.records.best_day?.seconds ?? 0)
   const paid = access?.status === 'none' || access?.status === 'expired' ? null : access?.paid_until
 
   return (
@@ -318,7 +329,7 @@ export default function Progress() {
               <span className="tile__body">
                 <span className="tile__label">Всего в движении</span>
                 <strong className="tile__value">
-                  {totalMinutes} <i>мин</i>
+                  {totalTime.value} <i>{totalTime.unit}</i>
                 </strong>
                 <span className="tile__note">
                   {totalHours > 0
@@ -350,7 +361,7 @@ export default function Progress() {
               <span className="tile__body">
                 <span className="tile__label">В среднем в день</span>
                 <strong className="tile__value">
-                  {toMinutes(data?.averages.per_active_day_seconds ?? 0)} <i>мин</i>
+                  {avgTime.value} <i>{avgTime.unit}</i>
                 </strong>
                 <span className="tile__note">Отличный результат! ⭐</span>
               </span>
@@ -423,15 +434,13 @@ export default function Progress() {
                 <div className="today__ring">
                   <Ring value={todayMinutes / DAY_GOAL_MINUTES} />
                   <span className="today__center">
-                    <span className="today__num">{todayMinutes}</span>
-                    <span className="today__unit">
-                      {pluralWord(todayMinutes, 'минута', 'минуты', 'минут')} в движении
-                    </span>
+                    <span className="today__num">{todayTime.value}</span>
+                    <span className="today__unit">{durationWord(todaySeconds)} в движении</span>
                   </span>
                 </div>
 
                 <p className="today__note">
-                  {todayMinutes > 0
+                  {todaySeconds > 0
                     ? 'Отличное начало дня! 🎉 Будет время — загляните ещё и наберите минуты.'
                     : 'Сегодня вы ещё не двигались — самое время начать'}
                 </p>
@@ -453,7 +462,7 @@ export default function Progress() {
                 <span className="record__body">
                   <span className="record__label">Ваш рекорд</span>
                   <strong className="record__value">
-                    {toMinutes(data?.records.best_day?.seconds ?? 0)} <i>мин</i>
+                    {recordTime.value} <i>{recordTime.unit}</i>
                   </strong>
                   <span className="record__note">
                     {data?.records.best_day
@@ -560,7 +569,7 @@ export default function Progress() {
                       <span className="flow__body">
                         <span className="flow__title">{stream.title}</span>
                         <span className="flow__nums">
-                          <b>{toMinutes(s.seconds)} мин</b>
+                          <b>{durationText(s.seconds)}</b>
                           <i>·</i>
                           <span>{sessionsWord(s.sessions)}</span>
                         </span>
@@ -614,15 +623,17 @@ function MonthGrid({
       {Array.from({ length }, (_, i) => {
         const date = key(i + 1)
         const seconds = byDate.get(date)?.seconds ?? 0
-        const minutes = toMinutes(seconds)
+        // Клетка узкая: секунды в неё не влезают, поэтому короткий заход —
+        // «<1 мин». Ноль минут в календаре был бы неправдой.
+        const spent = durationTightText(seconds)
         return (
           <span
             key={date}
             className={`cal__day is-l${level(seconds)} ${date === today ? 'is-today' : ''}`}
-            title={`${formatDayShort(date)} — ${minutes} мин`}
+            title={`${formatDayShort(date)} — ${spent}`}
           >
             <b>{i + 1}</b>
-            {minutes > 0 && <i>{minutes} мин</i>}
+            {seconds > 0 && <i>{spent}</i>}
           </span>
         )
       })}
@@ -680,7 +691,10 @@ function Weeks({ weeks }: { weeks: StatsProgress['weeks'] }) {
                     {Math.abs(change)}%
                   </span>
                 )}
-                <span className="weeks__value">{minutes ? `${minutes} мин` : ''}</span>
+                {/* Подпись столбика такая же тесная, как клетка календаря. */}
+                <span className="weeks__value">
+                  {w.seconds > 0 ? durationTightText(w.seconds) : ''}
+                </span>
               </span>
               <div className={`weeks__bar ${isBest ? 'is-best' : ''}`} />
             </div>

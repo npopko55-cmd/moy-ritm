@@ -41,6 +41,66 @@ export const minutes = (count: number) => plural(count, 'минута', 'мин�
 /** Секунды → целые минуты. Всё, что меньше минуты, — это ноль минут. */
 export const toMinutes = (seconds: number) => Math.floor(Math.max(0, seconds) / 60)
 
+/**
+ * Длительность к показу: число и единица по отдельности.
+ *
+ * Порознь, а не строкой, потому что в макетах число крупное, а единица —
+ * мелкая рядом с ним. Кому нужна строка целиком — берёт `durationText`.
+ */
+export type Duration = { value: string; unit: string }
+
+/**
+ * Секунды → «48 сек» или «13 мин».
+ *
+ * Короткий заход не должен выглядеть нулём: сорок восемь секунд — это сорок
+ * восемь секунд, а не «0 мин», иначе кажется, что ничего не засчиталось.
+ * Ноль остаётся минутами: человек ещё не начинал, и «0 сек» звучит хуже.
+ *
+ * Единственное место, где решается «секунды или минуты»: остальные помощники
+ * и все экраны опираются на него.
+ */
+export function duration(seconds: number): Duration {
+  const total = Math.floor(Math.max(0, seconds))
+  return total > 0 && total < 60
+    ? { value: String(total), unit: 'сек' }
+    : { value: String(toMinutes(total)), unit: 'мин' }
+}
+
+/** «48 сек», «13 мин» — там, где единица стоит вплотную к числу. */
+export function durationText(seconds: number): string {
+  const d = duration(seconds)
+  return `${d.value} ${d.unit}`
+}
+
+/**
+ * То же для тесных мест — клетка календаря, столбик недели.
+ *
+ * Секунды туда не влезают, поэтому короткий заход — это «<1 мин»: не точное
+ * число, но и не ноль.
+ */
+export function durationTight(seconds: number): Duration {
+  const d = duration(seconds)
+  return d.unit === 'сек' ? { value: '<1', unit: 'мин' } : d
+}
+
+/** «<1 мин», «13 мин» — строкой, для тех же тесных мест. */
+export function durationTightText(seconds: number): string {
+  const d = durationTight(seconds)
+  return `${d.value} ${d.unit}`
+}
+
+/**
+ * «секунд», «минуты» — единица словом, где рядом с числом стоит не
+ * сокращение, а полное слово: «48 секунд в движении».
+ */
+export function durationWord(seconds: number): string {
+  const d = duration(seconds)
+  const n = Number(d.value)
+  return d.unit === 'сек'
+    ? pluralWord(n, 'секунда', 'секунды', 'секунд')
+    : pluralWord(n, 'минута', 'минуты', 'минут')
+}
+
 /** «2026-09-05» → Date в часовом поясе браузера, а не в UTC. */
 export function parseLocalDate(value: string): Date {
   const [y, m, d] = value.split('-').map(Number)
