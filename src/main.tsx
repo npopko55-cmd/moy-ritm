@@ -3,7 +3,18 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
+import { reloadOnce } from './lib/chunkReload'
+import { screenWaiting } from './lib/screens'
 import './styles/global.css'
+
+// Вкладка, открытая до выкладки, просит кусок кода, которого уже нет, —
+// одна перезагрузка вместо страницы ошибки (src/lib/chunkReload.ts). Только
+// когда этот код ждёт экран: сбой фоновой предзагрузки на моргнувшей сети
+// страницу не перезагружает. preventDefault — только если перезагрузка
+// пошла, иначе ошибка дойдёт до ErrorBoundary.
+window.addEventListener('vite:preloadError', (event) => {
+  if (screenWaiting() && reloadOnce()) event.preventDefault()
+})
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

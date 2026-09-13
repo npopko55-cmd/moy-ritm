@@ -13,6 +13,15 @@ import { lazy, useState, type ComponentType } from 'react'
 
 type Loader = () => Promise<{ default: ComponentType }>
 
+/** Сколько экранов прямо сейчас ждут своего кода на глазах у человека. */
+let waiting = 0
+
+/**
+ * Ждёт ли какой-нибудь экран своего кода. Фоновая предзагрузка не в счёт:
+ * её сбой на моргнувшей сети — не повод перезагружать страницу (main.tsx).
+ */
+export const screenWaiting = (): boolean => waiting > 0
+
 /**
  * Ленивый экран, который не мигает, если его код уже скачан.
  *
@@ -28,6 +37,9 @@ function screen(load: Loader): { Screen: ComponentType; preload: () => void } {
   const get = () =>
     (pending ??= load().then(
       (m) => {
+        // Модуля нет: Vite не стал бросать ошибку, потому что страница уже
+        // перезагружается (main.tsx). Ждём перезагрузки на пустом фоне.
+        if (!m) return new Promise<never>(() => undefined)
         ready = m.default
         return m
       },
@@ -38,7 +50,12 @@ function screen(load: Loader): { Screen: ComponentType; preload: () => void } {
       },
     ))
 
-  const Lazy = lazy(get)
+  const Lazy = lazy(() => {
+    waiting += 1
+    return get().finally(() => {
+      waiting -= 1
+    })
+  })
 
   function Screen() {
     const [Loaded] = useState(() => ready)

@@ -7,8 +7,9 @@
 #   scripts/deploy-server.sh root@1.2.3.4         # то же самое параметром
 #
 # Что делает: собирает статику с боевым адресом API и синхронизирует dist/ в
-# /opt/moyritm/www на сервере. Сборку для GitHub Pages не трогает — это другая
-# команда (GITHUB_PAGES=true npm run build) и другое место.
+# /opt/moyritm/www на сервере. Куски кода прошлых сборок в assets/ сразу не
+# удаляет — держит неделю (шаг 4). Сборку для GitHub Pages не трогает — это
+# другая команда (GITHUB_PAGES=true npm run build) и другое место.
 #
 # Переменные:
 #   SERVER      куда класть, в виде user@host        (root@ritmritm.ru)
@@ -36,14 +37,14 @@ die()  { printf '\nОШИБКА: %s\n' "$*" >&2; exit 1; }
 cd "$ROOT"
 
 # ── 1. Сборка ────────────────────────────────────────────────────────────────
-log "1/3 Сборка с VITE_API_URL=$VITE_API_URL"
+log "1/4 Сборка с VITE_API_URL=$VITE_API_URL"
 # GITHUB_PAGES снимаем явно: если он остался в окружении от прошлой команды,
 # сборка уедет с базой /moy-ritm/ и на своём сервере не найдёт ни одного файла.
 unset GITHUB_PAGES
 npm run build
 
 # ── 2. Проверки перед отправкой ──────────────────────────────────────────────
-log "2/3 Проверяю сборку"
+log "2/4 Проверяю сборку"
 [ -f "$DIST/index.html" ] || die "нет $DIST/index.html"
 [ -f "$DIST/sw.js" ]      || die "нет $DIST/sw.js — не отработал scripts/build-sw.mjs"
 
@@ -64,15 +65,26 @@ grep -rq "$VITE_API_URL" "$DIST/assets" \
 info "index.html и sw.js с базой /, адрес API в бандле: $VITE_API_URL"
 
 # ── 3. Отправка ──────────────────────────────────────────────────────────────
-log "3/3 Отправляю в $SERVER:$REMOTE_DIR"
-# --delete: каталог должен быть зеркалом dist. Файлы старой сборки с хешами в
-# именах иначе копятся годами, и sw.js кэширует то, чего уже нет в index.html.
-# Флаги нарочно самые простые: на маке rsync версии 2.6.9, и --info= он не знает.
-RSYNC_FLAGS=(-az --delete)
+log "3/4 Отправляю в $SERVER:$REMOTE_DIR"
+# Два прохода, и порядок важен.
+#
+# Сначала assets/ — без --delete. Новые куски должны лежать на сервере раньше,
+# чем приедет index.html, который на них ссылается. А старые удалять сразу
+# нельзя: вкладка, открытая до выкладки, при переходе на другой экран попросит
+# свой старый кусок и получила бы 404. Их через неделю убирает шаг 4.
+#
+# Потом всё остальное — с --delete: каталог остаётся зеркалом dist, иначе
+# sw.js кэшировал бы то, чего уже нет в index.html. assets/ в этом проходе
+# исключён, а исключённое rsync не удаляет (без --delete-excluded).
+#
+# Флаги нарочно самые простые: на маке rsync версии 2.6.9, и --info= он не
+# знает. Поэтому и два прохода с --exclude, а не правила --filter.
+RSYNC_FLAGS=(-az)
 [ "${DRY_RUN:-0}" = "1" ] && RSYNC_FLAGS+=(-n -v)
 
-ssh -o BatchMode=yes "$SERVER" "mkdir -p '$REMOTE_DIR'"
-rsync "${RSYNC_FLAGS[@]}" "$DIST"/ "$SERVER:$REMOTE_DIR"/
+ssh -o BatchMode=yes "$SERVER" "mkdir -p '$REMOTE_DIR/assets'"
+rsync "${RSYNC_FLAGS[@]}" "$DIST/assets"/ "$SERVER:$REMOTE_DIR/assets"/
+rsync "${RSYNC_FLAGS[@]}" --delete --exclude='/assets/' "$DIST"/ "$SERVER:$REMOTE_DIR"/
 
 if [ "${DRY_RUN:-0}" = "1" ]; then
     info "это была примерка (DRY_RUN=1), на сервере ничего не изменилось"
@@ -82,5 +94,13 @@ fi
 # Статику читает nginx от www-data, а владельцем каталога должен остаться
 # пользователь сервиса.
 ssh -o BatchMode=yes "$SERVER" "chown -R moyritm:moyritm '$REMOTE_DIR' && find '$REMOTE_DIR' -type d -exec chmod 755 {} + && find '$REMOTE_DIR' -type f -exec chmod 644 {} +"
+
+# ── 4. Уборка старых кусков ─────────────────────────────────────────────────
+log "4/4 Убираю из assets/ старые куски"
+# Удаляем только то, что одновременно старше семи дней и не упомянуто ни в
+# текущем index.html, ни в текущем sw.js (там перечислены все куски сборки).
+# rsync -a приносит файлы со временем сборки, поэтому куски текущей выкладки
+# под «старше недели» не попадают, а проверка ссылок — вторая страховка.
+ssh -o BatchMode=yes "$SERVER" "cd '$REMOTE_DIR' && find assets -type f -mtime +7 | while IFS= read -r f; do grep -qF \"\${f#assets/}\" index.html sw.js || rm -f -- \"\$f\"; done"
 
 info "готово. Проверить: curl -sI https://ritmritm.ru/ | head -3"

@@ -32,18 +32,24 @@ export function loadTariffs(): Promise<Tariff[]> {
 
 export const cachedTariffs = (): Tariff[] | null => cached
 
-/** Самая низкая цена месяца среди тарифов; пустой список — null. */
-function lowestPerMonth(list: Tariff[] | null): number | null {
-  const prices = (list ?? []).map((t) => t.per_month).filter((p) => p > 0)
-  return prices.length ? Math.min(...prices) : null
+/**
+ * Цена самого короткого тарифа: `month`, а если кода такого нет — тариф с
+ * наименьшим duration_days. Пустой список — null.
+ */
+function shortestPrice(list: Tariff[] | null): number | null {
+  if (!list?.length) return null
+  const shortest =
+    list.find((t) => t.code === 'month') ??
+    list.reduce((a, b) => (b.duration_days < a.duration_days ? b : a))
+  return shortest.price > 0 ? shortest.price : null
 }
 
 /**
- * «От … в месяц» по тарифам сервера. Пока ответа нет (или он не пришёл) —
- * запасное значение из локальных данных.
+ * «От … в месяц» — цена самого короткого тарифа с сервера. Пока ответа нет
+ * (или он не пришёл) — запасное значение из локальных данных.
  */
 export function useFromPrice(fallback: number): number {
-  const [price, setPrice] = useState(() => lowestPerMonth(cached) ?? fallback)
+  const [price, setPrice] = useState(() => shortestPrice(cached) ?? fallback)
   useEffect(() => {
     if (cached) return
     const job = pending ?? (tried ? null : loadTariffs())
@@ -51,8 +57,8 @@ export function useFromPrice(fallback: number): number {
     let alive = true
     job.then(
       (list) => {
-        const lowest = lowestPerMonth(list)
-        if (alive && lowest) setPrice(lowest)
+        const shortest = shortestPrice(list)
+        if (alive && shortest) setPrice(shortest)
       },
       () => undefined,
     )
