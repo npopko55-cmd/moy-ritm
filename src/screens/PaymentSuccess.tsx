@@ -5,15 +5,20 @@
  * только на POST /payments/check. Обычно доступ появляется за секунды — его
  * открывает вебхук; если за пару минут ничего не изменилось, опрос
  * прекращается: сверка догонит оплату сама, максимум через час.
+ *
+ * «Доступ есть» ещё не значит «оплата пришла»: при продлении он был и до
+ * оплаты. Поэтому сравниваем со сроком, запомненным перед уходом на
+ * GetCourse (src/lib/payment.ts), и ждём, пока дата вырастет.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import { ApiError, hasAccess, type Access } from '../api/types'
+import { ApiError, type Access } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { DEFAULT_STREAM } from '../data/streams'
 import { formatDate } from '../lib/date'
+import { forgetAccessBefore, paymentArrived, readAccessBefore } from '../lib/payment'
 import { AccountShell, FormError, errorText } from './Account'
 import './PaymentSuccess.css'
 
@@ -30,7 +35,11 @@ export default function PaymentSuccess() {
   const navigate = useNavigate()
   const { access: sessionAccess, reload } = useSession()
 
-  const [stage, setStage] = useState<Stage>(() => (hasAccess(sessionAccess) ? 'paid' : 'checking'))
+  // Срок доступа до ухода на оплату — читаем один раз, при открытии экрана.
+  const [before] = useState(readAccessBefore)
+  const arrived = (a: Access | null | undefined) => paymentArrived(a, before)
+
+  const [stage, setStage] = useState<Stage>(() => (arrived(sessionAccess) ? 'paid' : 'checking'))
   const [access, setAccess] = useState<Access | null>(sessionAccess)
   const [error, setError] = useState('')
 
@@ -52,9 +61,9 @@ export default function PaymentSuccess() {
       if (!alive.current) return null
       setAccess(res.access)
       setError('')
-      if (hasAccess(res.access)) {
+      if (paymentArrived(res.access, before)) {
         setStage('paid')
-        // Обновляем профиль: без этого защита маршрутов не пустит в плеер.
+        // Обновляем профиль: плееру и шапке нужен новый срок доступа.
         await reload()
         return null
       }
@@ -69,7 +78,7 @@ export default function PaymentSuccess() {
       setError(errorText(e))
       return STEP_MS
     }
-  }, [reload])
+  }, [reload, before])
 
   /** Цикл опроса: сам себя перезапускает, пока есть смысл ждать. */
   const poll = useCallback(async () => {
@@ -84,8 +93,8 @@ export default function PaymentSuccess() {
 
   useEffect(() => {
     alive.current = true
-    // Доступ уже есть — проверять нечего: вебхук успел раньше возврата.
-    if (!hasAccess(sessionAccess)) void poll()
+    // Оплата уже видна — проверять нечего: вебхук успел раньше возврата.
+    if (!arrived(sessionAccess)) void poll()
     return () => {
       alive.current = false
       stop()
@@ -94,9 +103,10 @@ export default function PaymentSuccess() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Оплата прошла — показали и ушли в поток.
+  // Оплата прошла — показали и ушли в поток. Запомненный срок больше не нужен.
   useEffect(() => {
     if (stage !== 'paid') return
+    forgetAccessBefore()
     const id = window.setTimeout(() => navigate(`/start/${DEFAULT_STREAM.id}`), LEAVE_MS)
     return () => window.clearTimeout(id)
   }, [stage, navigate])

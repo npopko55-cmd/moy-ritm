@@ -165,20 +165,20 @@ const ACHIEVEMENTS = [
 const WORKOUT_DONE_SECONDS = 600
 
 /**
- * Буфер незакрытых кусков плеера (`src/lib/chunks.ts`) лежит в браузере и к
- * человеку не привязан: настоящему бэкенду это и не нужно — там кусок примут
- * по токену того, кто его шлёт. В демо же люди меняются в одной вкладке, и
- * оставшийся хвост чужой (а то и ничьей) тренировки плеер показал бы новому
- * пользователю как его «сегодня» — при нулях в профиле и прогрессе.
+ * Буфер незакрытых кусков плеера (`src/lib/chunks.ts`) лежит в браузере под
+ * ключом с id человека, поэтому чужой хвост тренировки новому пользователю
+ * больше не достаётся. Здесь остаётся прибрать общий буфер старых версий —
+ * при каждой смене сессии — и буфер удалённого аккаунта.
  *
- * Поэтому при каждой смене сессии буфер сбрасываем. Ключ продублирован
- * намеренно: импорт из chunks.ts замкнул бы круг demo → chunks → client → demo.
+ * Ключ продублирован намеренно: импорт из chunks.ts замкнул бы круг
+ * demo → chunks → client → demo.
  */
 const CHUNK_BUFFER_KEY = 'moy-ritm.chunks'
 
-function dropChunkBuffer(): void {
+function dropChunkBuffer(userId?: string): void {
   try {
     localStorage.removeItem(CHUNK_BUFFER_KEY)
+    if (userId) localStorage.removeItem(`${CHUNK_BUFFER_KEY}.${userId}`)
   } catch {
     /* приватный режим или запрет хранилища — см. write() */
   }
@@ -727,6 +727,7 @@ export function createDemoApi(): Api {
       const email = current()
       if (email) {
         const all = users()
+        const id = all[email]?.id
         delete all[email]
         write('users', all)
         drop(`access.${email}`)
@@ -735,7 +736,7 @@ export function createDemoApi(): Api {
         drop(`pending.${email}`)
         drop('session')
         drop('session.at')
-        dropChunkBuffer()
+        dropChunkBuffer(id)
       }
       return { message: 'Аккаунт удалён' }
     },

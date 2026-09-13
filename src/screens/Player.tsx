@@ -22,7 +22,7 @@ import Unlock from '../components/Unlock'
 import { getStream } from '../data/streams'
 import { loopPoster, loopSrc, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
-import { useFlow, type FlowSession } from '../flow/FlowSession'
+import { FLOW_RESUME_MINUTES, useFlow, type FlowSession } from '../flow/FlowSession'
 import { createChunkQueue, uuid, type ChunkQueue } from '../lib/chunks'
 import { createDeck, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
@@ -149,7 +149,9 @@ export default function Player() {
   // чётности выбирается, какой из двух <video> сейчас на виду.
   const [step, setStep] = useState(() => resume?.moveIndex ?? 0)
   const [inMove, setInMove] = useState(() => resume?.moveSeconds ?? 0)
-  const [playing, setPlaying] = useState(true)
+  // Отсчёт мог закончиться в спрятанной вкладке, а ОС — поднять выгруженную
+  // вкладку в фоне. Тогда тренировка не должна пойти сама: ждём «Играть».
+  const [playing, setPlaying] = useState(() => document.visibilityState !== 'hidden')
   /**
    * Показан ли экран паузы.
    *
@@ -243,9 +245,15 @@ export default function Player() {
     return order.list[n]
   }
 
-  const loop = moveAt(step)
-  const nextLoop = moveAt(step + 1)
-  const afterNext = moveAt(step + 2)
+  /**
+   * Движений может не быть вовсе: сервер вправе открыть бесплатно ноль
+   * (FREE_EXERCISE_LIMIT=0). Тогда круга нет — на его месте блок
+   * разблокировки, а таймер, куски и музыка стоят.
+   */
+  const empty = moves.length === 0
+  const loop: Loop | null = empty ? null : moveAt(step)
+  const nextLoop: Loop | null = empty ? null : moveAt(step + 1)
+  const afterNext: Loop | null = empty ? null : moveAt(step + 2)
 
   // Сменили поток (или набор движений — бесплатный уровень) — новая колода
   // и счёт с нуля. На первом рендере колода уже собрана выше, поэтому здесь
@@ -301,11 +309,16 @@ export default function Player() {
     })
   }, [])
 
+  // Буфер кусков — свой у каждого человека: плеер открыт только вошедшему.
+  const userId = me?.user.id
+
   useEffect(() => {
+    if (!userId) return
     const q = createChunkQueue({
+      userId,
       onSummary: setSummary,
-      // Доступ кончился прямо во время тренировки: перечитываем профиль,
-      // и защита маршрутов уводит на тарифы.
+      // Доступ кончился прямо во время тренировки: перечитываем профиль —
+      // плеер сам перейдёт на бесплатный уровень и покажет разблокировку.
       onAccessLost: () => void reload(),
       onChange: recount,
     })
@@ -319,22 +332,36 @@ export default function Player() {
       q.stop()
       queueRef.current = null
     }
-  }, [recount, reload, closeChunk])
+  }, [userId, recount, reload, closeChunk])
 
   // Один кусок на движение. Уборка эффекта закрывает его при смене движения,
   // паузе, сворачивании вкладки и уходе с экрана.
+  const loopId = loop?.id
   useEffect(() => {
-    if (!playing || !visible) return
-    openChunk(stream.id, loop.id)
+    if (!playing || !visible || !loopId) return
+    openChunk(stream.id, loopId)
     const id = setInterval(() => {
       closeChunk()
-      openChunk(stream.id, loop.id)
+      openChunk(stream.id, loopId)
     }, FORCE_CLOSE_MS)
     return () => {
       clearInterval(id)
       closeChunk()
     }
-  }, [playing, visible, stream.id, loop.id, openChunk, closeChunk])
+  }, [playing, visible, stream.id, loopId, openChunk, closeChunk])
+
+  /**
+   * Вкладка простояла спрятанной дольше, чем тренировка ждёт возвращения, —
+   * это уже новый заход, ровно как после ухода из плеера на полчаса. Счёт
+   * захода начинается с нуля, плеер остаётся на паузе.
+   */
+  const hiddenAt = useRef<number | null>(visible ? null : Date.now())
+  const renew = useCallback(() => {
+    sessionRef.current = 0
+    stepsRef.current = 0
+    setSessionSeconds(0)
+    beginFlow(stream.id)
+  }, [beginFlow, stream.id])
 
   /**
    * Уход со страницы: закрываем кусок и пробуем отправить буфер. Не успеет —
@@ -349,6 +376,9 @@ export default function Player() {
    * Экран паузы при этом не поднимаем: человек его не просил и не увидит,
    * пока не вернётся. Сама тренировка не возобновляется — вернувшись, он
    * жмёт «Играть».
+   *
+   * Спрятанная вкладка для сохранённой тренировки — тот же уход из плеера:
+   * время ухода запоминаем, и правило получаса действует и здесь.
    */
   useEffect(() => {
     const leave = () => {
@@ -358,9 +388,13 @@ export default function Player() {
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
         leave()
+        hiddenAt.current ??= Date.now()
         setVisible(false)
         setPlaying(false)
       } else {
+        const away = hiddenAt.current
+        hiddenAt.current = null
+        if (away !== null && Date.now() - away >= FLOW_RESUME_MINUTES * 60_000) renew()
         setVisible(true)
       }
     }
@@ -370,7 +404,7 @@ export default function Player() {
       window.removeEventListener('pagehide', leave)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [closeChunk])
+  }, [closeChunk, renew])
 
   // Цифры при открытии плеера — из одного запроса. Не получилось (доступ
   // кончился между переходами) — берём хотя бы сводку: она открыта без оплаты.
@@ -484,10 +518,10 @@ export default function Player() {
 
   // Секундный тик заведён один раз на всю тренировку и не пересоздаётся при
   // смене движения, поэтому темп он берёт не из замыкания, а отсюда.
-  const moveRef = useRef(loop.id)
+  const moveRef = useRef(loopId ?? '')
   useEffect(() => {
-    moveRef.current = loop.id
-  }, [loop.id])
+    moveRef.current = loopId ?? ''
+  }, [loopId])
 
   // Движение меняется только само, по интервалу: кнопок «назад» и «вперёд»
   // в плеере больше нет — владелец счёл их бессмысленными.
@@ -499,7 +533,7 @@ export default function Player() {
 
   // Секундный тик: ведёт время тренировки, смену движения и открытый кусок.
   useEffect(() => {
-    if (!playing) return
+    if (!playing || empty) return
     const id = setInterval(() => {
       sessionRef.current += 1
       setSessionSeconds(sessionRef.current)
@@ -508,16 +542,20 @@ export default function Player() {
         openRef.current.seconds += 1
         setOpenSeconds(openRef.current.seconds)
       }
-      setInMove((s) => {
-        if (s + 1 >= moveInterval) {
-          nextMove()
-          return 0
-        }
-        return s + 1
-      })
+      // Смена движения — отдельным шагом, а не внутри функции обновления
+      // состояния: такие функции React в StrictMode вызывает дважды, и
+      // движения перескакивали через одно.
+      const next = inMoveRef.current + 1
+      if (next >= moveInterval) {
+        inMoveRef.current = 0
+        nextMove()
+      } else {
+        inMoveRef.current = next
+        setInMove(next)
+      }
     }, 1000)
     return () => clearInterval(id)
-  }, [playing, nextMove, moveInterval])
+  }, [playing, empty, nextMove, moveInterval])
 
   // Переход в новый ярус времени — сразу новая фраза, не дожидаясь смены
   // движения. Сравниваем с показанным ярусом, а не с флагом первого рендера:
@@ -536,7 +574,7 @@ export default function Player() {
     const on = buffers[active].current
     if (on) on.currentTime = 0
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, loop.id])
+  }, [active, loopId])
 
   // Пауза останавливает ролик, чтобы персонаж замирал вместе с таймером.
   // Скрытый элемент всегда на паузе: он в это время докачивает следующее.
@@ -548,12 +586,12 @@ export default function Player() {
     if (playing) void on.play().catch(() => undefined)
     else on.pause()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, active, loop.id])
+  }, [playing, active, loopId])
 
-  // Пауза тренировки останавливает и музыку.
+  // Пауза тренировки останавливает и музыку. Без движений играть нечему.
   useEffect(() => {
-    setMusicPlaying(playing)
-  }, [playing, setMusicPlaying])
+    setMusicPlaying(playing && !empty)
+  }, [playing, empty, setMusicPlaying])
 
   /**
    * Уход из плеера тоже останавливает музыку: человек ушёл в меню, а не
@@ -567,10 +605,12 @@ export default function Player() {
 
   // Следующий ролик уже лежит во втором <video>, поэтому вперёд заглядываем
   // через один: к его очереди файл успеет докачаться.
+  const afterNextId = afterNext?.id
   useEffect(() => {
-    prefetchImages([loopPoster(afterNext.id)])
-    prefetchFiles([loopSrc(afterNext.id)])
-  }, [afterNext.id])
+    if (!afterNextId) return
+    prefetchImages([loopPoster(afterNextId)])
+    prefetchFiles([loopSrc(afterNextId)])
+  }, [afterNextId])
 
   /* ─────────────  Разблокировка  ───────────── */
 
@@ -623,10 +663,12 @@ export default function Player() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Каждая пауза и каждая смена движения — повод переписать состояние.
+  // Каждая пауза, смена движения и скрытие вкладки — повод переписать
+  // состояние. Спрятанная вкладка хранит время ухода: иначе пауза при
+  // скрытии тут же затёрла бы его, и тридцать минут не шли бы.
   useEffect(() => {
-    store(null)
-  }, [playing, step, store])
+    store(visible ? null : (hiddenAt.current ?? Date.now()))
+  }, [playing, step, visible, store])
 
   /**
    * Уход из плеера: в меню, в прогресс, в настройки, перезагрузкой вкладки.
@@ -680,6 +722,21 @@ export default function Player() {
     setShowPause(false)
   }, [closeChunk])
 
+  // Пока стоит экран паузы, плеер спрятан, и фокус с его кнопки пропадал бы
+  // в никуда. Экран паузы забирает фокус себе, а закрываясь, возвращает его
+  // на кнопку паузы.
+  const pauseButton = useRef<HTMLButtonElement>(null)
+  const pauseWasShown = useRef(false)
+  useEffect(() => {
+    if (showPause) {
+      pauseWasShown.current = true
+      return
+    }
+    if (!pauseWasShown.current) return
+    pauseWasShown.current = false
+    pauseButton.current?.focus({ preventScroll: true })
+  }, [showPause])
+
   // Пробел — та же пауза, что и кнопка. Когда в фокусе кнопка или поле,
   // пробел уже что-то значит для них: второй раз его перехватывать нельзя.
   useEffect(() => {
@@ -712,7 +769,7 @@ export default function Player() {
    * которые уже ушли, сервер вернул бы вторым слагаемым, и шаги удвоились бы.
    */
   const todayServerSteps = week.find((d) => isToday(d.local_date))?.steps ?? 0
-  const todaySteps = todayServerSteps + pendingSteps + stepsFor(loop.id, openSeconds)
+  const todaySteps = todayServerSteps + pendingSteps + (loopId ? stepsFor(loopId, openSeconds) : 0)
 
   return (
     <>
@@ -773,6 +830,8 @@ export default function Player() {
         {/* Круг и кнопка паузы лежат в одной обёртке: от неё считается и
             угол квадрата, и строка под кругом. */}
         <div className="stage__area">
+        {loop && nextLoop ? (
+        <>
         <div className="stage__figure">
           <svg className="stage__ring" viewBox="0 0 400 400" aria-hidden="true">
             <defs>
@@ -826,10 +885,21 @@ export default function Player() {
         */}
         <div className="stage__pause">
           <span>{playing ? 'Пауза' : 'Играть'}</span>
-          <button className="ctrl ctrl--main" onClick={toggle} aria-label={playing ? 'Пауза' : 'Играть'}>
+          <button
+            ref={pauseButton}
+            className="ctrl ctrl--main"
+            onClick={toggle}
+            aria-label={playing ? 'Пауза' : 'Играть'}
+          >
             {playing ? <Pause size={30} /> : <Play size={30} />}
           </button>
         </div>
+        </>
+        ) : (
+          // Бесплатно не открыто ни одного движения: вместо круга — вход в
+          // тарифы. Тот же блок в правой колонке тогда не дублируем.
+          <div className="stage__empty">{limited && <Unlock />}</div>
+        )}
         </div>
       </main>
 
@@ -902,7 +972,7 @@ export default function Player() {
         {/* Единственный вход в тарифы из тренировки. На телефоне и планшете
             правой колонки нет, и блок встаёт последним в ленте статистики —
             но остаётся тем же самым узлом, второго в разметке нет. */}
-        {limited && (
+        {limited && !empty && (
           <div className="stats__unlock">
             <Unlock />
           </div>

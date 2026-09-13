@@ -23,6 +23,7 @@ import { useSession } from '../auth/SessionProvider'
 import { nextParam } from '../auth/guards'
 import { asset } from '../lib/asset'
 import { formatDate } from '../lib/date'
+import { rememberAccessBefore } from '../lib/payment'
 import { rub } from '../data/tariffs'
 import { errorText } from './Account'
 import '../components/Logo.css'
@@ -67,6 +68,17 @@ export default function Tariffs() {
   const [busyCode, setBusyCode] = useState<string | null>(null)
   const [note, setNote] = useState<Note>(null)
   const [resend, setResend] = useState({ busy: false, ok: '', error: '' })
+
+  // Вернулись с GetCourse кнопкой «Назад»: браузер (особенно Safari) достаёт
+  // страницу из bfcache ровно такой, какой её оставили, — с «Открываем
+  // оплату…» и заблокированными кнопками. Размораживаем их.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setBusyCode(null)
+    }
+    window.addEventListener('pageshow', onShow)
+    return () => window.removeEventListener('pageshow', onShow)
+  }, [])
 
   // Владелец не хочет всплывающих окон, поэтому это страница, а не модалка.
   // Крестик и Escape ведут туда, откуда пришли; при прямом заходе истории
@@ -120,6 +132,9 @@ export default function Tariffs() {
     setBusyCode(code)
     try {
       const { url } = await api.paymentLink(code)
+      // Экран «Проверяем оплату» сравнит с этим сроком: при продлении доступ
+      // уже есть, и пришедшей оплату покажет только выросшая дата.
+      rememberAccessBefore(access)
       // Обычный переход на сторону GetCourse, без всплывающих окон.
       window.location.assign(url)
     } catch (e) {

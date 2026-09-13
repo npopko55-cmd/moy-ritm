@@ -816,3 +816,18 @@
   .access-note { display: none; }
 }
 
+
+/*
+ * Движений нет вовсе — сервер открыл бесплатно ноль. На месте круга стоит
+ * блок разблокировки: тренироваться не на чем, а экран не должен пустовать.
+ */
+.stage__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 240px;
+  padding: 24px 0;
+}
+
+.stage__empty .unlock { width: min(100%, 340px); }

@@ -10,6 +10,7 @@
  * завтра.
  */
 
+import { useEffect, useRef } from 'react'
 import type { StatsSummary } from '../api/types'
 import Logo from '../components/Logo'
 import Unlock from '../components/Unlock'
@@ -102,6 +103,14 @@ export default function PlayerPause({
   const today = summary?.local_today ?? browserToday()
   const streak = summary?.current_streak_days ?? 0
   const active = new Set((summary?.week ?? []).filter((d) => d.seconds > 0).map((d) => d.local_date))
+
+  // Плеер под экраном спрятан, и фокус с его кнопки паузы пропал бы. Отдаём
+  // его главной кнопке экрана — без прокрутки: карточка должна открыться
+  // сверху, как и раньше.
+  const resumeButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    resumeButton.current?.focus({ preventScroll: true })
+  }, [])
 
   return (
     <div className="pause">
@@ -257,7 +266,7 @@ export default function PlayerPause({
           </ul>
         </section>
 
-        <button className="btn btn--pink-lg pause__cta" onClick={onResume}>
+        <button ref={resumeButton} className="btn btn--pink-lg pause__cta" onClick={onResume}>
           <Play size={20} />
           Продолжить сейчас
         </button>

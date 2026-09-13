@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
@@ -39,7 +39,9 @@ export default function Countdown() {
   const navigate = useNavigate()
   const { streamId } = useParams()
   const [left, setLeft] = useState(START_FROM)
-  const { start } = useMusic()
+  const { start, setPlaying: setMusicPlaying } = useMusic()
+  // Отсчёт дошёл до конца и сам уводит в плеер: музыку тогда не трогаем.
+  const toPlayer = useRef(false)
   const { session: flow } = useFlow()
 
   // Ссылка на скрытый поток ведёт в поток по умолчанию — это решает
@@ -60,10 +62,17 @@ export default function Countdown() {
    */
   const resume = flow?.streamId === target
 
-  // Музыка включается сразу на отсчёте, а не при появлении плеера.
+  // Музыка включается сразу на отсчёте, а не при появлении плеера. Плеер
+  // подхватывает её из общего проигрывателя без перезапуска. Ушли с отсчёта
+  // куда-то ещё («Назад», вход) — музыку гасим: на других экранах выключить
+  // её было бы нечем.
   useEffect(() => {
-    if (!resume) start()
-  }, [resume, start])
+    if (resume) return
+    start()
+    return () => {
+      if (!toPlayer.current) setMusicPlaying(false)
+    }
+  }, [resume, start, setMusicPlaying])
 
   // Пять секунд отсчёта — единственная пауза, когда можно качать без спешки:
   // к открытию плеера фото, постеры и первые два ролика уже в кэше.
@@ -76,6 +85,7 @@ export default function Countdown() {
   useEffect(() => {
     if (resume) return
     if (left <= 0) {
+      toPlayer.current = true
       navigate(`/player/${target}`, { replace: true })
       return
     }

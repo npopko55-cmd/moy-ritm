@@ -18,6 +18,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react'
 import { api, type RegisterBody } from '../api/client'
 import { ApiError, type Access, type Me, type RegisterResponse } from '../api/types'
+import { flushBeforeSignOut } from '../lib/chunks'
 import { saveMoveInterval } from '../lib/settings'
 
 /** Паузы между попытками узнать, вошёл ли человек, пока сервер не отвечает; дальше — по последней. */
@@ -170,7 +171,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
+    const userId = meRef.current?.user.id
     try {
+      // Неотправленные минуты уходят, пока токен ещё действует, — но выход
+      // ждёт их не дольше пары секунд. Идущую тренировку после выхода
+      // стирает FlowProvider: он следит, кто вошёл.
+      if (userId) await flushBeforeSignOut(userId)
       await api.logout()
     } finally {
       // Даже если сервер не ответил: человек нажал «Выйти» и должен выйти.
