@@ -4,13 +4,15 @@
  * Реализаций две и они взаимозаменяемы:
  *   • http.ts — настоящий бэкенд, адрес из VITE_API_URL;
  *   • demo.ts — память браузера, для GitHub Pages, где бэкенда нет.
+ *     Подключается через import() и только при пустом VITE_API_URL: адрес
+ *     подставляется при сборке, ветка с демо в боевой сборке мёртвая, и
+ *     сборщик выбрасывает её вместе с демо-кодом.
  *
  * В интерфейсе перечислены ВСЕ пользовательские ручки, включая те, что нужны
  * экранам статистики, профиля и помощи. Так эти экраны пишутся без правок
  * клиента: метод уже есть в обеих реализациях.
  */
 
-import { createDemoApi } from './demo'
 import { createHttpApi } from './http'
 import type {
   Access,
@@ -101,16 +103,59 @@ export interface Api {
   onSessionLost(listener: () => void): () => void
 }
 
-/** Пустая строка и «undefined» из окружения — это «адреса нет». */
-const baseUrl = (import.meta.env.VITE_API_URL ?? '').trim()
+/**
+ * Демо-API, которое подгружается при первом обращении.
+ *
+ * Экраны зовут методы синхронно (`api.getMe()`), поэтому наружу отдаём
+ * обёртку: каждый метод дожидается загрузки модуля и зовёт настоящий.
+ * Демо живёт в localStorage и отвечает мгновенно — лишний промис незаметен.
+ */
+function lazyDemoApi(): Api {
+  let loaded: Promise<Api> | null = null
+  const impl = () => (loaded ??= import('./demo').then((m) => m.createDemoApi()))
+
+  const target = {
+    isDemo: true,
+    clearSession() {
+      void impl().then((a) => a.clearSession())
+    },
+    onSessionLost(listener: () => void) {
+      let off: (() => void) | null = null
+      let cancelled = false
+      void impl().then((a) => {
+        if (!cancelled) off = a.onSessionLost(listener)
+      })
+      return () => {
+        cancelled = true
+        off?.()
+      }
+    },
+  }
+
+  return new Proxy(target, {
+    get(obj, name: string | symbol) {
+      // Обёртка не должна притворяться промисом или чем-то ещё служебным.
+      if (typeof name !== 'string' || name === 'then') return undefined
+      if (name in obj) return obj[name as keyof typeof obj]
+      return (...args: unknown[]) =>
+        impl().then((a) => (a[name as keyof Api] as (...rest: unknown[]) => unknown)(...args))
+    },
+  }) as unknown as Api
+}
 
 /**
  * Адрес API задан — работаем с бэкендом, не задан — демо-режим.
  * На GitHub Pages переменная не задаётся намеренно: бэкенда там нет.
+ *
+ * Условие нарочно на самой переменной: Vite подставляет её значение при
+ * сборке, и в боевой сборке `import('./demo')` оказывается в мёртвой ветке.
+ * Пустая строка — это «адреса нет».
  */
-export const api: Api = baseUrl ? createHttpApi(baseUrl) : createDemoApi()
+export const api: Api = import.meta.env.VITE_API_URL
+  ? createHttpApi(import.meta.env.VITE_API_URL)
+  : lazyDemoApi()
 
 /** Показать подпись «Демо-режим…» на экране входа. */
-export const IS_DEMO = api.isDemo
+export const IS_DEMO = !import.meta.env.VITE_API_URL
 
 export type { Access, Me, Settings, Tariff }

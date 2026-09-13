@@ -37,14 +37,33 @@ function filesIn(dir) {
   })
 }
 
-// Предкэш — только то, без чего первый экран не покажется: разметка, бандлы,
-// шрифты, фото карточек, постер маскота и постеры роликов. Всё вместе меньше
-// мегабайта. Сам ролик маскота сюда не идёт: он мегабайтный и нужен не сразу.
+/**
+ * Хеш содержимого, а не имён: постер, шрифт, ролик или трек могут заменить
+ * под тем же именем, и по списку имён такую замену не заметить.
+ */
+function contentHash(files) {
+  const hash = createHash('sha256')
+  for (const f of [...files].sort()) {
+    hash.update(f)
+    hash.update('\0')
+    try {
+      hash.update(readFileSync(join(DIST, f)))
+    } catch {
+      /* файла нет — хватит и имени */
+    }
+  }
+  return hash.digest('hex').slice(0, 12)
+}
+
+// Предкэш — только то, без чего первый экран не покажется: разметка, бандлы
+// (все чанки из assets/, в том числе экраны, которые грузятся по маршруту),
+// шрифты, постер маскота и постеры роликов. Фото потоков сюда больше не идут:
+// потоки скрыты и нигде не показываются. Сам ролик маскота тоже не идёт: он
+// мегабайтный и нужен не сразу.
 const precache = [
   'index.html',
   ...filesIn('assets'),
   ...filesIn('fonts'),
-  ...filesIn('streams').filter((f) => f.endsWith('.jpg')),
   ...filesIn('mascot').filter((f) => f.endsWith('.webp')),
   ...filesIn('loops').filter((f) => f.endsWith('.webp')),
   'manifest.webmanifest',
@@ -52,8 +71,12 @@ const precache = [
 
 const urls = precache.map((f) => BASE + f)
 
-// Версия кэша — хеш самого списка: поменялись файлы, поменялось имя кэша.
-const version = createHash('sha256').update(urls.join('\n')).digest('hex').slice(0, 12)
+// Версии кэшей — хеши содержимого: поменялся хоть один файл — у кэша новое
+// имя, и старый удаляется при активации воркера.
+const version = contentHash(precache)
+const loopsVersion = contentHash(filesIn('loops').filter((f) => f.endsWith('.mp4')))
+const musicVersion = contentHash(filesIn('music').filter((f) => f.endsWith('.m4a')))
+const mascotVersion = contentHash(filesIn('mascot').filter((f) => /\.(webm|mov)$/.test(f)))
 
 const bytes = precache.reduce((sum, f) => {
   try {
@@ -67,61 +90,97 @@ const sw = `/* Сгенерировано scripts/build-sw.mjs — правки 
 const VERSION = '${version}'
 const BASE = '${BASE}'
 const PRECACHE = 'myrithm-precache-' + VERSION
-const LOOPS = 'myrithm-loops'
-const MUSIC = 'myrithm-music'
-const MASCOT = 'myrithm-mascot'
+const LOOPS = 'myrithm-loops-${loopsVersion}'
+const MUSIC = 'myrithm-music-${musicVersion}'
+const MASCOT = 'myrithm-mascot-${mascotVersion}'
+const CURRENT = [PRECACHE, LOOPS, MUSIC, MASCOT]
 const MUSIC_LIMIT = 13
+
+/** Сети, на которых второй поток того же файла ради кэша — плохая сделка. */
+const SLOW = ['slow-2g', '2g']
 
 const ASSETS = ${JSON.stringify(urls, null, 2)}
 
 self.addEventListener('install', (e) => {
   // Промахи не должны валить установку целиком: кладём файлы по одному.
-  // Только разметку берём мимо кэша браузера — у неё на Pages max-age=600,
-  // остальное либо с хешем в имени, либо уже скачано этой же страницей.
+  // Всё берём мимо кэша браузера (cache: 'reload'): nginx отдаёт файлам
+  // недельный кэш, и заменённый под тем же именем файл иначе приехал бы
+  // из него старым.
   e.waitUntil(
     caches.open(PRECACHE).then((c) =>
-      Promise.all(
-        ASSETS.map((u) => {
-          const req = u.endsWith('index.html') ? new Request(u, { cache: 'reload' }) : u
-          return c.add(req).catch(() => undefined)
-        }),
-      ),
+      Promise.all(ASSETS.map((u) => c.add(new Request(u, { cache: 'reload' })).catch(() => undefined))),
     ).then(() => self.skipWaiting()),
   )
 })
 
 self.addEventListener('activate', (e) => {
+  // Всё своё, что не совпадает с текущими именами, — прошлые версии,
+  // включая медиа-кэши старого образца без версии в имени.
   e.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k.startsWith('myrithm-precache-') && k !== PRECACHE)
+          .filter((k) => k.startsWith('myrithm-') && !CURRENT.includes(k))
           .map((k) => caches.delete(k)),
       ),
     ).then(() => self.clients.claim()),
   )
 })
 
+/** Файлы, которые сейчас докачиваются в кэш фоном: второй раз не начинаем. */
+const filling = new Set()
+
+function slowNetwork() {
+  const net = self.navigator && self.navigator.connection
+  return Boolean(net && (net.saveData || SLOW.includes(net.effectiveType)))
+}
+
+/** Положить ответ в кэш и подрезать кэш до limit записей. */
+function keep(cache, whole, response, limit) {
+  return cache
+    .put(whole, response)
+    .then(() => (limit ? trim(cache, limit) : undefined))
+    .catch(() => undefined)
+}
+
 /**
- * Медиа из кэша, иначе из сети целиком.
+ * Медиа: из кэша, а при промахе — из сети как есть.
  *
  * Плеер и звук просят файл кусками (заголовок Range), а Cache API умеет
- * хранить только целые ответы. Поэтому кладём файл целиком, а кусок нарезаем
- * сами и отдаём как 206 — без этого Safari не играет ни видео, ни музыку.
+ * хранить только целые ответы. Попадание в кэш — нарезаем кусок сами и
+ * отдаём как 206: без этого Safari не играет ни видео, ни музыку.
+ *
+ * Промах с Range — отдаём ответ сети без задержки: браузер сам получит 206 и
+ * начнёт играть, не дожидаясь, пока файл скачается целиком (раньше воркер
+ * сначала качал весь файл, и на слабой сети звук стоял). Целый файл в кэш
+ * докачиваем фоном — кроме экономии трафика и совсем медленных сетей, где
+ * второй поток отнял бы канал у воспроизведения.
  */
-async function media(request, cacheName, limit) {
+async function media(event, request, cacheName, limit) {
   const whole = new Request(request.url, { credentials: 'same-origin' })
   const cache = await caches.open(cacheName)
-  let full = await cache.match(whole)
+  const range = request.headers.get('range')
+  const full = await cache.match(whole)
+
   if (!full) {
-    full = await fetch(whole)
-    if (full.status === 200) {
-      await cache.put(whole, full.clone())
-      if (limit) await trim(cache, limit)
+    if (!range) {
+      // Целиком файл просит предзагрузка: одна загрузка — и в ответ, и в кэш.
+      const response = await fetch(whole)
+      if (response.status === 200) event.waitUntil(keep(cache, whole, response.clone(), limit))
+      return response
     }
+    if (!filling.has(request.url) && !slowNetwork()) {
+      filling.add(request.url)
+      event.waitUntil(
+        fetch(whole)
+          .then((response) => (response.status === 200 ? keep(cache, whole, response, limit) : undefined))
+          .catch(() => undefined)
+          .finally(() => filling.delete(request.url)),
+      )
+    }
+    return fetch(request)
   }
 
-  const range = request.headers.get('range')
   if (!range) return full
 
   const body = await full.clone().arrayBuffer()
@@ -171,23 +230,23 @@ self.addEventListener('fetch', (e) => {
 
   // Ролики: 1,6 МБ на все четырнадцать — держим целиком.
   if (url.pathname.endsWith('.mp4')) {
-    e.respondWith(media(req, LOOPS))
+    e.respondWith(media(e, req, LOOPS))
     return
   }
 
   // Музыка: тринадцать треков по 0,6–1,3 МБ, больше в кэше держать незачем.
   if (url.pathname.endsWith('.m4a')) {
-    e.respondWith(media(req, MUSIC, MUSIC_LIMIT))
+    e.respondWith(media(e, req, MUSIC, MUSIC_LIMIT))
     return
   }
 
-  // Маскот с главной: три файла на 3,4 МБ, из них качается один — тот, что
+  // Маскот с главной: несколько файлов, из них качается один — тот, что
   // подошёл браузеру и ширине экрана. Со второго захода берём из кэша.
   if (
     url.pathname.includes('/mascot/') &&
     (url.pathname.endsWith('.webm') || url.pathname.endsWith('.mov'))
   ) {
-    e.respondWith(media(req, MASCOT))
+    e.respondWith(media(e, req, MASCOT))
     return
   }
 

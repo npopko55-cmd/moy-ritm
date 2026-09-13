@@ -54,7 +54,6 @@ import {
   pluralWord,
   toMinutes,
 } from '../lib/date'
-import { demoHistoryChunks } from '../lib/demoHistory'
 import { errorText } from './Account'
 import { useBack, useHome } from './Page'
 import '../components/Logo.css'
@@ -181,6 +180,9 @@ export default function Progress() {
     setFilling(true)
     void (async () => {
       try {
+        // Историю подгружаем только здесь: в боевой сборке IS_DEMO — false,
+        // и сборщик выбрасывает эту ветку вместе с модулем.
+        const { demoHistoryChunks } = await import('../lib/demoHistory')
         const all = demoHistoryChunks()
         for (let i = 0; i < all.length; i += 50) {
           await api.sendChunks(all.slice(i, i + 50))

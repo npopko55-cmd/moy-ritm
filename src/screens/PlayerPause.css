@@ -352,6 +352,18 @@
   min-height: 56px;
 }
 
+/*
+ * На планшете и телефоне у кнопки 44 px — так её показывали всегда: правило
+ * .btn из global.css шло в общем файле стилей позже и перебивало 56 px. Стили
+ * паузы теперь грузятся отдельным куском уже после global.css, поэтому
+ * прежний вид закреплён здесь явно, с тем же условием, что у .btn.
+ */
+@media (max-width: 1023.98px),
+       (pointer: coarse),
+       (max-width: 1179.98px) and (orientation: portrait) {
+  .pause__cta { min-height: 44px; }
+}
+
 .pause__later {
   display: block;
   width: 100%;

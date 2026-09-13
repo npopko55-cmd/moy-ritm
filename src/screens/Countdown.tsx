@@ -7,6 +7,7 @@ import { getStream } from '../data/streams'
 import { loopPoster, loopSrc } from '../data/loops'
 import { useFlow } from '../flow/FlowSession'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
+import { player } from '../lib/screens'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
 import './Countdown.css'
@@ -77,6 +78,8 @@ export default function Countdown() {
   // Пять секунд отсчёта — единственная пауза, когда можно качать без спешки:
   // к открытию плеера фото, постеры и первые два ролика уже в кэше.
   useEffect(() => {
+    // Код плеера — первым: без него к концу отсчёта не будет и экрана.
+    player.preload()
     if (resume) return
     prefetchImages(stream.loops.map((l) => loopPoster(l.id)))
     prefetchFiles(stream.loops.slice(0, 2).map((l) => loopSrc(l.id)))

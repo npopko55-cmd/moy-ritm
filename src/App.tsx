@@ -1,24 +1,45 @@
+import { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './screens/Landing'
-import Countdown from './screens/Countdown'
-import Player from './screens/Player'
-import Settings from './screens/Settings'
-import Tariffs from './screens/Tariffs'
-import Login from './screens/Login'
-import Register from './screens/Register'
-import ConfirmEmail from './screens/ConfirmEmail'
-import ConfirmNewEmail from './screens/ConfirmNewEmail'
-import DeleteAccount from './screens/DeleteAccount'
-import ForgotPassword from './screens/ForgotPassword'
-import ResetPassword from './screens/ResetPassword'
-import PaymentSuccess from './screens/PaymentSuccess'
-import Profile from './screens/Profile'
-import Progress from './screens/Progress'
-import Help from './screens/Help'
 import { SessionProvider } from './auth/SessionProvider'
 import { RequireAuth } from './auth/guards'
 import { FlowProvider } from './flow/FlowSession'
 import { MusicProvider } from './music/MusicProvider'
+import {
+  confirmEmail,
+  confirmNewEmail,
+  countdown,
+  deleteAccount,
+  forgotPassword,
+  help,
+  login,
+  paymentSuccess,
+  player,
+  profile,
+  progress,
+  register,
+  resetPassword,
+  settings,
+  tariffs,
+} from './lib/screens'
+
+// Лендинг — в основном бандле: это первый экран. Остальные экраны
+// подгружаются по маршруту (src/lib/screens.tsx).
+const Countdown = countdown.Screen
+const Player = player.Screen
+const Settings = settings.Screen
+const Tariffs = tariffs.Screen
+const Login = login.Screen
+const Register = register.Screen
+const ConfirmEmail = confirmEmail.Screen
+const ConfirmNewEmail = confirmNewEmail.Screen
+const DeleteAccount = deleteAccount.Screen
+const ForgotPassword = forgotPassword.Screen
+const ResetPassword = resetPassword.Screen
+const PaymentSuccess = paymentSuccess.Screen
+const Profile = profile.Screen
+const Progress = progress.Screen
+const Help = help.Screen
 
 export default function App() {
   return (
@@ -27,6 +48,9 @@ export default function App() {
         {/* Тренировка живёт выше маршрутов: плеер размонтируется при уходе
             в меню, а заход при этом не заканчивается. */}
         <FlowProvider>
+        {/* Пока скачивается код экрана — пустой фон страницы, без спиннеров:
+            обычно это доли секунды, и мигание было бы заметнее ожидания. */}
+        <Suspense fallback={null}>
         <Routes>
           <Route path="/" element={<Landing />} />
 
@@ -104,6 +128,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
         </FlowProvider>
       </MusicProvider>
     </SessionProvider>

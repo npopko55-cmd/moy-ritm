@@ -12,6 +12,7 @@ import { asset } from '../lib/asset'
 import { loopPoster, loopSrc } from '../data/loops'
 import { useMascotVideo } from '../lib/mascot'
 import { prefetchFiles, prefetchImages, whenIdle } from '../lib/prefetch'
+import { login, preloadWorkout } from '../lib/screens'
 import { DEFAULT_STREAM } from '../data/streams'
 import '../components/Logo.css'
 import './Landing.css'
@@ -78,6 +79,10 @@ export default function Landing() {
     let stopIdle: (() => void) | undefined
     const warmUp = () => {
       stopIdle = whenIdle(() => {
+        // Код отсчёта, плеера и входа — отдельные куски: качаем их заранее,
+        // чтобы кнопка «Влиться в поток» не ждала скрипта на слабой сети.
+        preloadWorkout()
+        login.preload()
         prefetchImages(DEFAULT_STREAM.loops.map((l) => loopPoster(l.id)))
         prefetchFiles(DEFAULT_STREAM.loops.slice(0, 2).map((l) => loopSrc(l.id)))
       })

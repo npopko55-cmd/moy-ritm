@@ -2,11 +2,12 @@
 # Готовит ролик «маскот разминается» для главного экрана.
 #
 # Исходник — ProRes 4444 с настоящим альфа-каналом (yuva444p12le, 960x960,
-# 24 к/с, 241 кадр, ~130 МБ). Из него получается четыре файла:
+# 24 к/с, 241 кадр, ~130 МБ). Из него получается пять файлов:
 #
 #   warmup.webm         VP9 + альфа   — Chrome, Firefox, Android
 #   warmup-small.webm   то же, 480p   — телефоны
 #   warmup.mov          HEVC + альфа  — Safari и iPhone: альфу в VP9 Safari не показывает
+#   warmup-small.mov    то же, 480p   — iPhone: полный весит 1,8 МБ, а берут его и на мобильной сети
 #   warmup-poster.webp  первый кадр   — стоит вместо видео, пока оно качается
 #
 # ── Петля ───────────────────────────────────────────────────────────────────
@@ -111,12 +112,20 @@ ffmpeg -v error -y -i "$SRC" -vf "$CLEAN" \
   -pix_fmt bgra -q:v 75 -tag:v hvc1 -movflags +faststart -an \
   "$OUT/warmup.mov"
 
+echo "▸ warmup-small.mov — HEVC с альфой, ${SMALL_W}x${SMALL_H}"
+# Те же настройки кодировщика, что у полной версии, только кадр меньше:
+# 0,9 МБ против 1,8 МБ. Масштаб — после чистки каймы, как у warmup-small.webm.
+ffmpeg -v error -y -i "$SRC" -vf "$CLEAN,scale=${SMALL_W}:${SMALL_H}:flags=lanczos" \
+  -c:v hevc_videotoolbox -allow_sw 1 -alpha_quality 0.7 \
+  -pix_fmt bgra -q:v 75 -tag:v hvc1 -movflags +faststart -an \
+  "$OUT/warmup-small.mov"
+
 echo "▸ warmup-poster.webp — первый кадр"
 ffmpeg -v error -y -i "$SRC" -vf "$CLEAN" -frames:v 1 -pix_fmt rgba "$TMP/poster.png"
 cwebp -quiet -q 80 -alpha_q 90 "$TMP/poster.png" -o "$OUT/warmup-poster.webp"
 
 echo
-for f in warmup.webm warmup-small.webm warmup.mov warmup-poster.webp; do
+for f in warmup.webm warmup-small.webm warmup.mov warmup-small.mov warmup-poster.webp; do
   size="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height \
           -of csv=p=0:s=x "$OUT/$f" 2>/dev/null || echo '?')"
   printf '  %-20s %7s KB  %s\n' "$f" \

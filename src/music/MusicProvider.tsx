@@ -56,7 +56,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const on = playing && enabled
 
   const track = playlist[index % playlist.length]
+  const trackRef = useRef(track)
+  trackRef.current = track
 
+  // Сам элемент создаётся сразу, но источника у него нет до первого пуска:
+  // иначе preload='auto' качал бы первый трек (0,6–1,2 МБ) на любой
+  // странице — у гостя на лендинге тоже.
   if (audioRef.current === null && typeof Audio !== 'undefined') {
     audioRef.current = new Audio()
     audioRef.current.preload = 'auto'
@@ -128,23 +133,38 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     setBlocked(false)
   }, [playlist.length])
 
-  // Смена трека: подставляем источник и продолжаем, если играли.
+  /** Источник уже подставлен: музыку хоть раз запускали. */
+  const armed = useRef(false)
+
+  /** Подставить трек в проигрыватель. Сам по себе пуска не делает. */
+  const source = useCallback(
+    (t: Track) => {
+      const a = audioRef.current
+      if (!a) return
+      armed.current = true
+      // Первый трек захода — с «разгара», чтобы поток начался сразу. Дальше
+      // с начала, кроме треков с долгим вступлением: их разгар слишком далеко.
+      const from = !advanced.current || t.startAt >= LONG_INTRO_SECONDS ? t.startAt : 0
+      // #t= — медиафрагмент: браузер сам начинает с нужной секунды. Работает
+      // и через сервис-воркер, который отдаёт медиа кусками по 206.
+      a.src = from > 0 ? `${trackSrc(t.id)}#t=${from}` : trackSrc(t.id)
+      a.onended = next
+      // Подстраховка, если фрагмент не подхватился: доводим руками.
+      a.onloadedmetadata = () => {
+        if (from > 0 && a.currentTime < from - 1) a.currentTime = from
+      }
+      a.volume = 0
+      fresh.current = true
+    },
+    [next],
+  )
+
+  // Смена трека: подставляем источник и продолжаем, если играли. До первого
+  // пуска источника нет вовсе — его подставит сам пуск.
   useEffect(() => {
     const a = audioRef.current
-    if (!a) return
-    // Первый трек захода — с «разгара», чтобы поток начался сразу. Дальше
-    // с начала, кроме треков с долгим вступлением: их разгар слишком далеко.
-    const from = !advanced.current || track.startAt >= LONG_INTRO_SECONDS ? track.startAt : 0
-    // #t= — медиафрагмент: браузер сам начинает с нужной секунды. Работает
-    // и через сервис-воркер, который отдаёт медиа кусками по 206.
-    a.src = from > 0 ? `${trackSrc(track.id)}#t=${from}` : trackSrc(track.id)
-    a.onended = next
-    // Подстраховка, если фрагмент не подхватился: доводим руками.
-    a.onloadedmetadata = () => {
-      if (from > 0 && a.currentTime < from - 1) a.currentTime = from
-    }
-    a.volume = 0
-    fresh.current = true
+    if (!a || !armed.current) return
+    source(track)
     if (on) {
       play(FADE_START)
       fresh.current = false
@@ -155,7 +175,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
     // on нарочно не в зависимостях: пуск и паузу ведёт эффект ниже.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [track.id, track.startAt, next, play])
+  }, [track.id, track.startAt, source, play])
 
   // Пуск и пауза. Пауза мгновенная, возврат — без перемотки: трек
   // продолжается с того же места, только громкость возвращается плавно.
@@ -163,13 +183,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const a = audioRef.current
     if (!a) return
     if (on) {
+      // Первый пуск: только теперь у проигрывателя появляется источник.
+      if (!armed.current) source(trackRef.current)
       play(fresh.current ? FADE_START : FADE_RESUME)
       fresh.current = false
     } else {
       stopFade()
       a.pause()
     }
-  }, [on, play])
+  }, [on, play, source])
 
   // Ползунок громкости двигают во время музыки — она меняется сразу, но
   // только когда плавный вход уже закончился и не спорит с ним.

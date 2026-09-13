@@ -37,13 +37,14 @@ function skip(): boolean {
  * Источники по порядку разбора браузером.
  *
  * Первым идёт HEVC с альфой: его возьмёт только Safari, остальные пропустят —
- * video/quicktime они не поддерживают и до кодека даже не дойдут. Дальше VP9,
- * на телефоне — версия 346x480 вместо 672x934.
+ * video/quicktime они не поддерживают и до кодека даже не дойдут. Дальше VP9.
+ * На телефоне у обоих — версия 346x480 вместо 672x934: полный HEVC весит
+ * 1,8 МБ, и iPhone качал бы его и на мобильной сети.
  */
 function sources(): Array<[src: string, type: string]> {
   const small = window.innerWidth < 768
   return [
-    [asset('mascot/warmup.mov'), 'video/quicktime; codecs="hvc1"'],
+    [asset(small ? 'mascot/warmup-small.mov' : 'mascot/warmup.mov'), 'video/quicktime; codecs="hvc1"'],
     [
       asset(small ? 'mascot/warmup-small.webm' : 'mascot/warmup.webm'),
       'video/webm; codecs="vp9"',
