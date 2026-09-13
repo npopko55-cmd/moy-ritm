@@ -460,7 +460,11 @@
   color: var(--gray-600);
 }
 
-/* Кнопка «Влиться в поток»: тёплый градиент от розового к оранжевому. */
+/* Кнопка «Влиться в поток»: тёплый градиент от розового к оранжевому.
+   Насыщенность 600 и 44 px на тач-экранах — как у .btn из global.css: пока
+   стили были одним файлом, .btn шёл позже и перебивал здесь 700 и 40 px.
+   Стили прогресса теперь грузятся после global.css, поэтому принятый вид
+   закреплён явно. */
 .today__cta {
   width: 100%;
   min-height: 40px;
@@ -469,8 +473,13 @@
   background: var(--grad-warm);
   color: var(--white);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   box-shadow: 0 6px 16px rgba(240, 23, 127, .26);
+}
+@media (max-width: 1023.98px),
+       (pointer: coarse),
+       (max-width: 1179.98px) and (orientation: portrait) {
+  .today__cta { min-height: 44px; }
 }
 
 /* ——— Рекорд ——— */
