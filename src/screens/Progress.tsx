@@ -365,7 +365,10 @@ export default function Progress() {
                 <strong className="tile__value">
                   {avgTime.value} <i>{avgTime.unit}</i>
                 </strong>
-                <span className="tile__note">Отличный результат! ⭐</span>
+                {/* Похвала за ноль минут звучала бы издёвкой. */}
+                {(data?.averages.per_active_day_seconds ?? 0) > 0 && (
+                  <span className="tile__note">Отличный результат! ⭐</span>
+                )}
               </span>
             </li>
 

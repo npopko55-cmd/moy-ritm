@@ -49,7 +49,7 @@ export default function ConfirmNewEmail() {
       lead={state === 'ok' ? 'Теперь вход и письма идут на новый адрес.' : message}
     >
       <nav className="account__links">
-        {me ? <Link to="/settings">К настройкам</Link> : <Link to="/login">Войти</Link>}
+        {me ? <Link to="/profile">К профилю</Link> : <Link to="/login">Войти</Link>}
         <Link to="/">На главную</Link>
       </nav>
     </AccountShell>

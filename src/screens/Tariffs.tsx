@@ -18,12 +18,13 @@ import {
   Bolt,
 } from '../components/Icons'
 import { api } from '../api/client'
-import { ApiError, hasAccess, type AccessStatus, type Tariff } from '../api/types'
+import { ApiError, hasAccess, type Tariff } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { nextParam } from '../auth/guards'
 import { asset } from '../lib/asset'
 import { formatDate } from '../lib/date'
 import { rememberAccessBefore } from '../lib/payment'
+import { cachedTariffs, loadTariffs } from '../lib/tariffs'
 import { rub } from '../data/tariffs'
 import { errorText } from './Account'
 import '../components/Logo.css'
@@ -51,19 +52,16 @@ const FACTS = [
   },
 ] as const
 
-/** Почему человека сюда привели: это ставит защита маршрутов. */
-type FromGuard = { accessReason?: AccessStatus } | null
-
 /** Что показать под кнопками. `verify` рисует ещё и кнопку повторного письма. */
 type Note = { kind: 'error' | 'verify'; text: string } | null
 
 export default function Tariffs() {
   const navigate = useNavigate()
-  const { key, state } = useLocation() as { key: string; state: FromGuard }
+  const { key } = useLocation()
   const { me, access, reload } = useSession()
 
   // null — ещё грузим: в это время в карточках стоит скелетон.
-  const [tariffs, setTariffs] = useState<Tariff[] | null>(null)
+  const [tariffs, setTariffs] = useState<Tariff[] | null>(cachedTariffs)
   const [loadError, setLoadError] = useState('')
   const [busyCode, setBusyCode] = useState<string | null>(null)
   const [note, setNote] = useState<Note>(null)
@@ -97,7 +95,7 @@ export default function Tariffs() {
     let alive = true
     void (async () => {
       try {
-        const list = await api.getTariffs()
+        const list = await loadTariffs()
         if (alive) setTariffs(list)
       } catch (e) {
         if (alive) {
@@ -184,14 +182,6 @@ export default function Tariffs() {
             Доступ до {formatDate(access.paid_until)}
             {access.tariff && ` · тариф ${access.tariff.name}`}
           </p>
-        )}
-        {!paid && state?.accessReason === 'expired' && (
-          <p className="tariffs__access tariffs__access--warn">
-            Доступ закончился. Выберите тариф, чтобы вернуться в поток.
-          </p>
-        )}
-        {!paid && state?.accessReason === 'none' && (
-          <p className="tariffs__access">Чтобы влиться в поток, выберите тариф.</p>
         )}
 
         <header className="tariffs__head">

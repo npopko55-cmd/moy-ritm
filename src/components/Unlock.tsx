@@ -6,16 +6,18 @@
  * неоткуда: ни регистрация, ни вход туда не уводят.
  *
  * Число движений и цена берутся из данных, а не из текста, чтобы блок не
- * начал врать, когда появятся новые ролики или изменится тариф.
+ * начал врать, когда появятся новые ролики или изменится тариф. Цена — самая
+ * низкая цена месяца из тарифов сервера; локальные тарифы — запасной вариант.
  */
 
 import { Link } from 'react-router-dom'
 import { ALL_MOVES } from '../data/streams'
 import { TARIFFS, rub } from '../data/tariffs'
+import { useFromPrice } from '../lib/tariffs'
 import './Unlock.css'
 
-/** Самый короткий тариф: от него и считается «от … в месяц». */
-const FROM_PRICE = (TARIFFS.find((t) => t.code === 'month') ?? TARIFFS[0]).price
+/** Пока тарифы сервера не пришли: самая низкая цена месяца из локальных. */
+const FALLBACK_PRICE = Math.min(...TARIFFS.map((t) => t.per_month))
 
 type Props = {
   /** Строкой, а не столбиком: для экрана паузы, где места по высоте мало. */
@@ -23,11 +25,12 @@ type Props = {
 }
 
 export default function Unlock({ compact = false }: Props) {
+  const fromPrice = useFromPrice(FALLBACK_PRICE)
   return (
     <div className={`unlock ${compact ? 'unlock--compact' : ''}`}>
       <span className="unlock__text">
         <span className="unlock__title">Откройте все {ALL_MOVES.length} движений</span>
-        <span className="unlock__price">от {rub(FROM_PRICE)} в месяц</span>
+        <span className="unlock__price">от {rub(fromPrice)} в месяц</span>
       </span>
       <Link className="unlock__cta" to="/tariffs">
         Открыть

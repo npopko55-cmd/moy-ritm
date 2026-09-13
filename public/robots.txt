@@ -1,0 +1,19 @@
+# Мой ритм. В поиске нужны только открытые страницы: главная, тарифы, помощь.
+# Служебные адреса (вход, письма, оплата, тренировка, кабинет) индексировать незачем.
+User-agent: *
+Allow: /$
+Allow: /tariffs
+Disallow: /login
+Disallow: /register
+Disallow: /confirm-email
+Disallow: /confirm-new-email
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /delete-account
+Disallow: /payment/
+Disallow: /start/
+Disallow: /player/
+Disallow: /settings
+Disallow: /profile
+Disallow: /progress
+Disallow: /api/

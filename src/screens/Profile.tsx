@@ -144,7 +144,7 @@ export default function Profile() {
 
       <Card title="Доступ">
         {access.status === 'none' ? (
-          <Row label="Доступа нет" hint="Тренировки открываются после оплаты.">
+          <Row label="Доступа нет" hint="Первые движения — бесплатно, все остальные — после оплаты.">
             <Link className="page__btn page__btn--pink" to="/tariffs">
               Выбрать тариф
             </Link>
@@ -179,7 +179,9 @@ export default function Profile() {
           </li>
           <li className="totals__item">
             <strong>{totals.current_streak_days}</strong>
-            <span>дней подряд сейчас</span>
+            <span>
+              {pluralWord(totals.current_streak_days, 'день', 'дня', 'дней')} подряд сейчас
+            </span>
           </li>
           <li className="totals__item">
             <strong>{totals.longest_streak_days}</strong>

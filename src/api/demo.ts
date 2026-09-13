@@ -198,14 +198,12 @@ function demoStreams(access: Access): PlayerStream[] {
   const limited = !hasAccess(access)
   return STREAMS.map((s) => {
     if (limited && s.id !== FREE_TIER.stream_code) {
-      return { code: s.id, name: s.title, description: s.subtitle, locked: true }
+      return { id: s.id, title: s.title, description: s.subtitle, locked: true, exercises: [], tracks: [] }
     }
     const loops = limited ? s.loops.slice(0, FREE_TIER.exercise_limit) : s.loops
     return {
       id: s.id,
-      code: s.id,
       title: s.title,
-      name: s.title,
       description: s.subtitle,
       exercises: loops.map((l, i) => ({
         id: l.id,

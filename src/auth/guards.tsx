@@ -17,6 +17,15 @@ import { useSession } from './SessionProvider'
 export const nextParam = (pathname: string, search = '') =>
   `?next=${encodeURIComponent(pathname + search)}`
 
+/**
+ * Параметр next, если ему можно верить: только путь внутри сайта. Ссылку
+ * «/login?next=https://чужой.сайт» или «//чужой.сайт» пропускать нельзя.
+ */
+export function safeNext(raw: string | null | undefined): string | null {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return null
+  return raw
+}
+
 /** Поток по умолчанию — с него начинается тренировка. Выбора больше нет. */
 export const FIRST_STREAM = `/start/${DEFAULT_STREAM.id}`
 

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { IS_DEMO } from '../api/client'
+import { safeNext } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
 import {
   AccountShell,
@@ -17,7 +18,7 @@ import {
 
 export default function Login() {
   const [params] = useSearchParams()
-  const next = params.get('next') || '/'
+  const next = safeNext(params.get('next')) ?? '/'
   const navigate = useNavigate()
   const { me, loading, offline, signIn } = useSession()
 

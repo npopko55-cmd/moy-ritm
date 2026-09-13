@@ -214,22 +214,6 @@
     linear-gradient(150deg, #fdeaf4 0%, #f2e9ff 52%, #ffeedf 100%);
 }
 
-/*
- * Фигура вырезана по контуру: белая студийная подложка снимается чисто,
- * без ореола по краю, поэтому прозрачный PNG ложится прямо на цветное пятно.
- */
-/* Размер задаёт контейнер: max-* нужны, чтобы на место снимка можно было
-   поставить ролик-маскота, не переделывая сетку. */
-.hero__photo {
-  position: relative;
-  height: var(--figure-h);
-  width: auto;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 22px 34px rgba(20, 22, 26, .16));
-}
-
 .hero__dot { position: absolute; border-radius: 50%; }
 .hero__dot--a { width: 14px; height: 14px; background: #f6b7d8; top: 76px; right: 24px; }
 .hero__dot--b { width: 26px; height: 26px; background: #e3c6fb; top: 206px; right: 4px; }
@@ -390,8 +374,7 @@
     max-width: none;
   }
 
-  /* drop-shadow на большой картинке дорог для слабого телефона. */
-  .hero__photo { filter: drop-shadow(0 8px 14px rgba(20, 22, 26, .14)); }
+  /* Размытие на большом пятне дорого для слабого телефона. */
   .hero__blob { filter: none; }
 
   .hero__dot--a { top: 20px; right: 8px; }

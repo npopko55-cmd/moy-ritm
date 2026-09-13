@@ -2,8 +2,8 @@
  * Регистрация.
  *
  * Новая почта — человек создан и сразу вошёл (бэкенд отдаёт те же токены,
- * что и вход), после чего попадает на главную. Дальше он сам жмёт «Влиться
- * в поток»: бросать его в тренировку прямо из формы нелогично.
+ * что и вход), после чего попадает туда, куда шёл (параметр next — например,
+ * к оплате со страницы тарифов), а без него — на главную.
  *
  * Занятая почта — ответ бэкенда дословно совпадает с обычным «проверьте
  * почту», иначе по форме перебором узнают, кто у нас зарегистрирован.
@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, IS_DEMO } from '../api/client'
+import { safeNext } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
 import {
   AccountShell,
@@ -72,9 +73,9 @@ export default function Register() {
         timezone: browserTimezone(),
       })
       if (res.status === 'registered') {
-        // Человек уже вошёл: главная встретит его своим и плашкой про
-        // подтверждение почты. Дальше он сам жмёт «Влиться в поток».
-        navigate('/', { replace: true })
+        // Человек уже вошёл. Шёл куда-то (гость с тарифов к оплате) — туда;
+        // иначе главная встретит его своим и плашкой про подтверждение почты.
+        navigate(safeNext(next) ?? '/', { replace: true })
         return
       }
       setDone(true)
