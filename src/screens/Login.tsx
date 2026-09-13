@@ -4,13 +4,22 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { IS_DEMO } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
-import { AccountShell, Field, Form, FormError, Waiting, errorText, isEmail } from './Account'
+import {
+  AccountShell,
+  Field,
+  Form,
+  FormError,
+  OFFLINE_WAITING,
+  Waiting,
+  errorText,
+  isEmail,
+} from './Account'
 
 export default function Login() {
   const [params] = useSearchParams()
   const next = params.get('next') || '/'
   const navigate = useNavigate()
-  const { me, loading, signIn } = useSession()
+  const { me, loading, offline, signIn } = useSession()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -18,7 +27,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  if (loading) return <Waiting />
+  if (loading) return <Waiting text={offline ? OFFLINE_WAITING : undefined} />
   // Уже вошёл — незачем показывать форму: сразу туда, куда шёл.
   if (me) return <Navigate to={next} replace />
 

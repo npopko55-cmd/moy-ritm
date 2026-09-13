@@ -8,7 +8,8 @@
  *     каждый запрос идёт с credentials: 'include';
  *   • каждый успешный refresh отзывает предъявленный токен, и два
  *     параллельных обновления дадут 401 на втором. Значит обновление
- *     запускается в одном месте — общим промисом.
+ *     запускается в одном месте — общим промисом, а между вкладками —
+ *     под общей блокировкой (cookie у вкладок одна на всех).
  */
 
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
@@ -40,8 +41,38 @@ type Options = {
   auth?: boolean
 }
 
+/** Ответ, прочитанный целиком: тело читается под тем же таймаутом, что и заголовки. */
+type Raw = { status: number; ok: boolean; text: string }
+
+/**
+ * Сколько ждём ответа. На зависшей мобильной сети fetch не падает сам —
+ * без предела экраны вечно стояли бы на «Секунду…».
+ */
+const TIMEOUT_MS = 20_000
+
+/** Имя межвкладочной блокировки на обновление токена. */
+const REFRESH_LOCK = 'moy-ritm-refresh'
+
+/**
+ * Код бэкенда для истёкшего или недействительного access-токена
+ * (app/security/tokens.py, app/dependencies.py). Другие 401 — например,
+ * INVALID_CURRENT_PASSWORD при смене почты — к сроку токена отношения не
+ * имеют: обновлять токен ради них значит тратить лимит и рисковать входом.
+ */
+const TOKEN_REJECTED = 'UNAUTHORIZED'
+
+/** Код ошибки из тела `{error: {code}}`, не разбирая остального. */
+function errorCode(raw: Raw): string | undefined {
+  try {
+    const code = (JSON.parse(raw.text) as { error?: { code?: unknown } } | null)?.error?.code
+    return typeof code === 'string' ? code : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function createHttpApi(rawBase: string): Api {
-  const base = rawBase.replace(/\/+$/, '')
+  const base = rawBase.trim().replace(/\/+$/, '')
 
   /** Токен в памяти модуля: перезагрузка страницы его теряет — так и надо. */
   let accessToken: string | null = null
@@ -58,47 +89,72 @@ export function createHttpApi(rawBase: string): Api {
     listeners.forEach((fn) => fn())
   }
 
-  async function send(method: Method, path: string, opts: Options): Promise<Response> {
+  async function send(method: Method, path: string, opts: Options): Promise<Raw> {
     const headers: Record<string, string> = {}
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
     if (opts.auth !== false && accessToken) headers.Authorization = `Bearer ${accessToken}`
+    const ctrl = new AbortController()
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      ctrl.abort()
+    }, TIMEOUT_MS)
     try {
-      return await fetch(base + path, {
+      const res = await fetch(base + path, {
         method,
         headers,
         credentials: 'include',
         body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+        signal: ctrl.signal,
       })
+      // Заголовки могли прийти, а тело — застрять: читаем его под тем же таймером.
+      return { status: res.status, ok: res.ok, text: await res.text() }
     } catch {
-      // fetch падает только на сетевых бедах: сервер не поднят, нет интернета.
-      throw ApiError.offline()
+      // fetch падает только на сетевых бедах: сервер не поднят, нет интернета,
+      // или ответ не пришёл за TIMEOUT_MS и мы оборвали запрос сами.
+      throw timedOut ? ApiError.timeout() : ApiError.offline()
+    } finally {
+      clearTimeout(timer)
     }
   }
 
-  async function parse<T>(res: Response): Promise<T> {
-    const text = await res.text()
+  function parse<T>(raw: Raw): T {
     let data: unknown = null
     try {
-      data = text ? JSON.parse(text) : null
+      data = raw.text ? JSON.parse(raw.text) : null
     } catch {
       data = null
     }
-    if (res.ok) return data as T
-    throw ApiError.fromBody(res.status, data)
+    if (raw.ok) return data as T
+    throw ApiError.fromBody(raw.status, data)
   }
 
-  /** Обновление токена: параллельные вызовы ждут один и тот же запрос. */
+  /**
+   * Обновление токена: параллельные вызовы ждут один и тот же запрос.
+   *
+   * Внутри вкладки хватает общего промиса, но cookie у вкладок общая, а
+   * refresh её ротирует: две вкладки разом — вторая предъявила бы уже
+   * отозванный токен и получила 401. Поэтому сам запрос идёт под
+   * navigator.locks: вторая вкладка дождётся первой и пойдёт уже с новой
+   * cookie. Где блокировок нет (старые браузеры) — как раньше, без неё.
+   */
   function refreshOnce(): Promise<TokenResponse> {
     if (!refreshing) {
-      refreshing = send('POST', '/auth/refresh', { auth: false })
-        .then((res) => parse<TokenResponse>(res))
-        .then((data) => {
-          accessToken = data.access_token
-          return data
-        })
-        .finally(() => {
-          refreshing = null
-        })
+      const run = async () => {
+        const data = parse<TokenResponse>(await send('POST', '/auth/refresh', { auth: false }))
+        accessToken = data.access_token
+        return data
+      }
+      const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined
+      // request() ждёт обещание колбэка и отдаёт его значение, а типы DOM
+      // оборачивают его ещё раз — отсюда приведение.
+      const job: Promise<TokenResponse> =
+        typeof locks?.request === 'function'
+          ? (locks.request(REFRESH_LOCK, run) as unknown as Promise<TokenResponse>)
+          : run()
+      refreshing = job.finally(() => {
+        refreshing = null
+      })
     }
     return refreshing
   }
@@ -106,14 +162,21 @@ export function createHttpApi(rawBase: string): Api {
   /**
    * Запрос с одной попыткой обновить токен. Повтор ровно один: если и после
    * свежего токена 401 — дело не в сроке, и крутить круги незачем.
+   *
+   * Обновляем только на отказ по токену (TOKEN_REJECTED). Сессию считаем
+   * потерянной, только если сервер отказал в обновлении по существу; сеть
+   * и 5xx посреди перезапуска бэкенда — это ошибка запроса, а не выход.
    */
   async function request<T>(method: Method, path: string, opts: Options = {}): Promise<T> {
     const res = await send(method, path, opts)
-    if (res.status !== 401 || opts.auth === false) return parse<T>(res)
+    if (res.status !== 401 || opts.auth === false || errorCode(res) !== TOKEN_REJECTED) {
+      return parse<T>(res)
+    }
 
     try {
       await refreshOnce()
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiError && e.temporary) throw e
       sessionLost()
       return parse<T>(res)
     }

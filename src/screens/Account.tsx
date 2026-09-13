@@ -194,6 +194,9 @@ export function Form({ onSubmit, children }: FormProps) {
   )
 }
 
+/** Сервер пока не ответил, вошёл ли человек, — повторяем сами, форму входа не показываем. */
+export const OFFLINE_WAITING = 'Нет связи с сервером. Пробуем подключиться…'
+
 /** Пока приложение выясняет, вошёл ли человек. Секунда-две при первом заходе. */
 export function Waiting({ text = 'Секунду…' }: { text?: string }) {
   return (

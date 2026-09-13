@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { DEFAULT_STREAM } from '../data/streams'
 import type { FlowSession } from '../flow/FlowSession'
-import { Waiting } from '../screens/Account'
+import { OFFLINE_WAITING, Waiting } from '../screens/Account'
 import { useSession } from './SessionProvider'
 
 /** Куда вернуть человека после входа. */
@@ -42,12 +42,15 @@ export function flowLabel(flow?: FlowSession | null): string {
   return flow ? 'Вернуться в поток' : 'Влиться в поток'
 }
 
-/** Не вошёл — на вход, с адресом возврата. */
+/**
+ * Не вошёл — на вход, с адресом возврата. Пока это неизвестно (сервер не
+ * отвечает), ждём: увести на вход того, кто вошёл, хуже, чем подождать.
+ */
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { me, loading } = useSession()
+  const { me, loading, offline } = useSession()
   const { pathname, search } = useLocation()
 
-  if (loading) return <Waiting />
+  if (loading) return <Waiting text={offline ? OFFLINE_WAITING : undefined} />
   if (!me) return <Navigate to={`/login${nextParam(pathname, search)}`} replace />
   return <>{children}</>
 }
