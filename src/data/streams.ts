@@ -6,7 +6,9 @@
  * public/streams/<id>.png (человек, вырезанный по контуру, вертикальный кадр).
  */
 
+import type { FreeTier } from '../api/types'
 import { asset } from '../lib/asset'
+import { plural } from '../lib/date'
 import { LOOPS, type Loop } from './loops'
 
 export type Stream = {
@@ -28,6 +30,17 @@ export type Stream = {
 }
 
 const pick = (...ids: string[]): Loop[] => ids.map((id) => LOOPS[id])
+
+/**
+ * Бесплатный уровень по умолчанию — одна константа на весь фронтенд.
+ *
+ * Настоящее правило приходит с сервера в bootstrap.free_tier, но плеер
+ * стартует, не дожидаясь ответа: если бы до него мы считали, что открыто всё,
+ * у человека без доступа на секунду мелькали бы закрытые движения. Страница
+ * тарифов bootstrap не запрашивает и считает «+N движений» по этому же числу,
+ * а демо отдаёт его как ответ сервера.
+ */
+export const DEFAULT_FREE_TIER: FreeTier = { stream_code: 'cardio', exercise_limit: 5 }
 
 /**
  * Весь каталог движений в постоянном порядке.
@@ -112,6 +125,19 @@ export const STREAMS: Stream[] = [
  * остальные нет своего контента, см. hidden в типе Stream.
  */
 export const VISIBLE_STREAMS: Stream[] = STREAMS.filter((s) => !s.hidden)
+
+/**
+ * «+9 движений» — сколько движений оплата добавит к бесплатным. Первый пункт
+ * того, что входит в подписку, на странице тарифов и в демо-ответе
+ * GET /tariffs. Число не пишется руками: появятся новые ролики в каталоге —
+ * вырастет само.
+ */
+export const EXTRA_MOVES_LABEL = `+${plural(
+  ALL_MOVES.length - DEFAULT_FREE_TIER.exercise_limit,
+  'движение',
+  'движения',
+  'движений',
+)}`
 
 /**
  * Поток по умолчанию. С него начинается тренировка, в него же молча уводят

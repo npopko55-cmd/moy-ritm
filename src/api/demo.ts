@@ -13,7 +13,7 @@
  */
 
 import { loopSrc } from '../data/loops'
-import { STREAMS } from '../data/streams'
+import { DEFAULT_FREE_TIER, EXTRA_MOVES_LABEL, STREAMS } from '../data/streams'
 import { PLACEHOLDER_EMAIL, TELEGRAM_URL } from '../data/support'
 import { TARIFFS } from '../data/tariffs'
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
@@ -185,7 +185,7 @@ function dropChunkBuffer(userId?: string): void {
 }
 
 /** Бесплатный уровень: то же правило, что отдаёт бэкенд в bootstrap. */
-const FREE_TIER: FreeTier = { stream_code: 'cardio', exercise_limit: 5 }
+const FREE_TIER: FreeTier = DEFAULT_FREE_TIER
 
 /**
  * Потоки для bootstrap.
@@ -238,11 +238,13 @@ function localDate(ms: number): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-/** Тарифы в форме ответа GET /tariffs. */
+/**
+ * Тарифы в форме ответа GET /tariffs. Пункты те же, что в строке «что входит
+ * в подписку» на странице тарифов: выводит страница свои, а не эти, но демо
+ * не должно расходиться с тем, что на ней написано.
+ */
 const FEATURES = [
-  'Все движения без ограничений',
-  'Все новые движения',
-  'Всё, что появится дальше',
+  `${EXTRA_MOVES_LABEL} и больше разнообразия`,
   'На любом устройстве',
   'Без автосписаний',
 ]

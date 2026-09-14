@@ -7,14 +7,12 @@ import {
   Crown,
   FloatNote,
   Heart,
-  InfinityMark,
   Leaf,
   MusicNote,
   Phone,
   PlayCircle,
   Shield,
   Smile,
-  Star,
   Bolt,
 } from '../components/Icons'
 import { api } from '../api/client'
@@ -25,16 +23,22 @@ import { asset } from '../lib/asset'
 import { formatDate } from '../lib/date'
 import { rememberAccessBefore } from '../lib/payment'
 import { cachedTariffs, loadTariffs } from '../lib/tariffs'
+import { EXTRA_MOVES_LABEL } from '../data/streams'
 import { rub } from '../data/tariffs'
 import { errorText } from './Account'
 import '../components/Logo.css'
 import './Tariffs.css'
 
-/** Что входит в подписку — строка под заголовком. */
+/**
+ * Что входит в подписку — строка под заголовком.
+ *
+ * Первый пункт — сколько движений добавит оплата, числом: так попросил
+ * владелец вместо «Все движения без ограничений». «Все новые движения» и
+ * «Всё, что появится дальше» он же попросил убрать. Серверный список
+ * features страница не выводит — текст пунктов живёт здесь.
+ */
 const PERKS = [
-  { icon: <PlayCircle size={19} />, tone: 'pink', text: 'Все движения\nбез ограничений' },
-  { icon: <Star size={19} />, tone: 'violet', text: 'Все новые\nдвижения' },
-  { icon: <InfinityMark size={19} />, tone: 'orange', text: 'Всё, что\nпоявится дальше' },
+  { icon: <PlayCircle size={19} />, tone: 'pink', text: `${EXTRA_MOVES_LABEL}\nи больше разнообразия` },
   { icon: <Phone size={19} />, tone: 'blue', text: 'На любом\nустройстве' },
   { icon: <Heart size={19} />, tone: 'pink', text: 'Без\nавтосписаний' },
 ] as const

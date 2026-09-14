@@ -19,7 +19,7 @@ import {
   User,
 } from '../components/Icons'
 import Unlock from '../components/Unlock'
-import { getStream } from '../data/streams'
+import { DEFAULT_FREE_TIER, getStream } from '../data/streams'
 import { loopPoster, loopSrc, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
 import { FLOW_RESUME_MINUTES, useFlow, type FlowSession } from '../flow/FlowSession'
@@ -47,15 +47,6 @@ const FORCE_CLOSE_MS = 60_000
 
 /** Длиннее сервер не примет: такой кусок означает спящую вкладку. */
 const MAX_CHUNK_SECONDS = 300
-
-/**
- * Бесплатный уровень, пока bootstrap не ответил.
- *
- * Правило приходит с сервера, но ответа надо дождаться, а плеер стартует
- * сразу. Если бы до ответа мы считали, что открыто всё, у человека без
- * доступа на секунду мелькали бы закрытые движения.
- */
-const DEFAULT_FREE_TIER: FreeTier = { stream_code: 'cardio', exercise_limit: 5 }
 
 /** Пока сводка не пришла — та же сетка из семи дней, чтобы карточка не прыгала. */
 function emptyWeek(): DayStats[] {
