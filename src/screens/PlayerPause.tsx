@@ -173,6 +173,21 @@ export default function PlayerPause({
           </li>
         </ul>
 
+        {/* Кнопки — сразу под итогами, а не в самом низу: до них больше не
+            нужно листать (просьба владельца). Полоса дня и блок разблокировки
+            под ней идут следом, как и раньше. Порядок в разметке — это и
+            порядок фокуса с клавиатуры. */}
+        <button ref={resumeButton} className="btn btn--pink-lg pause__cta" onClick={onResume}>
+          <Play size={20} />
+          Продолжить сейчас
+        </button>
+
+        {/* «Вернусь позже» никуда не уводит: экран закрывается, а плеер
+            остаётся на паузе — тем же, чем его закрывает крестик. */}
+        <button className="pause__later" onClick={onClose}>
+          Вернусь позже
+        </button>
+
         <section className="pause__bar">
           <header className="pause__bar-top">
             <span>
@@ -265,17 +280,6 @@ export default function PlayerPause({
             })}
           </ul>
         </section>
-
-        <button ref={resumeButton} className="btn btn--pink-lg pause__cta" onClick={onResume}>
-          <Play size={20} />
-          Продолжить сейчас
-        </button>
-
-        {/* «Вернусь позже» никуда не уводит: экран закрывается, а плеер
-            остаётся на паузе — тем же, чем его закрывает крестик. */}
-        <button className="pause__later" onClick={onClose}>
-          Вернусь позже
-        </button>
 
         <p className="pause__hand pause__hand--footer">Движение — это забота о себе ♡</p>
       </div>
