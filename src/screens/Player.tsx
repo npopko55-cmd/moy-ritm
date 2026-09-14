@@ -932,6 +932,7 @@ export default function Player() {
           <div className="week">
             {week.map((d, i) => {
               const today = isToday(d.local_date)
+              const time = weekSeconds[i] > 0 ? durationTight(weekSeconds[i]) : null
               return (
                 <div key={d.local_date} className="week__col">
                   <div className="week__track">
@@ -943,10 +944,19 @@ export default function Player() {
                   <span className={today ? 'is-today' : ''}>{weekdayShort(d.local_date)}</span>
                   {/* Минуты этого дня. День без движения — прочерк: ноль в
                       столбце цифр читается как результат, а его не было. Заход
-                      короче минуты — «<1»: секунды в такую колонку не влезают,
-                      но и нулём этот день называть нельзя. */}
+                      короче минуты — «<1 мин»: секунды в такую колонку не
+                      влезают, но и нулём этот день называть нельзя.
+                      Единица стоит у каждого дня: голые цифры под столбиками
+                      непонятно что значат. В узкой колонке она уходит строкой
+                      ниже — это решает CSS, разметка одна. */}
                   <span className={`week__min ${today ? 'is-today' : ''}`}>
-                    {weekSeconds[i] > 0 ? durationTight(weekSeconds[i]).value : '—'}
+                    {time ? (
+                      <>
+                        {time.value} <span className="week__unit">{time.unit}</span>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </span>
                 </div>
               )
