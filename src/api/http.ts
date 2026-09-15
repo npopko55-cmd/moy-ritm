@@ -41,8 +41,24 @@ type Options = {
   auth?: boolean
 }
 
-/** Ответ, прочитанный целиком: тело читается под тем же таймаутом, что и заголовки. */
-type Raw = { status: number; ok: boolean; text: string }
+/**
+ * Ответ, прочитанный целиком: тело читается под тем же таймаутом, что и заголовки.
+ * `retryAfter` — заголовок Retry-After в секундах: у 429 без JSON срок только в нём.
+ */
+type Raw = { status: number; ok: boolean; text: string; retryAfter?: number }
+
+/**
+ * Retry-After: число секунд или дата HTTP. Не разобрали — undefined.
+ * С другого домена заголовок виден, только если сервер перечислил его
+ * в Access-Control-Expose-Headers; иначе остаётся срок из тела.
+ */
+function retryAfterSeconds(value: string | null): number | undefined {
+  if (!value?.trim()) return undefined
+  const seconds = Number(value)
+  if (Number.isFinite(seconds)) return seconds >= 0 ? Math.ceil(seconds) : undefined
+  const at = Date.parse(value)
+  return Number.isNaN(at) ? undefined : Math.max(0, Math.ceil((at - Date.now()) / 1000))
+}
 
 /**
  * Сколько ждём ответа. На зависшей мобильной сети fetch не падает сам —
@@ -108,7 +124,12 @@ export function createHttpApi(rawBase: string): Api {
         signal: ctrl.signal,
       })
       // Заголовки могли прийти, а тело — застрять: читаем его под тем же таймером.
-      return { status: res.status, ok: res.ok, text: await res.text() }
+      return {
+        status: res.status,
+        ok: res.ok,
+        text: await res.text(),
+        retryAfter: retryAfterSeconds(res.headers.get('Retry-After')),
+      }
     } catch {
       // fetch падает только на сетевых бедах: сервер не поднят, нет интернета,
       // или ответ не пришёл за TIMEOUT_MS и мы оборвали запрос сами.
@@ -126,7 +147,7 @@ export function createHttpApi(rawBase: string): Api {
       data = null
     }
     if (raw.ok) return data as T
-    throw ApiError.fromBody(raw.status, data)
+    throw ApiError.fromBody(raw.status, data, raw.retryAfter)
   }
 
   /**

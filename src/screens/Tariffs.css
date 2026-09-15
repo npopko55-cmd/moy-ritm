@@ -399,6 +399,9 @@
 
 .tariffs__msg-btn:disabled { opacity: .6; cursor: default; }
 
+/* Цифры отсчёта «Повторно через 0:59» одной ширины — кнопка не дёргается. */
+button.tariffs__msg-btn { font-variant-numeric: tabular-nums; }
+
 .tariffs__msg-ok { margin-top: 8px; color: var(--green-600); font-weight: 600; }
 .tariffs__msg-bad { margin-top: 8px; color: var(--red-500); font-weight: 600; }
 

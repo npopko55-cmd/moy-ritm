@@ -268,9 +268,9 @@ export default function Tariffs() {
                   className="tariffs__msg-btn"
                   type="button"
                   onClick={() => void resend.send()}
-                  disabled={resend.busy}
+                  disabled={resend.disabled}
                 >
-                  {resend.busy ? 'Отправляем…' : 'Отправить письмо ещё раз'}
+                  {resend.label('Отправить письмо ещё раз')}
                 </button>
                 {resend.ok && <p className="tariffs__msg-ok">{resend.ok}</p>}
                 {resend.error && <p className="tariffs__msg-bad">{resend.error}</p>}

@@ -26,6 +26,9 @@
 /* — Почта: «Отправить письмо ещё раз» рядом с «Сменить почту» — */
 .profile__email-btns { display: flex; flex-wrap: wrap; gap: 10px; }
 
+/* Цифры отсчёта одной ширины — кнопка не дёргается каждую секунду. */
+.profile__email-btns .page__btn { font-variant-numeric: tabular-nums; }
+
 /* Ответ на повторное письмо — под подсказкой, её же кеглем. */
 .profile__verify-msg {
   display: block;

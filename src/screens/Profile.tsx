@@ -160,13 +160,9 @@ export default function Profile() {
                 className="page__btn"
                 type="button"
                 onClick={() => void resend.send()}
-                disabled={resend.busy || resend.sent}
+                disabled={resend.disabled}
               >
-                {resend.busy
-                  ? 'Отправляем…'
-                  : resend.sent
-                    ? 'Письмо отправлено'
-                    : 'Отправить письмо ещё раз'}
+                {resend.label('Отправить письмо ещё раз')}
               </button>
             )}
             <button className="page__btn" onClick={() => setOpen(open === 'email' ? '' : 'email')}>

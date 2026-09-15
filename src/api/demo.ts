@@ -595,6 +595,25 @@ export function createDemoApi(): Api {
     return message
   }
 
+  /**
+   * Пауза между письмами подтверждения — та же минута, что у сервера, и
+   * письмо при регистрации тоже считается. Суточный потолок в демо не
+   * нужен: GitHub Pages должен показать отсчёт, а не лимит на пять писем.
+   */
+  const RESEND_PAUSE_MS = 60_000
+  const letterSent = (email: string) => write(`resend.${email}`, Date.now())
+  const checkResendPause = (email: string): void => {
+    const left = Math.ceil((read<number>(`resend.${email}`, 0) + RESEND_PAUSE_MS - Date.now()) / 1000)
+    if (left > 0) {
+      throw new ApiError(
+        429,
+        'RATE_LIMIT_EXCEEDED',
+        'Письмо уже отправлено недавно. Проверьте почту, в том числе папку «Спам».',
+        { retry_after: left },
+      )
+    }
+  }
+
   return {
     isDemo: true,
 
@@ -620,6 +639,8 @@ export function createDemoApi(): Api {
       }
       all[email] = user
       write('users', all)
+      // «Письмо» при регистрации: с него, как и на сервере, идёт минута паузы.
+      letterSent(email)
       // Регистрация сразу входит: дальше человек попадает на главную уже
       // своим и жмёт «Влиться в поток» сам.
       write('session', email)
@@ -632,7 +653,14 @@ export function createDemoApi(): Api {
 
     /** Подтверждение почты: и по ссылке из письма, и кнопкой «ещё раз». */
     confirmEmail: () => ok(markVerified('Почта подтверждена')),
-    resendConfirmation: () => ok(markVerified('В демо писем нет — почта подтверждена')),
+    async resendConfirmation() {
+      const email = current()
+      if (email) {
+        checkResendPause(email)
+        letterSent(email)
+      }
+      return ok(markVerified('В демо писем нет — почта подтверждена'))
+    },
 
     async login(email, password) {
       const key = normalize(email)

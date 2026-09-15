@@ -335,14 +335,31 @@ export class ApiError extends Error {
     this.request_id = extra.request_id
   }
 
-  /** Разбор тела `{error: {...}}`. Пришло что-то другое — общий текст. */
-  static fromBody(status: number, body: unknown): ApiError {
+  /**
+   * Разбор тела `{error: {...}}`. Пришло что-то другое — общий текст.
+   *
+   * `retryAfter` — заголовок Retry-After в секундах. Срок из тела главнее,
+   * заголовок — запасной: nginx при своём лимите может отдать 429 и без
+   * JSON, одной HTML-страницей.
+   */
+  static fromBody(status: number, body: unknown, retryAfter?: number): ApiError {
     const err = (body as { error?: Record<string, unknown> } | null)?.error
     if (!err || typeof err.code !== 'string') {
+      if (status === 429) {
+        return new ApiError(429, 'RATE_LIMIT_EXCEEDED', 'Слишком часто. Попробуйте через минуту.', {
+          retry_after: retryAfter,
+        })
+      }
       return new ApiError(status, 'UNKNOWN', 'Что-то пошло не так, попробуйте ещё раз')
     }
+    const topRetry = (body as { retry_after?: unknown }).retry_after
     return new ApiError(status, err.code, String(err.message ?? 'Ошибка'), {
-      retry_after: typeof err.retry_after === 'number' ? err.retry_after : undefined,
+      retry_after:
+        typeof err.retry_after === 'number'
+          ? err.retry_after
+          : typeof topRetry === 'number'
+            ? topRetry
+            : retryAfter,
       details: Array.isArray(err.details) ? (err.details as FieldError[]) : undefined,
       access: (err.access as Access | undefined) ?? undefined,
       request_id: typeof err.request_id === 'string' ? err.request_id : undefined,

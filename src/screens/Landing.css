@@ -92,6 +92,8 @@
   color: var(--orange-600);
   font-size: 13.5px;
   font-weight: 700;
+  /* Цифры отсчёта одной ширины — кнопка не дёргается каждую секунду. */
+  font-variant-numeric: tabular-nums;
   transition: background-color .15s ease;
 }
 

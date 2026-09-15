@@ -128,9 +128,9 @@ export default function Landing() {
             className="verify-note__btn"
             type="button"
             onClick={() => void resend.send()}
-            disabled={resend.busy}
+            disabled={resend.disabled}
           >
-            {resend.busy ? 'Отправляем…' : 'Отправить ещё раз'}
+            {resend.label('Отправить ещё раз')}
           </button>
           {(resend.ok || resend.error) && (
             <span className={`verify-note__msg ${resend.error ? 'is-bad' : ''}`}>
