@@ -15,6 +15,7 @@ import { api, IS_DEMO } from '../api/client'
 import type { Me, SessionRow } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { days, duration, durationWord, formatDate, formatWhen, pluralWord } from '../lib/date'
+import { useResendConfirmation } from '../lib/useResendConfirmation'
 import {
   errorText,
   Field,
@@ -72,6 +73,7 @@ export default function Profile() {
   const [open, setOpen] = useState<Open>('')
   const [rows, setRows] = useState<SessionRow[] | null>(null)
   const [rowsError, setRowsError] = useState('')
+  const resend = useResendConfirmation()
 
   const loadSessions = useCallback(async () => {
     try {
@@ -130,13 +132,47 @@ export default function Profile() {
       <Card title="Кто вы">
         <NameRow me={me} setMe={setMe} />
 
+        {/* Почта не подтверждена — письмо можно попросить прямо здесь, а не
+            только с главной и тарифов. Ответ сервера — строкой под подсказкой. */}
         <Row
           label="Почта"
-          hint={user.email_verified ? user.email : `${user.email} — не подтверждена`}
+          hint={
+            user.email_verified ? (
+              user.email
+            ) : (
+              <>
+                {user.email} — не подтверждена. Без подтверждения нельзя оплатить.
+                {(resend.ok || resend.error) && (
+                  <span
+                    className={`profile__verify-msg ${resend.error ? 'is-bad' : ''}`}
+                    role={resend.error ? 'alert' : undefined}
+                  >
+                    {resend.error || resend.ok}
+                  </span>
+                )}
+              </>
+            )
+          }
         >
-          <button className="page__btn" onClick={() => setOpen(open === 'email' ? '' : 'email')}>
-            {open === 'email' ? 'Отменить' : 'Сменить почту'}
-          </button>
+          <div className="profile__email-btns">
+            {!user.email_verified && (
+              <button
+                className="page__btn"
+                type="button"
+                onClick={() => void resend.send()}
+                disabled={resend.busy || resend.sent}
+              >
+                {resend.busy
+                  ? 'Отправляем…'
+                  : resend.sent
+                    ? 'Письмо отправлено'
+                    : 'Отправить письмо ещё раз'}
+              </button>
+            )}
+            <button className="page__btn" onClick={() => setOpen(open === 'email' ? '' : 'email')}>
+              {open === 'email' ? 'Отменить' : 'Сменить почту'}
+            </button>
+          </div>
         </Row>
 
         {open === 'email' && <EmailForm />}

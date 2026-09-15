@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
 import { flowLabel, flowTarget } from '../auth/guards'
 import { useFlow } from '../flow/FlowSession'
-import { errorText } from './Account'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
@@ -13,6 +11,7 @@ import { loopPoster, loopSrc } from '../data/loops'
 import { useMascotVideo } from '../lib/mascot'
 import { prefetchFiles, prefetchImages, whenIdle } from '../lib/prefetch'
 import { login, preloadWorkout } from '../lib/screens'
+import { useResendConfirmation } from '../lib/useResendConfirmation'
 import { DEFAULT_STREAM } from '../data/streams'
 import '../components/Logo.css'
 import './Landing.css'
@@ -40,7 +39,7 @@ const FEATURES = [
 
 export default function Landing() {
   const navigate = useNavigate()
-  const { me, reload, signOut } = useSession()
+  const { me, signOut } = useSession()
 
   // Не вошёл — на вход; вошёл — сразу в поток. На тарифы отсюда не уводим:
   // пейволл живёт внутри тренировки. Тренировка уже идёт — та же кнопка
@@ -54,19 +53,7 @@ export default function Landing() {
    * подтверждение нужно только к оплате. Строка исчезает сама, как
    * только почта подтверждена.
    */
-  const [resend, setResend] = useState({ busy: false, ok: '', error: '' })
-  const sendAgain = async () => {
-    setResend({ busy: true, ok: '', error: '' })
-    try {
-      const res = await api.resendConfirmation()
-      setResend({ busy: false, ok: res.message, error: '' })
-      // В демо кнопка и подтверждает почту: перечитываем профиль, чтобы
-      // строка пропала сразу.
-      await reload()
-    } catch (e) {
-      setResend({ busy: false, ok: '', error: errorText(e) })
-    }
-  }
+  const resend = useResendConfirmation()
 
   // Маскот: ролик подгружается сам, уже после того как страница открылась.
   const mascot = useRef<HTMLVideoElement>(null)
@@ -140,7 +127,7 @@ export default function Landing() {
           <button
             className="verify-note__btn"
             type="button"
-            onClick={() => void sendAgain()}
+            onClick={() => void resend.send()}
             disabled={resend.busy}
           >
             {resend.busy ? 'Отправляем…' : 'Отправить ещё раз'}

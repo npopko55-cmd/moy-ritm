@@ -1,6 +1,6 @@
 /* ═══════ Профиль ═══════
-   Оболочка — Page.css, поля форм — Account.css. Здесь только итоги,
-   список устройств и блок удаления аккаунта. */
+   Оболочка — Page.css, поля форм — Account.css. Здесь только кнопки почты,
+   итоги, список устройств и блок удаления аккаунта. */
 
 /* — Имя правится прямо в строке — */
 .profile__name {
@@ -22,6 +22,18 @@
   border-color: var(--pink-400);
   box-shadow: 0 0 0 3px var(--pink-100);
 }
+
+/* — Почта: «Отправить письмо ещё раз» рядом с «Сменить почту» — */
+.profile__email-btns { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Ответ на повторное письмо — под подсказкой, её же кеглем. */
+.profile__verify-msg {
+  display: block;
+  margin-top: 4px;
+  color: var(--green-600);
+}
+
+.profile__verify-msg.is-bad { color: var(--red-500); }
 
 /* — Итоги — */
 .totals {
@@ -137,6 +149,10 @@
   .profile__name { width: 100%; }
   .profile__buttons .page__btn { flex: 1 1 100%; }
   .devices__row .page__btn { flex: none; }
+  /* Две кнопки почты в ряд на 320–700 px не влезают — ставим одну под другой;
+     длинную подпись переносим внутри кнопки, а не за край карточки. */
+  .profile__email-btns { flex: 1 1 auto; }
+  .page__row-side .profile__email-btns .page__btn { flex: 1 1 100%; white-space: normal; }
 }
 
 @media (max-width: 360px) {

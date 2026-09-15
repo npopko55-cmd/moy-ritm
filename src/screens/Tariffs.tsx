@@ -23,6 +23,7 @@ import { asset } from '../lib/asset'
 import { formatDate } from '../lib/date'
 import { rememberAccessBefore } from '../lib/payment'
 import { cachedTariffs, loadTariffs } from '../lib/tariffs'
+import { useResendConfirmation } from '../lib/useResendConfirmation'
 import { EXTRA_MOVES_LABEL } from '../data/streams'
 import { rub } from '../data/tariffs'
 import { errorText } from './Account'
@@ -62,14 +63,14 @@ type Note = { kind: 'error' | 'verify'; text: string } | null
 export default function Tariffs() {
   const navigate = useNavigate()
   const { key } = useLocation()
-  const { me, access, reload } = useSession()
+  const { me, access } = useSession()
 
   // null — ещё грузим: в это время в карточках стоит скелетон.
   const [tariffs, setTariffs] = useState<Tariff[] | null>(cachedTariffs)
   const [loadError, setLoadError] = useState('')
   const [busyCode, setBusyCode] = useState<string | null>(null)
   const [note, setNote] = useState<Note>(null)
-  const [resend, setResend] = useState({ busy: false, ok: '', error: '' })
+  const resend = useResendConfirmation()
 
   // Вернулись с GetCourse кнопкой «Назад»: браузер (особенно Safari) достаёт
   // страницу из bfcache ровно такой, какой её оставили, — с «Открываем
@@ -151,19 +152,6 @@ export default function Tariffs() {
         setNote({ kind: 'error', text: errorText(e) })
       }
       setBusyCode(null)
-    }
-  }
-
-  const sendAgain = async () => {
-    setResend({ busy: true, ok: '', error: '' })
-    try {
-      const res = await api.resendConfirmation()
-      setResend({ busy: false, ok: res.message, error: '' })
-      // Перечитываем профиль: почту могли подтвердить в соседней вкладке,
-      // пока человек был здесь. В демо кнопка подтверждает её сама.
-      await reload()
-    } catch (e) {
-      setResend({ busy: false, ok: '', error: errorText(e) })
     }
   }
 
@@ -279,7 +267,7 @@ export default function Tariffs() {
                 <button
                   className="tariffs__msg-btn"
                   type="button"
-                  onClick={() => void sendAgain()}
+                  onClick={() => void resend.send()}
                   disabled={resend.busy}
                 >
                   {resend.busy ? 'Отправляем…' : 'Отправить письмо ещё раз'}
