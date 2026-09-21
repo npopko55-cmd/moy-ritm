@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { FloatNote, MusicNote, Sparkle } from '../components/Icons'
-import { getStream } from '../data/streams'
+import { getStream, WARM_MOVES } from '../data/streams'
 import { loopPoster, loopSrc } from '../data/loops'
 import { useFlow } from '../flow/FlowSession'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
@@ -76,12 +76,12 @@ export default function Countdown() {
   }, [resume, start, setMusicPlaying])
 
   // Пять секунд отсчёта — единственная пауза, когда можно качать без спешки:
-  // к открытию плеера фото, постеры и первые два ролика уже в кэше.
+  // к открытию плеера постеры первых движений и первые два ролика уже в кэше.
   useEffect(() => {
     // Код плеера — первым: без него к концу отсчёта не будет и экрана.
     player.preload()
     if (resume) return
-    prefetchImages(stream.loops.map((l) => loopPoster(l.id)))
+    prefetchImages(stream.loops.slice(0, WARM_MOVES).map((l) => loopPoster(l.id)))
     prefetchFiles(stream.loops.slice(0, 2).map((l) => loopSrc(l.id)))
   }, [stream, resume])
 

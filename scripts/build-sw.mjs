@@ -55,17 +55,37 @@ function contentHash(files) {
   return hash.digest('hex').slice(0, 12)
 }
 
+/**
+ * Постеры первых WARM_MOVES движений каталога — с ними плеер открывается без
+ * пустого круга. Остальные подтягиваются по ходу тренировки, как и ролики:
+ * с 45 движениями все постеры сразу заметно утяжелили бы первый заход.
+ * Порядок и число — из src/data/streams.ts, чтобы не держать их в двух местах.
+ */
+function warmPosters() {
+  const src = readFileSync(join(ROOT, 'src/data/streams.ts'), 'utf8')
+  const count = Number(/export const WARM_MOVES = (\d+)/.exec(src)?.[1])
+  const list = /export const ALL_MOVES: Loop\[\] = pick\(([^)]*)\)/.exec(src)?.[1] ?? ''
+  const ids = [...list.matchAll(/'([^']+)'/g)].map((m) => m[1])
+  if (!count || ids.length === 0) {
+    throw new Error('build-sw: не нашёл WARM_MOVES или ALL_MOVES в src/data/streams.ts')
+  }
+  const posters = ids.slice(0, count).map((id) => `loops/${id}.webp`)
+  const missing = posters.filter((f) => !filesIn('loops').includes(f))
+  if (missing.length) throw new Error(`build-sw: нет постеров ${missing.join(', ')}`)
+  return posters
+}
+
 // Предкэш — только то, без чего первый экран не покажется: разметка, бандлы
 // (все чанки из assets/, в том числе экраны, которые грузятся по маршруту),
-// шрифты, постер маскота и постеры роликов. Фото потоков сюда больше не идут:
-// потоки скрыты и нигде не показываются. Сам ролик маскота тоже не идёт: он
-// мегабайтный и нужен не сразу.
+// шрифты, постер маскота и постеры первых движений. Фото потоков сюда больше
+// не идут: потоки скрыты и нигде не показываются. Сам ролик маскота тоже не
+// идёт: он мегабайтный и нужен не сразу.
 const precache = [
   'index.html',
   ...filesIn('assets'),
   ...filesIn('fonts'),
   ...filesIn('mascot').filter((f) => f.endsWith('.webp')),
-  ...filesIn('loops').filter((f) => f.endsWith('.webp')),
+  ...warmPosters(),
   'manifest.webmanifest',
 ].sort()
 
@@ -228,7 +248,8 @@ self.addEventListener('fetch', (e) => {
     return
   }
 
-  // Ролики: 1,6 МБ на все четырнадцать — держим целиком.
+  // Ролики: 4,8 МБ на все сорок пять — держим целиком: качаются они только
+  // по ходу тренировки, так что в кэше оказываются лишь те, что человек видел.
   if (url.pathname.endsWith('.mp4')) {
     e.respondWith(media(e, req, LOOPS))
     return

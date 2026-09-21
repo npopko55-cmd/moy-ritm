@@ -12,7 +12,7 @@ import { useMascotVideo } from '../lib/mascot'
 import { prefetchFiles, prefetchImages, whenIdle } from '../lib/prefetch'
 import { login, preloadWorkout } from '../lib/screens'
 import { useResendConfirmation } from '../lib/useResendConfirmation'
-import { DEFAULT_STREAM } from '../data/streams'
+import { DEFAULT_STREAM, WARM_MOVES } from '../data/streams'
 import '../components/Logo.css'
 import './Landing.css'
 
@@ -70,7 +70,7 @@ export default function Landing() {
         // чтобы кнопка «Влиться в поток» не ждала скрипта на слабой сети.
         preloadWorkout()
         login.preload()
-        prefetchImages(DEFAULT_STREAM.loops.map((l) => loopPoster(l.id)))
+        prefetchImages(DEFAULT_STREAM.loops.slice(0, WARM_MOVES).map((l) => loopPoster(l.id)))
         prefetchFiles(DEFAULT_STREAM.loops.slice(0, 2).map((l) => loopSrc(l.id)))
       })
     }

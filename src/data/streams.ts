@@ -45,26 +45,69 @@ export const DEFAULT_FREE_TIER: FreeTier = { stream_code: 'cardio', exercise_lim
 /**
  * Весь каталог движений в постоянном порядке.
  *
- * Первые пять — намеренно самые разные: из них собирается бесплатный
- * уровень (bootstrap.free_tier.exercise_limit), и человек без доступа
- * должен увидеть не пять почти одинаковых махов руками.
+ * Первые пять — самые простые базовые движения, и притом разные: из них
+ * собирается бесплатный уровень (bootstrap.free_tier.exercise_limit), и
+ * человек без доступа должен увидеть не пять почти одинаковых махов руками.
+ * Дальше нагрузка чередуется — ноги, руки, шаги с руками, — чтобы соседние
+ * движения не были одинаковыми.
  */
 export const ALL_MOVES: Loop[] = pick(
-  'run-in-place',
-  'high-knees',
-  'jumping-jacks',
-  'side-steps',
-  'dance-steps',
-  'jog',
-  'run-in-place-2',
-  'jumps-arms-up',
-  'punches',
-  'steps-with-arms',
-  'arm-swings',
-  'arms-to-sides',
+  'walk-in-place',
   'arms-up',
+  'knee-lifts',
+  'punches',
+  'side-steps',
+  'diagonal-swings',
+  'step-out-arms',
+  'run-in-place',
+  'punches-up',
+  'side-step-reach',
+  'knee-to-elbow',
+  'arm-crosses',
+  'step-arm-swing',
+  'dance-steps',
+  'overhead-press',
+  'boxer-steps',
+  'jog',
+  'elbow-raises',
+  'arm-scissors',
+  'twist',
+  'chest-crosses',
+  'step-clap',
+  'jumping-jacks',
+  'boxer-bounce',
+  'chest-crosses-steps',
+  'squat-steps',
+  'jazz-hands',
+  'steps-reach-up',
+  'side-knee-crunch',
+  'side-pushes',
+  'step-arm-out',
+  'march',
+  'alternate-reach',
+  'arm-crosses-steps',
+  'twist-knee',
   'arms-to-shoulders',
+  'step-out-bent-arms',
+  'light-jog',
+  'arm-swings-clap',
+  'side-lunges',
+  'low-crosses',
+  'steps-arm-swings',
+  'diagonal-punches',
+  'twist-steps',
+  'arms-up-steps',
 )
+
+/**
+ * Сколько первых движений каталога прогревается заранее: их постеры качают
+ * лендинг и отсчёт и кладёт в предкэш сервис-воркер (scripts/build-sw.mjs
+ * читает число отсюда). Остальные постеры, как и ролики, плеер подтягивает
+ * по ходу, за пару движений до очереди: качать весь каталог сразу — это
+ * десятки лишних запросов на первом заходе ради движений, до которых
+ * человек в этой тренировке может и не дойти.
+ */
+export const WARM_MOVES = 6
 
 /*
  * Временно: пока нет отдельных роликов по потокам, в каждом потоке
