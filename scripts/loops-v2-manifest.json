@@ -38,7 +38,7 @@
     ],
     "feather_px_out": 56,
     "edge_luma_diff": 1.4,
-    "mp4_kb": 145.6,
+    "mp4_kb": 155.0,
     "webp_kb": 3.6
   },
   "hf_20260919_160757_890239e0-5d25-499c-b55f-32ec0a81b5ab.mp4": {
@@ -80,7 +80,7 @@
     ],
     "feather_px_out": 57,
     "edge_luma_diff": 1.9,
-    "mp4_kb": 153.0,
+    "mp4_kb": 160.9,
     "webp_kb": 3.6
   },
   "hf_20260919_161443_468e0d28-1366-462e-bc74-8670096fdc9a.mp4": {
@@ -122,7 +122,7 @@
     ],
     "feather_px_out": 81,
     "edge_luma_diff": 1.3,
-    "mp4_kb": 99.3,
+    "mp4_kb": 101.1,
     "webp_kb": 3.4
   },
   "hf_20260919_161523_59a6ee5c-5cca-48e6-a9d5-366bc2fa2f90.mp4": {
@@ -164,7 +164,7 @@
     ],
     "feather_px_out": 59,
     "edge_luma_diff": 1.7,
-    "mp4_kb": 88.3,
+    "mp4_kb": 92.6,
     "webp_kb": 3.7
   },
   "hf_20260919_161608_3acd9157-f2b1-406d-92f1-e5d76f7819f8.mp4": {
@@ -206,7 +206,7 @@
     ],
     "feather_px_out": 58,
     "edge_luma_diff": 1.0,
-    "mp4_kb": 81.3,
+    "mp4_kb": 85.8,
     "webp_kb": 3.8
   },
   "hf_20260919_161633_8291a22a-d90c-4d1b-9676-4e7af2ec5c6f.mp4": {
@@ -248,7 +248,7 @@
     ],
     "feather_px_out": 55,
     "edge_luma_diff": 1.6,
-    "mp4_kb": 164.7,
+    "mp4_kb": 183.0,
     "webp_kb": 3.9
   },
   "hf_20260919_161753_22153e03-8470-457f-8c60-e79967d388e4.mp4": {
@@ -290,7 +290,7 @@
     ],
     "feather_px_out": 55,
     "edge_luma_diff": 2.0,
-    "mp4_kb": 171.8,
+    "mp4_kb": 186.5,
     "webp_kb": 3.4
   },
   "hf_20260919_161854_9d8345c6-a1d3-4413-ada2-3ca5bbeb7c62.mp4": {
@@ -332,7 +332,7 @@
     ],
     "feather_px_out": 55,
     "edge_luma_diff": 1.7,
-    "mp4_kb": 101.4,
+    "mp4_kb": 110.4,
     "webp_kb": 3.8
   },
   "hf_20260919_161950_7124b209-fda2-4755-a286-cf240535bcb9.mp4": {
@@ -374,7 +374,7 @@
     ],
     "feather_px_out": 58,
     "edge_luma_diff": 1.5,
-    "mp4_kb": 85.4,
+    "mp4_kb": 86.4,
     "webp_kb": 3.4
   },
   "hf_20260919_162059_2106638c-edd7-42f9-a467-97dcf5448c03.mp4": {
@@ -416,7 +416,7 @@
     ],
     "feather_px_out": 58,
     "edge_luma_diff": 1.6,
-    "mp4_kb": 78.2,
+    "mp4_kb": 82.3,
     "webp_kb": 3.8
   },
   "hf_20260919_184049_a295ad66-2661-4036-b730-2a157ef89a1f.mp4": {
@@ -458,7 +458,7 @@
     ],
     "feather_px_out": 69,
     "edge_luma_diff": 1.9,
-    "mp4_kb": 88.2,
+    "mp4_kb": 90.6,
     "webp_kb": 3.8
   },
   "hf_20260919_184113_13b8c67a-5a34-467d-9742-5e6b557722ae.mp4": {
@@ -500,7 +500,7 @@
     ],
     "feather_px_out": 63,
     "edge_luma_diff": 2.0,
-    "mp4_kb": 100.8,
+    "mp4_kb": 101.7,
     "webp_kb": 3.8
   },
   "hf_20260919_184230_364debe4-41dd-4350-ae30-1484d17884ff.mp4": {
@@ -542,7 +542,7 @@
     ],
     "feather_px_out": 63,
     "edge_luma_diff": 1.4,
-    "mp4_kb": 100.7,
+    "mp4_kb": 103.2,
     "webp_kb": 3.3
   },
   "hf_20260919_184343_e3eaf841-acc0-4edf-a635-f9ede0ef8a1c.mp4": {
@@ -584,7 +584,7 @@
     ],
     "feather_px_out": 61,
     "edge_luma_diff": 1.6,
-    "mp4_kb": 96.9,
+    "mp4_kb": 98.2,
     "webp_kb": 3.3
   },
   "hf_20260919_193108_f9bc4930-f7c4-44b6-aea9-81f3ac2f639f.mp4": {
@@ -626,7 +626,7 @@
     ],
     "feather_px_out": 57,
     "edge_luma_diff": 1.5,
-    "mp4_kb": 103.9,
+    "mp4_kb": 107.5,
     "webp_kb": 3.5
   },
   "hf_20260919_193222_efde4621-65e5-4639-8cb9-fcef8b141657.mp4": {
@@ -668,7 +668,7 @@
     ],
     "feather_px_out": 61,
     "edge_luma_diff": 1.9,
-    "mp4_kb": 99.3,
+    "mp4_kb": 102.6,
     "webp_kb": 3.4
   },
   "hf_20260919_193425_34dcce72-c036-46c2-9e18-de3d9d24aa98.mp4": {
@@ -733,7 +733,7 @@
     ],
     "feather_px_out": 66,
     "edge_luma_diff": 1.9,
-    "mp4_kb": 147.2,
+    "mp4_kb": 152.3,
     "webp_kb": 3.5
   },
   "hf_20260919_194358_a0780bf4-96bf-4a09-9e89-9610d0331caf.mp4": {
@@ -775,7 +775,7 @@
     ],
     "feather_px_out": 55,
     "edge_luma_diff": 1.4,
-    "mp4_kb": 74.1,
+    "mp4_kb": 80.5,
     "webp_kb": 3.6
   },
   "hf_20260919_194427_4e2e453d-81f7-4213-9025-e89b0cc11c80.mp4": {
@@ -817,7 +817,7 @@
     ],
     "feather_px_out": 59,
     "edge_luma_diff": 1.4,
-    "mp4_kb": 84.3,
+    "mp4_kb": 89.0,
     "webp_kb": 3.6
   },
   "hf_20260919_194511_72e0cca7-a9fc-4978-addd-7c7977d5451a.mp4": {
@@ -859,7 +859,7 @@
     ],
     "feather_px_out": 59,
     "edge_luma_diff": 1.4,
-    "mp4_kb": 81.8,
+    "mp4_kb": 87.0,
     "webp_kb": 3.8
   },
   "hf_20260919_194919_7dab1595-03d7-47c4-8ae4-1b1a72a1aece.mp4": {
@@ -901,7 +901,7 @@
     ],
     "feather_px_out": 65,
     "edge_luma_diff": 1.9,
-    "mp4_kb": 167.9,
+    "mp4_kb": 172.9,
     "webp_kb": 3.5
   },
   "hf_20260919_194952_b739b692-8cc7-45bd-bac6-27fcf02ba363.mp4": {
@@ -943,7 +943,7 @@
     ],
     "feather_px_out": 56,
     "edge_luma_diff": 1.3,
-    "mp4_kb": 82.3,
+    "mp4_kb": 89.8,
     "webp_kb": 3.7
   },
   "hf_20260919_195041_6fc5e6b0-81a2-4ccd-b535-87e20a277ef8.mp4": {
@@ -985,7 +985,7 @@
     ],
     "feather_px_out": 55,
     "edge_luma_diff": 1.8,
-    "mp4_kb": 106.8,
+    "mp4_kb": 113.6,
     "webp_kb": 4.2
   },
   "hf_20260919_195137_cd3af0bc-250a-4090-ac80-8a7d3df4d822.mp4": {
@@ -1027,7 +1027,7 @@
     ],
     "feather_px_out": 76,
     "edge_luma_diff": 2.1,
-    "mp4_kb": 100.2,
+    "mp4_kb": 103.6,
     "webp_kb": 3.6
   },
   "hf_20260919_195218_3f68995f-ba65-472c-8ad5-bd445e9e001c.mp4": {
@@ -1069,7 +1069,7 @@
     ],
     "feather_px_out": 57,
     "edge_luma_diff": 1.5,
-    "mp4_kb": 86.2,
+    "mp4_kb": 87.5,
     "webp_kb": 3.6
   },
   "hf_20260919_195851_13d7cfc4-d821-4667-b4df-5d93a362acfb.mp4": {
@@ -1134,7 +1134,7 @@
     ],
     "feather_px_out": 64,
     "edge_luma_diff": 1.6,
-    "mp4_kb": 89.3,
+    "mp4_kb": 89.8,
     "webp_kb": 3.2
   },
   "hf_20260919_200510_ae5bc555-d592-47ac-adef-6adf7eb94aef.mp4": {
@@ -1176,7 +1176,7 @@
     ],
     "feather_px_out": 68,
     "edge_luma_diff": 3.6,
-    "mp4_kb": 90.7,
+    "mp4_kb": 94.0,
     "webp_kb": 3.7
   },
   "hf_20260919_200817_ba6f1ecc-fedb-47fd-9bb4-e9752fd7e654.mp4": {
@@ -1218,7 +1218,7 @@
     ],
     "feather_px_out": 59,
     "edge_luma_diff": 1.3,
-    "mp4_kb": 89.8,
+    "mp4_kb": 90.7,
     "webp_kb": 3.3
   },
   "hf_20260919_200844_3d74ed97-7192-4740-9c3b-22cb7dbf2aca.mp4": {
@@ -1260,7 +1260,7 @@
     ],
     "feather_px_out": 66,
     "edge_luma_diff": 1.6,
-    "mp4_kb": 87.9,
+    "mp4_kb": 88.9,
     "webp_kb": 3.4
   },
   "hf_20260919_200859_049c2397-fdae-4dc5-93c6-18dfb73d6978.mp4": {
@@ -1302,7 +1302,7 @@
     ],
     "feather_px_out": 57,
     "edge_luma_diff": 1.5,
-    "mp4_kb": 80.6,
+    "mp4_kb": 85.5,
     "webp_kb": 3.8
   },
   "hf_20260919_201125_3752bc68-22ed-4758-980b-ba8b4663019c.mp4": {
@@ -1344,7 +1344,7 @@
     ],
     "feather_px_out": 55,
     "edge_luma_diff": 2.4,
-    "mp4_kb": 82.0,
+    "mp4_kb": 84.9,
     "webp_kb": 3.8
   },
   "hf_20260919_201202_5ec7a411-5abd-4f09-a39d-525d1181e93f.mp4": {
@@ -1386,7 +1386,7 @@
     ],
     "feather_px_out": 61,
     "edge_luma_diff": 1.8,
-    "mp4_kb": 139.7,
+    "mp4_kb": 151.0,
     "webp_kb": 3.7
   },
   "hf_20260919_201215_302afd4e-918b-42eb-8b49-44a52f7bc731.mp4": {
@@ -1428,7 +1428,7 @@
     ],
     "feather_px_out": 55,
     "edge_luma_diff": 1.8,
-    "mp4_kb": 89.5,
+    "mp4_kb": 94.7,
     "webp_kb": 3.6
   },
   "hf_20260919_202619_c30a5f2a-7a85-45ef-89bf-16e2616ff964.mp4": {
@@ -1470,7 +1470,7 @@
     ],
     "feather_px_out": 63,
     "edge_luma_diff": 1.6,
-    "mp4_kb": 170.3,
+    "mp4_kb": 178.4,
     "webp_kb": 3.6
   },
   "hf_20260919_202645_11cbf1c4-6561-400c-8332-2c77cefd44d8.mp4": {
@@ -1512,7 +1512,7 @@
     ],
     "feather_px_out": 59,
     "edge_luma_diff": 1.6,
-    "mp4_kb": 82.7,
+    "mp4_kb": 87.7,
     "webp_kb": 3.8
   },
   "hf_20260919_202711_f9c2668f-b06a-4b0d-8920-cd73b4fe6551.mp4": {
@@ -1554,7 +1554,7 @@
     ],
     "feather_px_out": 66,
     "edge_luma_diff": 1.8,
-    "mp4_kb": 81.8,
+    "mp4_kb": 87.8,
     "webp_kb": 3.8
   },
   "hf_20260919_202727_15ee98fd-c99d-4468-83de-199ed8faf824.mp4": {
@@ -1596,7 +1596,7 @@
     ],
     "feather_px_out": 67,
     "edge_luma_diff": 1.7,
-    "mp4_kb": 88.1,
+    "mp4_kb": 88.5,
     "webp_kb": 3.4
   },
   "hf_20260919_202745_1c9b90ca-f2bf-4107-b085-553eef0793ba.mp4": {
@@ -1638,7 +1638,7 @@
     ],
     "feather_px_out": 65,
     "edge_luma_diff": 1.5,
-    "mp4_kb": 146.2,
+    "mp4_kb": 157.2,
     "webp_kb": 3.5
   },
   "hf_20260919_202820_7aeb4ce1-bd52-460c-a228-c865d2ed9156.mp4": {
@@ -1680,7 +1680,7 @@
     ],
     "feather_px_out": 67,
     "edge_luma_diff": 1.5,
-    "mp4_kb": 171.1,
+    "mp4_kb": 182.1,
     "webp_kb": 3.7
   },
   "hf_20260919_204126_47779d66-d260-46f4-acbf-a29d8ddfcbdb.mp4": {
@@ -1722,7 +1722,7 @@
     ],
     "feather_px_out": 69,
     "edge_luma_diff": 1.6,
-    "mp4_kb": 110.3,
+    "mp4_kb": 110.6,
     "webp_kb": 3.6
   },
   "hf_20260919_204142_edbebea4-d065-4be0-a16d-42622efc3b9a.mp4": {
@@ -1764,7 +1764,7 @@
     ],
     "feather_px_out": 59,
     "edge_luma_diff": 1.5,
-    "mp4_kb": 82.9,
+    "mp4_kb": 87.0,
     "webp_kb": 3.7
   },
   "hf_20260919_204159_12fa060c-a8d7-488c-bba0-756790cba592.mp4": {
@@ -1806,7 +1806,7 @@
     ],
     "feather_px_out": 71,
     "edge_luma_diff": 1.8,
-    "mp4_kb": 94.2,
+    "mp4_kb": 97.3,
     "webp_kb": 3.7
   },
   "hf_20260919_204216_bbe86f52-43c4-49dc-95ad-472646a1eb29.mp4": {
@@ -1835,7 +1835,7 @@
     "color_gain": [],
     "feather_px_out": 0,
     "edge_luma_diff": 0.0,
-    "mp4_kb": 79.0,
+    "mp4_kb": 83.7,
     "webp_kb": 3.5
   },
   "hf_20260919_204249_914f4603-873e-4dc3-8833-40513373956a.mp4": {
@@ -1877,7 +1877,7 @@
     ],
     "feather_px_out": 62,
     "edge_luma_diff": 1.4,
-    "mp4_kb": 78.2,
+    "mp4_kb": 81.0,
     "webp_kb": 3.4
   },
   "hf_20260921_082227_fe399d16-5743-40d4-9214-1add24fbf6cc.mp4": {
@@ -1919,7 +1919,7 @@
     ],
     "feather_px_out": 62,
     "edge_luma_diff": 1.6,
-    "mp4_kb": 108.7,
+    "mp4_kb": 111.6,
     "webp_kb": 3.5
   }
 }

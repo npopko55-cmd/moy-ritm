@@ -41,10 +41,11 @@
 Если квадрат уже помещается в кадр (исходник 960×960), фон не нужен:
 ролик просто обрезается до квадрата.
 
-Выход — те же параметры, что у scripts/build-loops.sh: public/loops/<id>.mp4
-(H.264 High, CRF 24, preset slow, 640×640, yuv420p, faststart, без звука) и
-постер <id>.webp — первый кадр петли, 320×320, cwebp -q 75. Таблица найденных
-петель и рамок пишется в scripts/loops-v2-manifest.json.
+Выход — public/loops/<id>.mp4 (H.264 High, CRF 24, preset slow, tune animation,
+640×640, yuv420p, faststart, без звука; под loop — без B-кадров, с одним опорным
+кадром и без edit list, почему — в build()) и постер <id>.webp — первый кадр
+петли, 320×320, cwebp -q 75. Таблица найденных петель и рамок пишется
+в scripts/loops-v2-manifest.json.
 
 Зависимости: ffmpeg, cwebp и Pillow (numpy не нужен).
 
@@ -407,11 +408,21 @@ def build(path, w, h, env, loop, box, slug):
     lay = layout(path, w, h, env, loop, box)
     shots = frames(path, lay['vw'], lay['vh'], 'RGB', loop['i'], loop['j'], lay['crop'])
     out = os.path.join(OUT, f'{slug}.mp4')
+    # Кодирование — под атрибут loop: на каждом круге браузер возвращается к
+    # началу ролика, а круг короче двух секунд, так что заминка на стыке видна
+    # всё время. С B-кадрами первый пакет шёл с отрицательным DTS, а MP4 нёс
+    # edit list, сдвигающий начало, — через этот сдвиг браузер и спотыкался.
+    # Поэтому без B-кадров (-bf 0), опорный кадр один — первый (-g по длине
+    # петли, без смены сцены), edit list не пишется вовсе. Без B-кадров файл
+    # крупнее; -tune animation (у нас 3D-мультфильм) это почти отыгрывает: при
+    # том же CRF 24 ролики в сумме больше прежних на ~5 %, а SSIM не ниже.
+    gop = str(len(shots))
     enc = subprocess.Popen(
         ['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24',
          '-s', f'{SIZE}x{SIZE}', '-r', str(FPS), '-i', '-',
          '-c:v', 'libx264', '-profile:v', 'high', '-crf', '24', '-preset', 'slow',
-         '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', out],
+         '-tune', 'animation', '-bf', '0', '-g', gop, '-keyint_min', gop, '-sc_threshold', '0',
+         '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-use_editlist', '0', '-an', out],
         stdin=subprocess.PIPE)
     checked = []
     for n, f in enumerate(shots):
