@@ -9,17 +9,31 @@
 Петля. Генерация не зациклена: первый и последний кадры не совпадают, и
 плеер с атрибутом loop дёргался бы на стыке. Поэтому из ролика вырезается
 отрезок [i, j), где кадр j почти повторяет кадр i: после j−1 снова идёт i,
-и шов выглядит как обычная смена соседних кадров. Кадры сравниваются
-уменьшенными до 90 px по ширине, в оттенках серого, по MSE. Одной позы мало:
-на стыке должно совпадать и направление движения (рука, идущая вверх, не
-должна продолжиться рукой, идущей вниз), поэтому к MSE(i, j) добавляется
-среднее MSE соседей — (i+1, j+1) и (i−1, j−1). Петля не короче секунды
-(j − i ≥ 24). Из почти равных (не хуже лучшей в 1,3 раза) берётся та, что
-начинается не раньше 4-го кадра — у генераций бывает «разгон», — а если среди
-них есть в 1,6 раза длиннее (два цикла движения вместо одного), то она: так
-повтор меньше бросается в глаза. Шов чистый, если MSE(i, j) не больше двух
-медиан MSE соседних кадров того же ролика. Ролики без чистого шва не
-собираются: кроссфейд на стыке дал бы полупрозрачную «двойную» фигуру.
+и шов выглядит как обычная смена соседних кадров.
+
+Кадры сравниваются по фигуре, а не целиком (класс Seams). Прежняя проверка —
+MSE всего кадра 90×160 в оттенках серого — пропускала рваные стыки: фон и
+корпус совпадают, а тонкие руки и ноги телесного цвета на светлой студии
+почти ничего не весят. Теперь:
+  • кадры 180×320 (квадрат — 256×256), в цвете;
+  • маска фигуры — заметное отличие от пустой студии (медиана по всем кадрам)
+    или насыщенный цвет, расширенная на 6 px; у пары кадров — объединение;
+  • расстояние D(a, b) — средняя разница по маске, но с допуском сдвига на
+    2 px (±8 px исходника): пиксель одного кадра сравнивается с диапазоном
+    соседей 5×5 в другом. Без допуска всё решали края жёлтой формы на светлом
+    фоне: корпус покачивается, и его сдвиг на пиксель весил больше, чем рука,
+    оказавшаяся совсем в другом месте;
+  • M — медиана D соседних кадров, обычный шаг фигуры за кадр;
+  • оценка S(i, j) = [D(i, j) + D(i+1, j+1) + D(i−1, j−1)] / 3M — совпадают
+    и поза, и скорость с обеих сторон стыка. Чистый стык — S ≤ 1,25 (не
+    заметнее обычного движения), до 1,6 — на грани, дальше — рвано.
+Петля ищется по всем 1 ≤ i < j ≤ 95, не короче секунды (j − i ≥ 24); из
+почти равных (S не больше лучшей на 10 %) берётся самая длинная — повтор
+меньше бросается в глаза. Собранная петля, чистая по S, не пересобирается.
+Рваный стык не замазывается кроссфейдом — полупрозрачная «двойная» фигура
+хуже рывка: такой ролик собирается по лучшей петле и помечается в манифесте.
+Прежняя оценка — MSE стыка к медиане MSE соседних кадров — осталась
+в манифесте (mse_ratio) для сравнения.
 
 Квадрат. Плеер показывает ролик в круге, а вертикальная фигура в квадрат
 по ширине кадра не влезает. Поэтому ролик кладётся поверх env.png:
@@ -45,14 +59,17 @@
 640×640, yuv420p, faststart, без звука; под loop — без B-кадров, с одним опорным
 кадром и без edit list, почему — в build()) и постер <id>.webp — первый кадр
 петли, 320×320, cwebp -q 75. Таблица найденных петель и рамок пишется
-в scripts/loops-v2-manifest.json.
+в scripts/loops-v2-manifest.json: i, j, оценка стыка seam_score и её вердикт
+seam («чисто», «на грани», «рвано»).
 
 Зависимости: ffmpeg, cwebp и Pillow (numpy не нужен).
 
 Запуск:
     python3 scripts/build-loops-v2.py              # все ролики из SOURCES
     python3 scripts/build-loops-v2.py --only 1,5   # по номерам исходников
-    python3 scripts/build-loops-v2.py --analyze    # только петли и рамки
+    python3 scripts/build-loops-v2.py --analyze    # только оценка стыков, без сборки
+    python3 scripts/build-loops-v2.py --redo 30    # по лучшей петле, даже если текущая чистая
+    python3 scripts/build-loops-v2.py --report FILE  # строки таблицы стыков в JSON
     python3 scripts/build-loops-v2.py --src DIR --env FILE
 """
 
@@ -75,10 +92,15 @@ POSTER_SIZE = 320
 FPS = 24
 
 MIN_LOOP = 24          # петля не короче секунды
-NEAR_BEST = 1.3        # «почти так же хороша», как лучшая
-LONGER = 1.6           # во столько раз длиннее — значит, два цикла, а не один
-SKIP_HEAD = 4          # первые кадры генерации — «разгон»
-CLEAN_SEAM = 2.0       # шов чистый, если MSE ≤ 2 медианы соседних кадров
+NEAR_BEST = 1.1        # «почти так же хороша», как лучшая: S не больше на 10 %
+SEAM_WIDTH = 180       # стык оценивается на кадрах такой ширины…
+SEAM_SQUARE = 256      # …а у квадратного исходника — такой стороны
+SEAM_GROW = 6          # маска фигуры расширяется на столько px
+SEAM_SHIFT = 2         # сдвиг, который прощается при сравнении кадров, px
+FIG_DIFF = 14          # фигура — отличие от пустой студии больше этого…
+FIG_SAT = 70           # …или насыщенность выше этой (0–255)
+SEAM_CLEAN = 1.25      # стык не заметнее обычного движения
+SEAM_EDGE = 1.6        # до этого — «на грани», дальше — рвано
 FIGURE_SHARE = 0.9     # доля высоты квадрата под фигуру
 FEATHER = 110          # растушёвка краёв ролика, px исходника
 FEATHER_CURVE = 1.6
@@ -177,43 +199,105 @@ def mse(a, b):
     return sum(stat.sum2) / (a.width * a.height * len(stat.sum2))
 
 
+def mse_ratio(path, w, h, i, j):
+    """Прежняя оценка шва — MSE(i, j) всего кадра 90 px в оттенках серого
+    к медиане MSE соседних кадров (чистым считалось ≤ 2). Для сравнения."""
+    small = frames(path, 90, round(90 * h / w))
+    adjacent = statistics.median(mse(small[k], small[k + 1]) for k in range(len(small) - 1))
+    return mse(small[i], small[j]) / adjacent
+
+
 # ─────────────  Петля  ─────────────
 
-def find_loop(path, w, h):
-    small = frames(path, 90, round(90 * h / w))
-    n = len(small)
-    m = [[0.0] * n for _ in range(n)]
-    for a in range(n):
-        for b in range(a + 1, n):
-            m[a][b] = m[b][a] = mse(small[a], small[b])
-    adjacent = statistics.median(m[k][k + 1] for k in range(n - 1))
+def channel_max(img):
+    r, g, b = img.split()
+    return ImageChops.lighter(ImageChops.lighter(r, g), b)
 
-    cands = []
-    for i in range(n):
-        for j in range(i + MIN_LOOP, n):
-            around = [m[i + 1][j + 1]] if j + 1 < n else []
-            if i > 0:
-                around.append(m[i - 1][j - 1])
-            if not around:
-                continue
-            direction = sum(around) / len(around)
-            cands.append({'i': i, 'j': j, 'seam': m[i][j], 'dir': direction,
-                          'score': m[i][j] + direction})
-    best = min(c['score'] for c in cands)
-    pool = [c for c in cands if c['score'] <= best * NEAR_BEST]
-    late = [c for c in pool if c['i'] >= SKIP_HEAD]
-    pool = late or pool
-    base = min(pool, key=lambda c: c['score'])
-    longer = [c for c in pool if c['j'] - c['i'] >= LONGER * (base['j'] - base['i'])]
-    pick = min(longer, key=lambda c: c['score']) if longer else base
-    return {
-        'i': pick['i'], 'j': pick['j'], 'frames': pick['j'] - pick['i'],
-        'seconds': round((pick['j'] - pick['i']) / FPS, 3),
-        'seam_mse': round(pick['seam'], 1), 'direction_mse': round(pick['dir'], 1),
-        'adjacent_median': round(adjacent, 1),
-        'clean': pick['seam'] <= CLEAN_SEAM * adjacent,
-        'total_frames': n,
-    }
+
+def median_frame(shots):
+    """Попиксельная медиана кадров — студия без фигуры там, где фигура
+    бывает реже чем в половине кадров (руки, ноги, тень)."""
+    w, h = shots[0].size
+    mid = len(shots) // 2
+    return Image.merge('RGB', [
+        Image.frombytes('L', (w, h), bytes(
+            sorted(col)[mid] for col in zip(*[f.getchannel(c).tobytes() for f in shots])))
+        for c in range(3)])
+
+
+def seam_grade(score):
+    if score <= SEAM_CLEAN:
+        return 'чисто'
+    return 'на грани' if score <= SEAM_EDGE else 'рвано'
+
+
+class Seams:
+    """Оценка стыка петли по фигуре — см. «Петля» в начале файла."""
+
+    def __init__(self, path, w, h):
+        size = (SEAM_SQUARE, SEAM_SQUARE) if w == h else (SEAM_WIDTH, round(SEAM_WIDTH * h / w))
+        self.shots = frames(path, *size, 'RGB')
+        self.n = len(self.shots)
+        studio = median_frame(self.shots)
+        # Фигура — то, что заметно отличается от пустой студии, или насыщенный
+        # цвет: туловище и голова почти не уходят из кадра, и медиана там — сама
+        # фигура, зато форма жёлтая, а волосы рыжие. MinFilter убирает одиночные
+        # пиксели шума сжатия, MaxFilter расширяет маску на SEAM_GROW.
+        self.masks = []
+        for f in self.shots:
+            moved = channel_max(ImageChops.difference(f, studio)).point(lambda v: 255 if v > FIG_DIFF else 0)
+            vivid = f.convert('HSV').getchannel('S').point(lambda v: 255 if v > FIG_SAT else 0)
+            self.masks.append(ImageChops.lighter(moved, vivid)
+                              .filter(ImageFilter.MinFilter(3))
+                              .filter(ImageFilter.MaxFilter(2 * SEAM_GROW + 1)))
+        # Допуск сдвига: пиксель кадра a сравнивается не с тем же пикселем b,
+        # а с диапазоном [min, max] его соседей — в зачёт идёт только выход за
+        # диапазон. Покачивание корпуса на пару пикселей так почти не весит, а
+        # рука не на своём месте весит целиком.
+        side = 2 * SEAM_SHIFT + 1
+        self.hi = [f.filter(ImageFilter.MaxFilter(side)) for f in self.shots]
+        self.lo = [f.filter(ImageFilter.MinFilter(side)) for f in self.shots]
+        self.cache = {}
+        self.step = max(statistics.median(self.dist(k, k + 1) for k in range(self.n - 1)), 0.05)
+
+    def outside(self, a, b):
+        """На сколько пиксели кадра a выходят за диапазон соседей в кадре b."""
+        return ImageChops.lighter(ImageChops.subtract(self.shots[a], self.hi[b]),
+                                  ImageChops.subtract(self.lo[b], self.shots[a]))
+
+    def dist(self, a, b):
+        if (a, b) not in self.cache:
+            union = ImageChops.lighter(self.masks[a], self.masks[b])
+            both = ImageStat.Stat(self.outside(a, b), union).mean + ImageStat.Stat(self.outside(b, a), union).mean
+            self.cache[(a, b)] = sum(both) / len(both)
+        return self.cache[(a, b)]
+
+    def score(self, i, j):
+        """S(i, j): у петли [i, j) крайних кадров может не хватить соседа —
+        тогда среднее по тем парам, что есть."""
+        pairs = [(i, j)]
+        if i > 0:
+            pairs.append((i - 1, j - 1))
+        if j + 1 < self.n:
+            pairs.append((i + 1, j + 1))
+        return sum(self.dist(a, b) for a, b in pairs) / (len(pairs) * self.step)
+
+    def find(self):
+        cands = [(self.score(i, j), i, j)
+                 for i in range(1, self.n - 1) for j in range(i + MIN_LOOP, self.n - 1)]
+        best = min(c[0] for c in cands)
+        pool = [c for c in cands if c[0] <= best * NEAR_BEST]
+        score, i, j = max(pool, key=lambda c: (c[2] - c[1], -c[0]))
+        return i, j, score
+
+
+def loop_entry(path, w, h, seams, i, j):
+    score = seams.score(i, j)
+    return {'i': i, 'j': j, 'frames': j - i, 'seconds': round((j - i) / FPS, 3),
+            'seam_score': round(score, 2), 'seam': seam_grade(score),
+            'figure_step': round(seams.step, 2),
+            'mse_ratio': round(mse_ratio(path, w, h, i, j), 2),
+            'total_frames': seams.n}
 
 
 # ─────────────  Рамка фигуры  ─────────────
@@ -457,17 +541,21 @@ def main():
     ap.add_argument('--src', default=os.path.expanduser('~/Downloads/archive-3'))
     ap.add_argument('--env', default=os.path.expanduser('~/Downloads/env.png'))
     ap.add_argument('--only', default='', help='номера исходников через запятую (по порядку имён)')
-    ap.add_argument('--analyze', action='store_true', help='только петли и рамки, без кодирования')
+    ap.add_argument('--analyze', action='store_true', help='только оценка стыков, без сборки и манифеста')
+    ap.add_argument('--redo', default='', help='номера исходников: по лучшей петле, даже если текущая чистая')
+    ap.add_argument('--report', default='', help='куда записать строки таблицы стыков (JSON)')
     args = ap.parse_args()
 
     names = sorted(f for f in os.listdir(args.src) if f.endswith('.mp4'))
     only = {int(x) for x in args.only.split(',') if x.strip()}
+    redo = {int(x) for x in args.redo.split(',') if x.strip()}
     manifest = {}
     if os.path.exists(MANIFEST):
         with open(MANIFEST, encoding='utf-8') as fh:
             manifest = json.load(fh)
     env = Image.open(args.env).convert('RGB')
     os.makedirs(OUT, exist_ok=True)
+    report = []
 
     for num, name in enumerate(names, 1):
         if only and num not in only:
@@ -476,22 +564,46 @@ def main():
         slug = SOURCES.get(key)
         path = os.path.join(args.src, name)
         w, h = probe(path)
-        loop = find_loop(path, w, h)
-        box = figure_box(path, w, h, loop['i'], loop['j'])
-        entry = {'n': num, 'id': slug, 'size': [w, h], **loop, 'figure_box': box}
-        mark = 'чисто' if loop['clean'] else 'ШОВ'
-        line = (f"{num:2d} {key} i={loop['i']:2d} j={loop['j']:2d} {loop['seconds']:.2f}с "
-                f"шов {loop['seam_mse']:7.1f} напр {loop['direction_mse']:7.1f} "
-                f"соседи {loop['adjacent_median']:6.1f} {mark:5s} рамка {box}")
-        if slug and loop['clean'] and not args.analyze:
+        seams = Seams(path, w, h)
+        prev = manifest.get(name)
+        now = loop_entry(path, w, h, seams, prev['i'], prev['j']) if prev else None
+        best = loop_entry(path, w, h, seams, *seams.find()[:2])
+        row = {'n': num, 'id': slug, 'prev': now, 'best': best}
+
+        # Собранная петля остаётся, если она чистая или лучшая не лучше неё;
+        # --redo пересобирает по лучшей в любом случае.
+        keep = now and slug and os.path.exists(os.path.join(OUT, f'{slug}.mp4')) and num not in redo and (
+            now['seam'] == 'чисто' or best['seam_score'] >= now['seam_score']
+            or (best['i'], best['j']) == (now['i'], now['j']))
+        loop = now if keep else best
+        row['rebuilt'] = bool(slug) and not keep
+        was = f"{now['i']:2d}–{now['j']:2d} S {now['seam_score']:5.2f} → " if now else ''
+        line = (f"{num:2d} {key} {slug or '—':20s} {was}{best['i']:2d}–{best['j']:2d} "
+                f"S {best['seam_score']:5.2f}, итог {loop['seam']:8s} шаг {seams.step:5.2f}")
+        if args.analyze:
+            print(line, flush=True)
+            report.append(row)
+            continue
+
+        entry = {**(prev or {}), 'n': num, 'id': slug, 'size': [w, h], **loop}
+        if row['rebuilt']:
+            box = figure_box(path, w, h, loop['i'], loop['j'])
+            entry['figure_box'] = box
             entry.update(build(path, w, h, env, loop, box, slug))
-            line += f" → {slug} {entry['mp4_kb']} КБ, шов по краю ±{entry['edge_luma_diff']}"
+            line += f" → собран {entry['mp4_kb']} КБ, шов по краю ±{entry['edge_luma_diff']}"
+        else:
+            line += ' → оставлен' if slug else ' → не собирается'
         manifest[name] = entry
+        report.append(row)
         print(line, flush=True)
 
-    with open(MANIFEST, 'w', encoding='utf-8') as fh:
-        json.dump(dict(sorted(manifest.items())), fh, ensure_ascii=False, indent=2)
-        fh.write('\n')
+    if not args.analyze:
+        with open(MANIFEST, 'w', encoding='utf-8') as fh:
+            json.dump(dict(sorted(manifest.items())), fh, ensure_ascii=False, indent=2)
+            fh.write('\n')
+    if args.report:
+        with open(args.report, 'w', encoding='utf-8') as fh:
+            json.dump(report, fh, ensure_ascii=False, indent=1)
 
 
 if __name__ == '__main__':
