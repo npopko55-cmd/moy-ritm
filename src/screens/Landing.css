@@ -406,9 +406,12 @@
   aspect-ratio: 672 / 934;
 }
 
-/* Постер и ролик лежат друг на друге — подмена идёт кадр в кадр, без скачка. */
+/*
+ * Постер и анимация лежат друг на друге — подмена идёт кадр в кадр, без скачка.
+ * Анимация — <video> или <img> с анимированным WebP, см. src/lib/mascot.ts.
+ */
 .hero__mascot-poster,
-.hero__mascot-video {
+.hero__mascot-anim {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -417,9 +420,9 @@
   transition: opacity .4s ease;
 }
 
-/* До первого playing видео прозрачно; если ролика не будет — постер и останется. */
-.hero__mascot-video { opacity: 0; }
-.hero__mascot.is-live .hero__mascot-video { opacity: 1; }
+/* До запуска анимация прозрачна; если её не будет — постер и останется. */
+.hero__mascot-anim { opacity: 0; }
+.hero__mascot.is-live .hero__mascot-anim { opacity: 1; }
 .hero__mascot.is-live .hero__mascot-poster { opacity: 0; }
 
 /*

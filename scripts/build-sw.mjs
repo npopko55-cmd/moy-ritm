@@ -75,16 +75,21 @@ function warmPosters() {
   return posters
 }
 
+// Анимация маскота: ролики и анимированный WebP. Постер (warmup-poster.webp)
+// под шаблон не подходит — он в предкэше.
+const MASCOT_MEDIA = /\.(webm|mov)$|-anim(-lg)?\.webp$/
+
 // Предкэш — только то, без чего первый экран не покажется: разметка, бандлы
 // (все чанки из assets/, в том числе экраны, которые грузятся по маршруту),
 // шрифты, постер маскота и постеры первых движений. Фото потоков сюда больше
-// не идут: потоки скрыты и нигде не показываются. Сам ролик маскота тоже не
-// идёт: он мегабайтный и нужен не сразу.
+// не идут: потоки скрыты и нигде не показываются. Сама анимация маскота —
+// ролики и анимированный WebP — тоже не идёт: она мегабайтная, из вариантов
+// браузеру нужен один, и тот кэшируется по ходу (см. MASCOT ниже).
 const precache = [
   'index.html',
   ...filesIn('assets'),
   ...filesIn('fonts'),
-  ...filesIn('mascot').filter((f) => f.endsWith('.webp')),
+  ...filesIn('mascot').filter((f) => f.endsWith('-poster.webp')),
   ...warmPosters(),
   'manifest.webmanifest',
 ].sort()
@@ -96,7 +101,7 @@ const urls = precache.map((f) => BASE + f)
 const version = contentHash(precache)
 const loopsVersion = contentHash(filesIn('loops').filter((f) => f.endsWith('.mp4')))
 const musicVersion = contentHash(filesIn('music').filter((f) => f.endsWith('.m4a')))
-const mascotVersion = contentHash(filesIn('mascot').filter((f) => /\.(webm|mov)$/.test(f)))
+const mascotVersion = contentHash(filesIn('mascot').filter((f) => MASCOT_MEDIA.test(f)))
 
 const bytes = precache.reduce((sum, f) => {
   try {
@@ -263,10 +268,8 @@ self.addEventListener('fetch', (e) => {
 
   // Маскот с главной: несколько файлов, из них качается один — тот, что
   // подошёл браузеру и ширине экрана. Со второго захода берём из кэша.
-  if (
-    url.pathname.includes('/mascot/') &&
-    (url.pathname.endsWith('.webm') || url.pathname.endsWith('.mov'))
-  ) {
+  // Постер сюда не попадает: он в предкэше.
+  if (url.pathname.includes('/mascot/') && ${MASCOT_MEDIA}.test(url.pathname)) {
     e.respondWith(media(e, req, MASCOT))
     return
   }

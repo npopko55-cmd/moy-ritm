@@ -8,7 +8,7 @@ import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
 import { asset } from '../lib/asset'
 import { loopPoster, loopSrc } from '../data/loops'
-import { useMascotVideo } from '../lib/mascot'
+import { MASCOT_AS_IMAGE, useMascot } from '../lib/mascot'
 import { prefetchFiles, prefetchImages, whenIdle } from '../lib/prefetch'
 import { login, preloadWorkout } from '../lib/screens'
 import { warmTrial } from '../lib/trial'
@@ -56,9 +56,10 @@ export default function Landing() {
    */
   const resend = useResendConfirmation()
 
-  // Маскот: ролик подгружается сам, уже после того как страница открылась.
-  const mascot = useRef<HTMLVideoElement>(null)
-  const live = useMascotVideo(mascot)
+  // Маскот: анимация подгружается сама, сразу после первой отрисовки.
+  const mascotImage = useRef<HTMLImageElement>(null)
+  const mascotVideo = useRef<HTMLVideoElement>(null)
+  const live = useMascot(mascotImage, mascotVideo)
 
   // Пока человек читает лендинг, канал свободен: тянем то, что понадобится
   // в плеере. До Pages 0,4–0,85 с на запрос, так что фора решает больше,
@@ -197,17 +198,30 @@ export default function Landing() {
               alt=""
               decoding="async"
             />
-            {/* Источники вешает хук — до них в разметке ничего не качается. */}
-            <video
-              className="hero__mascot-video"
-              ref={mascot}
-              muted
-              loop
-              playsInline
-              preload="none"
-              poster={asset('mascot/warmup-poster.webp')}
-              aria-hidden="true"
-            />
+            {/*
+              Адрес анимации ставит хук — до него в разметке ничего не качается.
+              WebKit и мини-ап получают анимированный WebP, остальные — видео.
+            */}
+            {MASCOT_AS_IMAGE ? (
+              <img
+                className="hero__mascot-anim"
+                ref={mascotImage}
+                alt=""
+                decoding="async"
+                aria-hidden="true"
+              />
+            ) : (
+              <video
+                className="hero__mascot-anim"
+                ref={mascotVideo}
+                muted
+                loop
+                playsInline
+                preload="none"
+                poster={asset('mascot/warmup-poster.webp')}
+                aria-hidden="true"
+              />
+            )}
           </div>
         </div>
       </main>
