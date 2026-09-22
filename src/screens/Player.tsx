@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { hasAccess, type DayStats, type FreeTier, type Settings, type StatsSummary } from '../api/types'
@@ -29,6 +29,8 @@ import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { loadMoveInterval } from '../lib/settings'
 import { loadBootstrap, markTrialStale } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
+import { unlockMedia } from '../media/unlock'
+import { isNotAllowed, pauseVideo, playVideo, setVideoSource, videoPool } from '../media/videoPool'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
 import './Player.css'
@@ -153,6 +155,13 @@ export default function Player() {
    * стоящим роликом и кнопкой «Играть».
    */
   const [showPause, setShowPause] = useState(false)
+  /**
+   * Вьюха не пустила ролик без касания: Telegram на iPhone запускает медиа
+   * только из обработчика жеста, а касание «Влиться в поток» до плеера могло
+   * не дойти (открыли ссылкой, вошли после формы). Тогда тренировка стоит на
+   * паузе, а в круге — кнопка «Нажмите, чтобы начать».
+   */
+  const [needTap, setNeedTap] = useState(false)
   // Вкладку свернули — движение не считается, даже если ролик крутится.
   const [visible, setVisible] = useState(() => document.visibilityState !== 'hidden')
 
@@ -509,11 +518,16 @@ export default function Player() {
   // Два постоянных <video>: пока один играет, во второй уже качается
   // следующий ролик. Раньше элемент пересоздавался, и на медленной сети
   // круг пустел на несколько секунд при каждой смене движения.
-  const videoA = useRef<HTMLVideoElement>(null)
-  const videoB = useRef<HTMLVideoElement>(null)
-  const buffers = [videoA, videoB]
+  //
+  // Сами элементы живут дольше плеера — в общем пуле (src/media/videoPool.ts):
+  // во вьюхе Telegram на iPhone разрешение играть выдаётся элементу в касании,
+  // и новый <video> застыл бы на первом кадре. Плеер их только вставляет в
+  // круг и меняет им src; за всю жизнь страницы их ровно два.
+  const buffers = videoPool()
 
   const active = ((step % 2) + 2) % 2
+  const activeRef = useRef(active)
+  activeRef.current = active
 
   const moveProgress = Math.min(1, inMove / moveInterval)
 
@@ -569,25 +583,73 @@ export default function Player() {
     showPhrase()
   }, [tier, showPhrase])
 
+  /**
+   * Ролик и постер каждому из двух элементов: на виду — текущее движение,
+   * под ним — следующее. Со сменой движения они меняются ролями, и src
+   * получает только тот, что ушёл вниз: верхний уже докачан. До эффектов
+   * ниже — чтобы пуск шёл уже с новым роликом.
+   */
+  const firstId = (active === 0 ? loop : nextLoop)?.id
+  const secondId = (active === 0 ? nextLoop : loop)?.id
+  useLayoutEffect(() => {
+    const ids = [firstId, secondId]
+    buffers.forEach((video, i) => {
+      video.className = `stage__video ${i === active ? 'is-on' : ''}`
+      const id = ids[i]
+      if (id) setVideoSource(video, loopSrc(id), loopPoster(id))
+    })
+  }, [buffers, active, firstId, secondId])
+
+  /**
+   * Круг забирает элементы пула к себе, а уходя — возвращает: вынимает из
+   * DOM и останавливает, но не уничтожает. Под экраном паузы круг лишь
+   * спрятан, и ролики остаются на месте.
+   */
+  const mountVideos = useCallback(
+    (disc: HTMLDivElement | null) => {
+      for (const video of buffers) {
+        if (disc) {
+          disc.appendChild(video)
+        } else {
+          pauseVideo(video)
+          video.remove()
+        }
+      }
+    },
+    [buffers],
+  )
+
   // Новое движение начинается с начала цикла — как раньше, когда элемент
   // пересоздавался заново.
   useEffect(() => {
-    const on = buffers[active].current
-    if (on) on.currentTime = 0
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, loopId])
+    buffers[active].currentTime = 0
+  }, [buffers, active, loopId])
 
-  // Пауза останавливает ролик, чтобы персонаж замирал вместе с таймером.
-  // Скрытый элемент всегда на паузе: он в это время докачивает следующее.
+  /*
+   * Пауза останавливает ролик, чтобы персонаж замирал вместе с таймером.
+   * Скрытый элемент всегда на паузе: он в это время докачивает следующее.
+   *
+   * Вьюха отказала в пуске без касания (NotAllowedError) — тренировка встаёт
+   * на паузу и ждёт «Нажмите, чтобы начать». Иначе таймер, куски и шаги шли
+   * бы, пока персонаж стоит на первом кадре: их ведёт playing, а не ролик.
+   */
   useEffect(() => {
-    const on = buffers[active].current
-    const off = buffers[1 - active].current
-    off?.pause()
-    if (!on) return
-    if (playing) void on.play().catch(() => undefined)
-    else on.pause()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, active, loopId])
+    const on = buffers[active]
+    pauseVideo(buffers[1 - active])
+    if (!playing || empty) {
+      pauseVideo(on)
+      return
+    }
+    let alive = true
+    playVideo(on).catch((error: unknown) => {
+      if (!alive || !isNotAllowed(error)) return
+      setPlaying(false)
+      setNeedTap(true)
+    })
+    return () => {
+      alive = false
+    }
+  }, [buffers, playing, empty, active, loopId])
 
   // Пауза тренировки останавливает и музыку. Без движений играть нечему.
   useEffect(() => {
@@ -599,8 +661,7 @@ export default function Player() {
    * остался в потоке. Трек при этом не перематывается — вернувшись, он
    * продолжится с той же секунды и с плавным входом.
    *
-   * Ролики отдельно останавливать не нужно: вместе с плеером они уходят
-   * из DOM и замирают сами.
+   * Ролики останавливает сам круг, возвращая элементы в пул (mountVideos).
    */
   useEffect(() => () => setMusicPlaying(false), [setMusicPlaying])
 
@@ -697,15 +758,33 @@ export default function Player() {
   const playingRef = useRef(playing)
   playingRef.current = playing
 
+  /**
+   * Снять паузу: «Играть», пробел, «Продолжить сейчас» на экране паузы и
+   * «Нажмите, чтобы начать» в круге.
+   *
+   * Всё это — касание, и первой строкой идёт разблокировка медиа, пока
+   * WebKit ещё считает его жестом. Следом, в том же касании, запускаем ролик
+   * на виду; музыку, которую раньше не пустили, разблокировка запускает сама.
+   */
+  const continueFlow = useCallback(() => {
+    unlockMedia()
+    setNeedTap(false)
+    void playVideo(buffers[activeRef.current]).catch(() => undefined)
+    setShowPause(false)
+    setPlaying(true)
+  }, [buffers])
+
   const toggle = useCallback(() => {
     if (playingRef.current) {
+      // Пауза — тоже касание: если музыку раньше не пустили, разблокировка
+      // даст ей разрешение, и «Продолжить» запустит её уже без отказа.
+      unlockMedia()
       setPlaying(false)
       setShowPause(true)
     } else {
-      setPlaying(true)
-      setShowPause(false)
+      continueFlow()
     }
-  }, [])
+  }, [continueFlow])
 
   /**
    * Крестик и «Вернусь позже» на экране паузы.
@@ -857,21 +936,20 @@ export default function Player() {
             />
           </svg>
 
-          <div className="stage__disc">
-            {[active === 0 ? loop : nextLoop, active === 0 ? nextLoop : loop].map((l, i) => (
-              <video
-                key={i}
-                ref={buffers[i]}
-                className={`stage__video ${i === active ? 'is-on' : ''}`}
-                src={loopSrc(l.id)}
-                poster={loopPoster(l.id)}
-                loop
-                muted
-                playsInline
-                preload="auto"
-              />
-            ))}
-          </div>
+          {/* Ролики — два элемента пула: их вставляет mountVideos, React
+              внутрь круга ничего не рисует. */}
+          <div className="stage__disc" ref={mountVideos} />
+
+          {/* Вьюха не пустила ролик без касания: кнопка — часть круга, не
+              окно, и уходит с первым же нажатием. */}
+          {needTap && (
+            <div className="stage__tap">
+              <button type="button" className="btn btn--pink-lg stage__tap-btn" onClick={continueFlow}>
+                <Play size={22} />
+                Нажмите, чтобы начать
+              </button>
+            </div>
+          )}
 
           <FloatNote size={30} className="stage__note stage__note--a" />
           <MusicNote size={24} className="stage__note stage__note--b" />
@@ -909,7 +987,11 @@ export default function Player() {
         <div className="stats__top">
           <button
             className={`track ${soundBlocked ? 'track--muted' : ''}`}
-            onClick={nextTrack}
+            onClick={() => {
+              // Звук не пустили — касание заодно разблокирует проигрыватель.
+              unlockMedia()
+              nextTrack()
+            }}
             title="Следующий трек"
           >
             <span className="track__icon">
@@ -999,10 +1081,7 @@ export default function Player() {
           todaySeconds={todaySeconds}
           summary={summary}
           locked={limited}
-          onResume={() => {
-            setShowPause(false)
-            setPlaying(true)
-          }}
+          onResume={continueFlow}
           onClose={closePause}
         />
       )}

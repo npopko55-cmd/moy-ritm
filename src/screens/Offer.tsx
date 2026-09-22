@@ -12,7 +12,7 @@ import { useEffect, useRef } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import { hasAccess } from '../api/types'
-import { FIRST_STREAM } from '../auth/guards'
+import { FIRST_STREAM, useFlowStart } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
 import TariffPlans from '../components/TariffPlans'
 import { plural } from '../lib/date'
@@ -22,6 +22,7 @@ import './Trial.css'
 
 export default function Offer() {
   const navigate = useNavigate()
+  const goFlow = useFlowStart()
   const { access } = useSession()
   const { trial, known, failed } = useTrialPage()
   useRecheckOnReturn()
@@ -64,7 +65,7 @@ export default function Offer() {
         <button
           className="page__btn trial__continue"
           type="button"
-          onClick={() => navigate(FIRST_STREAM, { replace: true })}
+          onClick={() => goFlow(FIRST_STREAM, { replace: true })}
         >
           Продолжить бесплатную тренировку (осталось {left})
         </button>

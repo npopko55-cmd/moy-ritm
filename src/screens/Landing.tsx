@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider'
-import { flowLabel, flowTarget } from '../auth/guards'
+import { flowLabel, useFlowStart } from '../auth/guards'
 import { useFlow } from '../flow/FlowSession'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
@@ -45,8 +45,10 @@ export default function Landing() {
   // Не вошёл — на вход; вошёл — сразу в поток. На тарифы отсюда не уводим:
   // пейволл живёт внутри тренировки. Тренировка уже идёт — та же кнопка
   // зовёт вернуться и ведёт в плеер, минуя отсчёт.
+  // Сам переход — через useFlowStart: он же разблокирует медиа в касании.
   const { session: flow } = useFlow()
-  const start = () => navigate(flowTarget(Boolean(me), flow))
+  const goFlow = useFlowStart()
+  const start = () => goFlow()
 
   /*
    * Почта не подтверждена — тонкая строка под шапкой. Не всплывашка:

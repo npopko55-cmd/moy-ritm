@@ -19,6 +19,7 @@ import { useSession } from '../auth/SessionProvider'
 import { DEFAULT_STREAM } from '../data/streams'
 import { formatDate } from '../lib/date'
 import { forgetAccessBefore, paymentArrived, readAccessBefore } from '../lib/payment'
+import { unlockMedia } from '../media/unlock'
 import { AccountShell, FormError, errorText } from './Account'
 import './PaymentSuccess.css'
 
@@ -134,7 +135,10 @@ export default function PaymentSuccess() {
           <Ring done />
         </div>
         <nav className="account__links">
-          <Link to={`/start/${DEFAULT_STREAM.id}`}>Влиться в поток</Link>
+          {/* Касание заодно разблокирует ролики и музыку — см. src/media/unlock.ts. */}
+          <Link to={`/start/${DEFAULT_STREAM.id}`} onClick={() => unlockMedia()}>
+            Влиться в поток
+          </Link>
           <Link to="/">На главную</Link>
         </nav>
       </AccountShell>

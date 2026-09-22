@@ -10,6 +10,8 @@ import {
 } from 'react'
 import { useSession } from '../auth/SessionProvider'
 import { LONG_INTRO_SECONDS, TRACKS, type Track, shuffled, trackSrc } from '../data/music'
+import { setMusicUnlock } from '../media/unlock'
+import { isNotAllowed } from '../media/videoPool'
 
 type MusicValue = {
   track: Track
@@ -94,21 +96,32 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }, FADE_STEP)
   }, [])
 
+  /** Браузер хоть раз дал проигрывателю играть: разблокировать его незачем. */
+  const unlocked = useRef(false)
+
   // Пуск: сначала глушим, потом выводим громкость. Между вызовом play() и
   // его обещанием проходит кадр-другой, и без предварительного нуля трек
-  // успел бы рявкнуть на полной.
+  // успел бы рявкнуть на полной. muted снимаем на случай, если пуск пришёл
+  // посреди беззвучной разблокировки (unlock ниже).
   const play = useCallback(
     (ms: number) => {
       const a = audioRef.current
       if (!a) return
       stopFade()
       a.volume = 0
+      a.muted = false
       a.play().then(
         () => {
+          unlocked.current = true
           setBlocked(false)
           fadeIn(ms)
         },
-        () => setBlocked(true),
+        (error: unknown) => {
+          // AbortError — пуск перебили паузой или сменой трека. Это не отказ
+          // браузера: запуск был разрешён, и звать «включить звук» незачем.
+          if (error instanceof DOMException && error.name === 'AbortError') unlocked.current = true
+          else setBlocked(true)
+        },
       )
     },
     [fadeIn],
@@ -207,6 +220,65 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     },
     [],
   )
+
+  // Разблокировку зовут чужие обработчики касаний, поэтому состояние она
+  // читает из ref и не пересоздаётся на каждый рендер.
+  const enabledRef = useRef(enabled)
+  enabledRef.current = enabled
+  const onRef = useRef(on)
+  onRef.current = on
+
+  /**
+   * Разблокировка в касании — для вьюхи Telegram на iPhone, где звук
+   * пускают только из обработчика жеста (подробно — в src/media/unlock.ts).
+   * Музыка выключена в настройках — трогать нечего.
+   *
+   * Музыка должна звучать, но стоит — браузер отказал раньше: повторяем
+   * пуск прямо в касании, обычным порядком.
+   *
+   * Проигрыватель ещё ни разу не играл — ставим тот же трек, что поставил
+   * бы первый пуск, запускаем беззвучно и останавливаем, как только пуск
+   * подтвердится, если к этому времени музыку никто не включил. Звук при
+   * этом начинается как обычно: отсчёт включает его через мгновение после
+   * касания, плеер — снятием паузы. Беззвучно — чтобы касание, после
+   * которого отсчёта не будет (вход, предложение тарифов), не выдало
+   * обрывок трека: громкость iPhone не слушается, а muted — слушается.
+   */
+  const unlock = useCallback(() => {
+    const a = audioRef.current
+    if (!a || !enabledRef.current) return
+    if (onRef.current) {
+      if (a.paused) play(FADE_RESUME)
+      return
+    }
+    if (unlocked.current) return
+    if (!armed.current) source(trackRef.current)
+    a.muted = true
+    let started: Promise<void>
+    try {
+      started = Promise.resolve(a.play())
+    } catch (error) {
+      started = Promise.reject(error)
+    }
+    started.then(
+      () => {
+        unlocked.current = true
+        setBlocked(false)
+        if (!onRef.current) a.pause()
+        a.muted = false
+      },
+      (error: unknown) => {
+        // AbortError — пуск был разрешён, его лишь перебила смена трека.
+        if (!isNotAllowed(error)) unlocked.current = true
+        a.muted = false
+      },
+    )
+  }, [play, source])
+
+  useEffect(() => {
+    setMusicUnlock(unlock)
+    return () => setMusicUnlock(null)
+  }, [unlock])
 
   const start = useCallback(() => setPlayingState(true), [])
   const setPlaying = useCallback((on: boolean) => setPlayingState(on), [])

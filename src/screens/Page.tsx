@@ -9,9 +9,10 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getStream } from '../data/streams'
-import { flowTarget } from '../auth/guards'
+import { flowTarget, useFlowStart } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
 import { useFlow } from '../flow/FlowSession'
+import { unlockMedia } from '../media/unlock'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import '../components/Logo.css'
@@ -33,16 +34,23 @@ export function useHome(): string {
   return me ? flowTarget(true, flow) : '/'
 }
 
-/** Куда вернуться с этой страницы: в плеер, если пришли оттуда. */
+/**
+ * Куда вернуться с этой страницы: в плеер, если пришли оттуда.
+ *
+ * Для вошедшего и «На главную» — это тренировка, поэтому оба перехода идут
+ * через useFlowStart: касание заодно разблокирует ролики и музыку.
+ */
 export function useBack(): { label: string; go: () => void; fromPlayer: boolean } {
   const navigate = useNavigate()
+  const goFlow = useFlowStart()
+  const { me } = useSession()
   const home = useHome()
   const { state } = useLocation() as { state: FromState }
   if (state?.from) {
     const stream = getStream(state.from)
-    return { label: '← К тренировке', go: () => navigate(`/player/${stream.id}`), fromPlayer: true }
+    return { label: '← К тренировке', go: () => goFlow(`/player/${stream.id}`), fromPlayer: true }
   }
-  return { label: '← На главную', go: () => navigate(home), fromPlayer: false }
+  return { label: '← На главную', go: () => (me ? goFlow(home) : navigate(home)), fromPlayer: false }
 }
 
 type Props = {
@@ -67,7 +75,14 @@ export default function PageShell({ title, lead, back, wide, children }: Props) 
       {/* Логотип и кнопка возврата стоят вместе у левого края: справа кнопку
           не находили — глаз ищет выход там же, где знак. */}
       <header className="page__header">
-        <Link to={home} aria-label="На главную">
+        <Link
+          to={home}
+          aria-label="На главную"
+          // Вошедшего логотип ведёт в тренировку — разблокируем медиа в касании.
+          onClick={() => {
+            if (home !== '/') unlockMedia()
+          }}
+        >
           <Logo />
         </Link>
         <button className="btn btn--ghost" onClick={exit.go}>

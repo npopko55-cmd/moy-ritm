@@ -17,7 +17,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { IS_DEMO, api } from '../api/client'
 import type { StatsProgress } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { flowLabel, flowTarget } from '../auth/guards'
+import { flowLabel, useFlowStart } from '../auth/guards'
 import { useFlow } from '../flow/FlowSession'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
@@ -55,6 +55,7 @@ import {
   pluralWord,
   toMinutes,
 } from '../lib/date'
+import { unlockMedia } from '../media/unlock'
 import { errorText } from './Account'
 import { useBack, useHome } from './Page'
 import '../components/Logo.css'
@@ -152,6 +153,7 @@ export default function Progress() {
   const home = useHome()
   const { me, access, reload } = useSession()
   const { session: flow } = useFlow()
+  const goFlow = useFlowStart()
   const [params] = useSearchParams()
 
   // Здесь тоже есть «Влиться в поток»: ответ о пробном периоде воронки —
@@ -256,7 +258,15 @@ export default function Progress() {
 
       {/* ——— Меню кабинета ——— */}
       <aside className="dash__side">
-        <Link className="dash__logo" to={home} aria-label="На главную">
+        <Link
+          className="dash__logo"
+          to={home}
+          aria-label="На главную"
+          // Вошедшего логотип ведёт в тренировку — разблокируем медиа в касании.
+          onClick={() => {
+            if (home !== '/') unlockMedia()
+          }}
+        >
           <Logo />
         </Link>
 
@@ -460,7 +470,7 @@ export default function Progress() {
                     зовёт вернуться и ведёт в тот же поток без отсчёта. */}
                 <button
                   className="btn today__cta"
-                  onClick={() => navigate(flowTarget(Boolean(me), flow))}
+                  onClick={() => goFlow()}
                 >
                   {flowLabel(flow)}
                 </button>

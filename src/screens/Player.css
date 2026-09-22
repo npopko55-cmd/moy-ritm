@@ -260,6 +260,31 @@
 
 .stage__video.is-on { opacity: 1; z-index: 1; }
 
+/* Вьюха не пустила ролик без касания (Telegram на iPhone): кнопка встаёт
+   в центр круга, поверх застывшего кадра. Слой — по размеру диска, чтобы
+   кнопка не вылезала за его край. Не окно: исчезает с первым касанием. */
+.stage__tap {
+  position: absolute;
+  inset: 6%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 0 7%;
+  pointer-events: none;
+}
+
+.stage__tap-btn {
+  pointer-events: auto;
+  max-width: 100%;
+  padding: 15px 26px 15px 22px;
+  font-size: clamp(15px, 4.2vw, 18px);
+  white-space: normal;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.stage__tap-btn svg { flex: 0 0 auto; }
+
 .stage__note { position: absolute; }
 .stage__note--a { top: 16%; right: -6%; color: #ffc9de; animation: note-float 4s ease-in-out infinite; }
 .stage__note--b { top: 30%; right: -12%; color: #ffd9c4; animation: note-float 3.2s ease-in-out infinite .4s; }

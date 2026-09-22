@@ -6,11 +6,12 @@
  * в адресной строке ничего не даёт.
  */
 
-import { useEffect, useState, type ReactNode } from 'react'
-import { Navigate, useLocation, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Navigate, useLocation, useNavigate, useParams, type NavigateOptions } from 'react-router-dom'
 import { DEFAULT_STREAM, getStream } from '../data/streams'
 import { useFlow, type FlowSession } from '../flow/FlowSession'
 import { loadBootstrap, offerDue, trialBlocks, useTrialState } from '../lib/trial'
+import { unlockMedia } from '../media/unlock'
 import { OFFLINE_WAITING, Waiting } from '../screens/Account'
 import { useSession } from './SessionProvider'
 
@@ -50,6 +51,30 @@ export function flowTarget(signedIn: boolean, flow?: FlowSession | null): string
 /** Подпись той же кнопки: заход продолжается — значит, «вернуться». */
 export function flowLabel(flow?: FlowSession | null): string {
   return flow ? 'Вернуться в поток' : 'Влиться в поток'
+}
+
+/**
+ * Переход в тренировку по касанию: «Влиться в поток» и «Вернуться в поток»
+ * на главной, в «Моём прогрессе» и в шапке, «Продолжить бесплатную
+ * тренировку» на /offer.
+ *
+ * Первым делом, пока касание ещё идёт, — разблокировка медиа
+ * (src/media/unlock.ts): во вьюхе Telegram на iPhone ролики и музыка,
+ * запущенные позже, после отсчёта, без неё застывают. Потом переход — по
+ * умолчанию туда же, куда ведёт flowTarget.
+ */
+export function useFlowStart(): (to?: string, options?: NavigateOptions) => void {
+  const navigate = useNavigate()
+  const { me } = useSession()
+  const { session: flow } = useFlow()
+  const signedIn = Boolean(me)
+  return useCallback(
+    (to?: string, options?: NavigateOptions) => {
+      unlockMedia()
+      navigate(to ?? flowTarget(signedIn, flow), options)
+    },
+    [navigate, signedIn, flow],
+  )
 }
 
 /**
