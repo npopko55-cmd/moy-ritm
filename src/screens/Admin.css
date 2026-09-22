@@ -1,0 +1,198 @@
+/* ═══════ Аналитика воронок (/admin) ═══════
+   Оболочка и карточки — как у страниц кабинета (Page.css), чипы — те же,
+   что в настройках. Здесь только своё: две колонки воронок, ссылка входа
+   и таблица, которая на телефоне прокручивается вбок внутри рамки. */
+
+/* ——— Период ——— */
+.admin__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 14px;
+}
+
+.admin__dates label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.admin__dates input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  background: var(--white);
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink-900);
+}
+
+/* ——— Две воронки рядом ——— */
+.admin__funnels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 clamp(14px, 2vw, 22px);
+}
+
+.admin__link {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.admin__link-url {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  background: var(--bg-panel);
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink-800);
+}
+
+.admin__steps {
+  margin-top: 14px;
+  list-style: none;
+}
+
+.admin__step {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--gray-100);
+}
+
+.admin__step:first-child { border-top: none; }
+
+.admin__step-label {
+  padding-top: 3px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.admin__step-num {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.admin__step-value {
+  font-family: var(--font-head);
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.admin__step-pct {
+  font-size: 12.5px;
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+.admin__step.is-empty .admin__step-value { color: var(--gray-300); }
+.admin__step--money .admin__step-value { color: var(--pink-600); }
+
+/* ——— Таблица людей ——— */
+.admin__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.admin__chips { flex: 1 1 280px; }
+
+.admin__sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+.admin__sort-btn {
+  min-height: 36px;
+  padding: 4px 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-600);
+  border-bottom: 2px solid transparent;
+}
+
+.admin__sort-btn.is-on { color: var(--pink-600); border-bottom-color: var(--pink-500); }
+
+@media (hover: hover) {
+  .admin__sort-btn:hover { color: var(--pink-600); }
+}
+
+.admin__scroll {
+  margin-top: 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--gray-100);
+  border-radius: var(--r-md);
+}
+
+.admin__table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  color: var(--ink-800);
+}
+
+.admin__table th,
+.admin__table td {
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.admin__table th {
+  background: var(--bg-panel);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--gray-600);
+}
+
+.admin__table .is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.admin__table tbody tr:last-child td { border-bottom: none; }
+.admin__table a { color: var(--pink-600); }
+
+.admin__empty { text-align: center !important; color: var(--gray-500); }
+
+.admin__pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+/* Телефон: воронки одна под другой. */
+@media (max-width: 767.98px) {
+  .admin__funnels { grid-template-columns: minmax(0, 1fr); }
+  .admin__pager span { text-align: center; }
+}

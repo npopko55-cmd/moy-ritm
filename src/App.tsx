@@ -8,6 +8,7 @@ import { RequireAuth, RequireTrial } from './auth/guards'
 import { FlowProvider } from './flow/FlowSession'
 import { MusicProvider } from './music/MusicProvider'
 import {
+  admin,
   confirmEmail,
   confirmNewEmail,
   countdown,
@@ -46,6 +47,7 @@ const Progress = progress.Screen
 const Help = help.Screen
 const TrialEnded = trialEnded.Screen
 const Offer = offer.Screen
+const Admin = admin.Screen
 
 export default function App() {
   return (
@@ -159,6 +161,10 @@ export default function App() {
               </RequireAuth>
             }
           />
+
+          {/* Аналитика воронок для владельца. Ссылок на неё нет; вход —
+              свой, администраторский (src/api/admin.ts). */}
+          <Route path="/admin" element={<Admin />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -16,6 +16,7 @@ import { loopSrc } from '../data/loops'
 import { DEFAULT_FREE_TIER, EXTRA_MOVES_LABEL, STREAMS } from '../data/streams'
 import { PLACEHOLDER_EMAIL, TELEGRAM_URL } from '../data/support'
 import { TARIFFS } from '../data/tariffs'
+import type { AdminApi, FunnelSummary, FunnelUser, Period, UsersQuery } from './admin'
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
 import {
   ApiError,
@@ -1034,6 +1035,166 @@ export function createDemoApi(): Api {
     onSessionLost(listener) {
       listeners.add(listener)
       return () => listeners.delete(listener)
+    },
+  }
+}
+
+/* ─────────────────────────  Админка: аналитика воронок  ───────────────────────── */
+
+/**
+ * Фиктивная аналитика для страницы /admin на GitHub Pages: настоящих людей в
+ * демо нет, а страница должна открываться и показывать, как она выглядит.
+ * Данные выдуманные, но согласованные: сводка считается из той же таблицы
+ * людей, что и список, а генератор с постоянным зерном даёт одни и те же
+ * цифры при каждом открытии.
+ */
+
+/** Простой генератор с зерном: те же «люди» при каждом открытии страницы. */
+function seeded(seed: number): () => number {
+  let a = seed
+  return () => {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const DEMO_NAMES = ['anna', 'olga', 'marina', 'elena', 'irina', 'natasha', 'sveta', 'tanya', 'yulia', 'ksenia', 'dasha', 'polina', 'vika', 'alina', 'katya']
+const DEMO_MAILS = ['mail.ru', 'yandex.ru', 'gmail.com', 'bk.ru', 'inbox.ru']
+
+type DemoFunnel = { funnel: Funnel; token: string; people: number; visitors: number; botStarts: number }
+
+const DEMO_FUNNEL_TABLE: DemoFunnel[] = [
+  { funnel: 'trial3d', token: 'hx4q7m2p', people: 38, visitors: 214, botStarts: 131 },
+  { funnel: 'trial20', token: 'tz9w3k6r', people: 33, visitors: 197, botStarts: 122 },
+]
+
+function demoFunnelPeople(): FunnelUser[] {
+  const rnd = seeded(20260922)
+  const now = Date.now()
+  const people: FunnelUser[] = []
+  for (const f of DEMO_FUNNEL_TABLE) {
+    for (let i = 0; i < f.people; i += 1) {
+      const name = DEMO_NAMES[Math.floor(rnd() * DEMO_NAMES.length)]
+      const registered = now - Math.floor(rnd() * 14 * DAY_MS)
+      const activeDays = rnd() < 0.2 ? 0 : 1 + Math.floor(rnd() * 8)
+      const seconds = activeDays ? Math.round(activeDays * (200 + rnd() * 1300)) : 0
+      const workouts = activeDays ? activeDays + Math.floor(rnd() * activeDays * 2) : 0
+      const paid = activeDays > 2 && rnd() < 0.3
+      const tariff = paid ? TARIFFS[Math.floor(rnd() * TARIFFS.length)] : null
+      people.push({
+        user_id: `demo-${f.funnel}-${i}`,
+        email: `${name}.${100 + i}@${DEMO_MAILS[i % DEMO_MAILS.length]}`,
+        name: null,
+        telegram_username: rnd() < 0.8 ? `${name}_${f.funnel === 'trial3d' ? 'd' : 't'}${i}` : null,
+        funnel: f.funnel,
+        registered_at: new Date(registered).toISOString(),
+        email_verified: rnd() < 0.72,
+        active_days: activeDays,
+        total_seconds: seconds,
+        total_steps: Math.round(seconds * 1.5),
+        workouts,
+        last_activity_at: activeDays
+          ? new Date(Math.min(now, registered + Math.floor(rnd() * 5 * DAY_MS))).toISOString()
+          : null,
+        paid,
+        tariff: tariff ? tariff.name : null,
+        paid_amount: tariff ? tariff.price : null,
+      })
+    }
+  }
+  return people
+}
+
+/** YYYY-MM-DD по времени браузера → границы суток в мс. */
+const dayStart = (date: string) => Date.parse(`${date}T00:00:00`)
+
+export function createDemoAdminApi(): AdminApi {
+  const people = demoFunnelPeople()
+  const DEMO_TOKEN = 'demo-admin'
+
+  const check = (token: string) => {
+    if (token !== DEMO_TOKEN) throw new ApiError(401, 'UNAUTHORIZED', 'Нужно войти')
+  }
+
+  const inPeriod = (p: FunnelUser, period: Period) => {
+    const at = Date.parse(p.registered_at)
+    if (period.from && at < dayStart(period.from)) return false
+    if (period.to && at >= dayStart(period.to) + DAY_MS) return false
+    return true
+  }
+
+  const csvCell = (value: unknown) => {
+    const text = value === null || value === undefined ? '' : String(value)
+    return /[",;\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+  }
+
+  return {
+    isDemo: true,
+
+    async login(email, password) {
+      // Как и вход человека в демо: паролей нет, хватает похожих на правду.
+      if (!email.includes('@') || password.length < MIN_PASSWORD) {
+        throw new ApiError(401, 'UNAUTHORIZED', 'Неверная почта или пароль')
+      }
+      return DEMO_TOKEN
+    },
+
+    async summary(token, period) {
+      check(token)
+      return DEMO_FUNNEL_TABLE.map((f): FunnelSummary => {
+        const all = people.filter((p) => p.funnel === f.funnel)
+        const mine = all.filter((p) => inPeriod(p, period))
+        // Визиты и старты бота — в той же доле, что и регистрации за период.
+        const share = all.length ? mine.length / all.length : 0
+        const paid = mine.filter((p) => p.paid)
+        return {
+          funnel: f.funnel,
+          token: f.token,
+          visitors: Math.round(f.visitors * share),
+          bot_starts: Math.round(f.botStarts * share),
+          registered: mine.length,
+          email_verified: mine.filter((p) => p.email_verified).length,
+          started: mine.filter((p) => p.active_days > 0).length,
+          reached_offer: f.funnel === 'trial20' ? mine.filter((p) => p.workouts >= TRIAL_OFFER_AFTER).length : null,
+          expired:
+            f.funnel === 'trial3d'
+              ? mine.filter((p) => Date.now() - Date.parse(p.registered_at) > TRIAL_DAYS * DAY_MS).length
+              : mine.filter((p) => p.workouts >= TRIAL_WORKOUTS).length,
+          paid_users: paid.length,
+          revenue: paid.reduce((sum, p) => sum + (p.paid_amount ?? 0), 0),
+          currency: 'RUB',
+        }
+      })
+    },
+
+    async users(token, q: UsersQuery) {
+      check(token)
+      const key = q.sort
+      const list = people
+        .filter((p) => p.funnel === q.funnel)
+        .sort((a, b) =>
+          key === 'registered_at'
+            ? Date.parse(b.registered_at) - Date.parse(a.registered_at)
+            : (b[key] as number) - (a[key] as number),
+        )
+      const start = (q.page - 1) * q.per_page
+      return { items: list.slice(start, start + q.per_page), total: list.length, page: q.page, per_page: q.per_page }
+    },
+
+    async usersCsv(token, funnel) {
+      check(token)
+      const head = ['email', 'telegram', 'registered_at', 'email_verified', 'active_days', 'total_seconds', 'total_steps', 'workouts', 'last_activity_at', 'paid', 'tariff', 'paid_amount']
+      const rows = people
+        .filter((p) => p.funnel === funnel)
+        .map((p) =>
+          [p.email, p.telegram_username, p.registered_at, p.email_verified, p.active_days, p.total_seconds, p.total_steps, p.workouts, p.last_activity_at, p.paid, p.tariff, p.paid_amount]
+            .map(csvCell)
+            .join(','),
+        )
+      // BOM — чтобы Excel сразу открыл кириллицу правильно.
+      return new Blob(['\ufeff' + [head.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' })
     },
   }
 }

@@ -82,6 +82,7 @@ export const progress = screen(() => import('../screens/Progress'))
 export const help = screen(() => import('../screens/Help'))
 export const trialEnded = screen(() => import('../screens/TrialEnded'))
 export const offer = screen(() => import('../screens/Offer'))
+export const admin = screen(() => import('../screens/Admin'))
 
 /** Отсчёт и плеер — заранее, чтобы «Влиться в поток» не ждало скрипта. */
 export function preloadWorkout(): void {
