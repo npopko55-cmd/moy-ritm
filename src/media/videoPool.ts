@@ -20,8 +20,10 @@ import { asset } from '../lib/asset'
 /**
  * Заглушка для разблокировки: один кадр 16×16, H.264 baseline, без звука,
  * полтора килобайта. Нужна, пока плеер ещё не поставил элементу ролик.
+ * Лежит в корне, а не в `media/`: адрес `/media/` на сервере nginx отдаёт из
+ * каталога загрузок бэкенда, и файл сайта там был бы недоступен (404).
  */
-const UNLOCK_SRC = asset('media/unlock.mp4')
+const UNLOCK_SRC = asset('unlock.mp4')
 
 type Pair = readonly [HTMLVideoElement, HTMLVideoElement]
 
