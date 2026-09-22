@@ -39,9 +39,11 @@ export default function Offer() {
     })
   }, [trial?.offer_due])
 
-  if (!known && !failed) return null
-  if (known && trialExpired(trial) && !hasAccess(access)) return <Navigate to="/trial-ended" replace />
-  if (known && (hasAccess(access) || trial?.funnel !== 'trial20' || trial.state !== 'active')) {
+  // Сервер не ответил — предложение показать не из чего: пускаем в
+  // тренировку, как и охранник (без цифр «0 тренировок, осталось 0»).
+  if (!known) return failed ? <Navigate to={FIRST_STREAM} replace /> : null
+  if (trialExpired(trial) && !hasAccess(access)) return <Navigate to="/trial-ended" replace />
+  if (hasAccess(access) || trial?.funnel !== 'trial20' || trial.state !== 'active') {
     return <Navigate to="/" replace />
   }
 

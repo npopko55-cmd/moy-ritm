@@ -22,7 +22,8 @@ import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
-import { anonId, saveFunnelToken } from '../lib/funnel'
+import { anonId, forgetFunnelToken, saveFunnelToken } from '../lib/funnel'
+import { OFFLINE_WAITING, Waiting } from './Account'
 
 /** Один визит на токен за жизнь страницы: StrictMode не должен считать дважды. */
 const visits = new Map<string, Promise<boolean>>()
@@ -31,10 +32,7 @@ function visit(token: string): Promise<boolean> {
   let job = visits.get(token)
   if (!job) {
     job = api.funnelVisit(token, anonId()).then(
-      () => {
-        saveFunnelToken(token)
-        return true
-      },
+      () => true,
       () => false,
     )
     visits.set(token, job)
@@ -44,7 +42,7 @@ function visit(token: string): Promise<boolean> {
 
 export default function GoFunnel() {
   const { token = '' } = useParams()
-  const { me, loading } = useSession()
+  const { me, loading, offline } = useSession()
   const [found, setFound] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -57,7 +55,18 @@ export default function GoFunnel() {
     }
   }, [token])
 
-  // Ждём и визит, и ответ «вошёл ли» (в мини-апе это ещё и вход по Telegram).
-  if (found === null || loading) return null
-  return <Navigate to={found && !me ? '/register' : '/'} replace />
+  // Токен нужен только будущей регистрации. Уже вошёл — не храним: иначе он
+  // пролежал бы в браузере и приклеился к чужой регистрации потом.
+  useEffect(() => {
+    if (!found || loading) return
+    if (me) forgetFunnelToken()
+    else saveFunnelToken(token)
+  }, [found, loading, me, token])
+
+  if (found === null) return null
+  if (!found) return <Navigate to="/" replace />
+  // Воронка есть — ждём ответа «вошёл ли» (в мини-апе это ещё и вход по
+  // Telegram). Сервер не отвечает — говорим об этом, как защита маршрутов.
+  if (loading) return offline ? <Waiting text={OFFLINE_WAITING} /> : null
+  return <Navigate to={me ? '/' : '/register'} replace />
 }

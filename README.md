@@ -57,6 +57,10 @@ VITE_API_URL=https://ritmritm.ru/api/v1 npm run build
 | `/start/:streamId`       | Отсчёт 3-2-1, затем сам уводит в плеер                    |
 | `/player/:streamId`      | Плеер: персонаж, таймеры, переключение потоков            |
 | `/settings`              | Настройки тренировки                                      |
+| `/go/:token`             | Вход по ссылке воронки из Telegram: визит → регистрация    |
+| `/offer`                 | trial20: предложение тарифов после 10-й тренировки, один раз |
+| `/trial-ended`           | Пробный период кончился — тарифы (`src/lib/trial.ts`)      |
+| `/admin`                 | Аналитика воронок для владельца: свой вход, ссылок нет     |
 
 `streamId` — один из `cardio`, `back`, `office`, `dance`, `60plus`.
 
