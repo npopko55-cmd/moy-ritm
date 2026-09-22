@@ -14,6 +14,7 @@
 import { Link } from 'react-router-dom'
 import { ALL_MOVES } from '../data/streams'
 import { TARIFFS, rub } from '../data/tariffs'
+import { plural } from '../lib/date'
 import { useFromPrice } from '../lib/tariffs'
 import './Unlock.css'
 
@@ -34,7 +35,10 @@ export default function Unlock({ compact = false }: Props) {
   return (
     <div className={`unlock ${compact ? 'unlock--compact' : ''}`}>
       <span className="unlock__text">
-        <span className="unlock__title">Откройте все {ALL_MOVES.length} движений</span>
+        {/* Склонение по числу: после скрытых роликов их 41 — «все 41 движение». */}
+        <span className="unlock__title">
+          Откройте все {plural(ALL_MOVES.length, 'движение', 'движения', 'движений')}
+        </span>
         <span className="unlock__price">от {rub(fromPrice)} в месяц</span>
       </span>
       <Link className="unlock__cta" to="/tariffs">

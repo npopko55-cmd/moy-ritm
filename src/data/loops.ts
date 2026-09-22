@@ -34,9 +34,11 @@ export const LOOPS: Record<string, Loop> = {
   'arms-up': { id: 'arms-up', title: 'Руки вверх', duration: 1.917, stepsPerMinute: 60 },
   'knee-lifts': { id: 'knee-lifts', title: 'Подъёмы колен', duration: 3.333, stepsPerMinute: 120 },
   punches: { id: 'punches', title: 'Удары руками', duration: 1.917, stepsPerMinute: 60 },
+  // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
   'side-steps': { id: 'side-steps', title: 'Приставные шаги', duration: 3.125, stepsPerMinute: 110 },
   'diagonal-swings': { id: 'diagonal-swings', title: 'Махи по диагонали', duration: 1.833, stepsPerMinute: 40 },
   'step-out-arms': { id: 'step-out-arms', title: 'Шаг в сторону, руки врозь', duration: 1.833, stepsPerMinute: 100 },
+  // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
   'run-in-place': { id: 'run-in-place', title: 'Бег на месте', duration: 3.75, stepsPerMinute: 150 },
   'punches-up': { id: 'punches-up', title: 'Удары вверх', duration: 1.958, stepsPerMinute: 60 },
   'side-step-reach': { id: 'side-step-reach', title: 'Шаг в сторону, рука вверх', duration: 3.5, stepsPerMinute: 100 },
@@ -48,6 +50,7 @@ export const LOOPS: Record<string, Loop> = {
   'boxer-steps': { id: 'boxer-steps', title: 'Шаги в стойке боксёра', duration: 1.875, stepsPerMinute: 100 },
   jog: { id: 'jog', title: 'Бег трусцой', duration: 1.792, stepsPerMinute: 140 },
   'elbow-raises': { id: 'elbow-raises', title: 'Локти вверх по очереди', duration: 1.75, stepsPerMinute: 60 },
+  // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
   'arm-scissors': { id: 'arm-scissors', title: 'Ножницы руками', duration: 1.917, stepsPerMinute: 100 },
   twist: { id: 'twist', title: 'Твист', duration: 1.958, stepsPerMinute: 100 },
   'chest-crosses': { id: 'chest-crosses', title: 'Руки крест-накрест', duration: 3.542, stepsPerMinute: 40 },
@@ -64,6 +67,7 @@ export const LOOPS: Record<string, Loop> = {
   march: { id: 'march', title: 'Шаг на месте', duration: 1.917, stepsPerMinute: 110 },
   'alternate-reach': { id: 'alternate-reach', title: 'Руки вверх по очереди', duration: 3.5, stepsPerMinute: 60 },
   'arm-crosses-steps': { id: 'arm-crosses-steps', title: 'Скрещивания рук с шагом', duration: 1.75, stepsPerMinute: 100 },
+  // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
   'twist-knee': { id: 'twist-knee', title: 'Скручивания с коленом', duration: 1.75, stepsPerMinute: 110 },
   'arms-to-shoulders': { id: 'arms-to-shoulders', title: 'Руки к плечам', duration: 1.875, stepsPerMinute: 60 },
   'step-out-bent-arms': { id: 'step-out-bent-arms', title: 'Шаги врозь, руки согнуты', duration: 1.875, stepsPerMinute: 100 },

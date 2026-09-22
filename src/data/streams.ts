@@ -50,16 +50,24 @@ export const DEFAULT_FREE_TIER: FreeTier = { stream_code: 'cardio', exercise_lim
  * человек без доступа должен увидеть не пять почти одинаковых махов руками.
  * Дальше нагрузка чередуется — ноги, руки, шаги с руками, — чтобы соседние
  * движения не были одинаковыми.
+ *
+ * Четыре ролика скрыты до перегенерации (22.09.2026): у них рваный стык
+ * петли, владелец видел рывки, а чистого цикла в генерации нет. Это
+ * «Приставные шаги», «Бег на месте», «Ножницы руками» и «Скручивания с
+ * коленом» — см. HIDDEN_MOVES ниже. Файлы и записи в loops.ts остались:
+ * перегенерируете — верните id в список на прежнее место. Бесплатные первые
+ * движения и прогрев считаются по этому списку, поэтому они сдвинулись сами.
+ * Внутри самого вызова pick() не оставляйте ни закрывающих скобок, ни
+ * id в кавычках под комментарием: scripts/build-sw.mjs читает список
+ * регулярным выражением и принял бы их за движения.
  */
 export const ALL_MOVES: Loop[] = pick(
   'walk-in-place',
   'arms-up',
   'knee-lifts',
   'punches',
-  'side-steps',
   'diagonal-swings',
   'step-out-arms',
-  'run-in-place',
   'punches-up',
   'side-step-reach',
   'knee-to-elbow',
@@ -70,7 +78,6 @@ export const ALL_MOVES: Loop[] = pick(
   'boxer-steps',
   'jog',
   'elbow-raises',
-  'arm-scissors',
   'twist',
   'chest-crosses',
   'step-clap',
@@ -86,7 +93,6 @@ export const ALL_MOVES: Loop[] = pick(
   'march',
   'alternate-reach',
   'arm-crosses-steps',
-  'twist-knee',
   'arms-to-shoulders',
   'step-out-bent-arms',
   'light-jog',
@@ -98,6 +104,12 @@ export const ALL_MOVES: Loop[] = pick(
   'twist-steps',
   'arms-up-steps',
 )
+
+/**
+ * Скрыты до перегенерации: рваный стык петли (см. комментарий к ALL_MOVES).
+ * Нигде не используются — список нужен, чтобы не потерять, что вернуть.
+ */
+export const HIDDEN_MOVES = ['side-steps', 'run-in-place', 'arm-scissors', 'twist-knee'] as const
 
 /**
  * Сколько первых движений каталога прогревается заранее: их постеры качают
