@@ -41,6 +41,8 @@ type Options = {
   body?: unknown
   /** false — публичная ручка: ни заголовка, ни повтора после обновления. */
   auth?: boolean
+  /** Свой предел ожидания вместо TIMEOUT_MS — для необязательных запросов. */
+  timeout?: number
 }
 
 /**
@@ -67,6 +69,12 @@ function retryAfterSeconds(value: string | null): number | undefined {
  * без предела экраны вечно стояли бы на «Секунду…».
  */
 const TIMEOUT_MS = 20_000
+
+/**
+ * Вход по initData в мини-апе — только попытка: не вышла, и человек входит
+ * как на сайте. Держать его на пустом экране по 20 секунд ради неё незачем.
+ */
+const TELEGRAM_TIMEOUT_MS = 8_000
 
 /** Имя межвкладочной блокировки на обновление токена. */
 const REFRESH_LOCK = 'moy-ritm-refresh'
@@ -116,7 +124,7 @@ export function createHttpApi(rawBase: string): Api {
     const timer = setTimeout(() => {
       timedOut = true
       ctrl.abort()
-    }, TIMEOUT_MS)
+    }, opts.timeout ?? TIMEOUT_MS)
     try {
       const res = await fetch(base + path, {
         method,
@@ -134,7 +142,7 @@ export function createHttpApi(rawBase: string): Api {
       }
     } catch {
       // fetch падает только на сетевых бедах: сервер не поднят, нет интернета,
-      // или ответ не пришёл за TIMEOUT_MS и мы оборвали запрос сами.
+      // или ответ не пришёл вовремя (TIMEOUT_MS) и мы оборвали запрос сами.
       throw timedOut ? ApiError.timeout() : ApiError.offline()
     } finally {
       clearTimeout(timer)
@@ -341,6 +349,7 @@ export function createHttpApi(rawBase: string): Api {
       const data = await request<TelegramAuthResponse>('POST', '/auth/telegram', {
         body: { init_data: initData },
         auth: false,
+        timeout: TELEGRAM_TIMEOUT_MS,
       })
       // Привязанный Telegram — это вход: refresh-cookie бэкенд уже поставил.
       if (data.status === 'logged_in') accessToken = data.access_token

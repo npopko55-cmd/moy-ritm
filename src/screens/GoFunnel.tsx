@@ -20,25 +20,9 @@
 
 import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
-import { api } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
-import { anonId, forgetFunnelToken, saveFunnelToken } from '../lib/funnel'
+import { forgetFunnelToken, saveFunnelToken, visitFunnel } from '../lib/funnel'
 import { OFFLINE_WAITING, Waiting } from './Account'
-
-/** Один визит на токен за жизнь страницы: StrictMode не должен считать дважды. */
-const visits = new Map<string, Promise<boolean>>()
-
-function visit(token: string): Promise<boolean> {
-  let job = visits.get(token)
-  if (!job) {
-    job = api.funnelVisit(token, anonId()).then(
-      () => true,
-      () => false,
-    )
-    visits.set(token, job)
-  }
-  return job
-}
 
 export default function GoFunnel() {
   const { token = '' } = useParams()
@@ -47,7 +31,7 @@ export default function GoFunnel() {
 
   useEffect(() => {
     let alive = true
-    void visit(token).then((ok) => {
+    void visitFunnel(token).then((ok) => {
       if (alive) setFound(ok)
     })
     return () => {
@@ -65,8 +49,9 @@ export default function GoFunnel() {
 
   if (found === null) return null
   if (!found) return <Navigate to="/" replace />
-  // Воронка есть — ждём ответа «вошёл ли» (в мини-апе это ещё и вход по
-  // Telegram). Сервер не отвечает — говорим об этом, как защита маршрутов.
+  // Воронка есть — ждём ответа «вошёл ли» (в мини-апе это ещё и попытка
+  // входа по Telegram: её сбой — просто «не вошёл»). «Нет связи» — только
+  // когда не отвечают refresh или /me, как в защите маршрутов.
   if (loading) return offline ? <Waiting text={OFFLINE_WAITING} /> : null
   return <Navigate to={me ? '/' : '/register'} replace />
 }

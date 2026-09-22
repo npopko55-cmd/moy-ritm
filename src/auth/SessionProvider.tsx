@@ -14,12 +14,15 @@
  * «а оплачено ли» нет: `access` — это `me.access`.
  *
  * В Telegram Mini App cookie ещё нет, зато есть initData: не вошёл по
- * cookie — пробуем войти по ней (POST /auth/telegram). Telegram не привязан
- * — человек регистрируется или входит как обычно, а сразу после этого мы
- * один раз и молча привязываем Telegram к аккаунту.
+ * cookie — пробуем войти по ней (POST /auth/telegram). Это только попытка:
+ * любой её неуспех — то же «не вошёл», что и на сайте, а «Нет связи»
+ * зависит только от refresh и /me. Telegram не привязан — человек
+ * регистрируется или входит как обычно, а сразу после этого мы один раз и
+ * молча привязываем Telegram к аккаунту.
  *
  * Регистрация сама передаёт токен воронки, если человек пришёл по ссылке
- * /go/<токен> (src/lib/funnel.ts): экраны об этом не знают.
+ * /go/<токен> или открыл мини-ап ссылкой с ?startapp=<токен>
+ * (src/lib/funnel.ts): экраны об этом не знают.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
@@ -27,7 +30,7 @@ import type { ReactNode } from 'react'
 import { api, type RegisterBody } from '../api/client'
 import { ApiError, type Access, type Me, type RegisterResponse } from '../api/types'
 import { flushBeforeSignOut } from '../lib/chunks'
-import { forgetFunnelToken, readFunnelToken } from '../lib/funnel'
+import { forgetFunnelToken, launchFunnel, readFunnelToken, saveFunnelToken } from '../lib/funnel'
 import { saveMoveInterval } from '../lib/settings'
 import { IN_TELEGRAM, telegramInitData, telegramLog } from '../lib/telegram'
 
@@ -37,30 +40,53 @@ const RETRY_MS = [1000, 2000, 4000, 8000, 15000, 30000]
 /** Сервер ответил, но это сбой, а не отказ: сеть, 5xx, 429. */
 const isTemporary = (e: unknown) => !(e instanceof ApiError) || e.temporary
 
+/** Запрос не дошёл до сервера: сети нет. Таймаут сюда не входит. */
+const noConnection = (e: unknown) => e instanceof ApiError && e.status === 0 && !e.timedOut
+
+/** Пауза перед единственным повтором входа по Telegram, если не было сети. */
+const TELEGRAM_RETRY_MS = 1000
+
+/** Сколько экраны ждут визит воронки из параметра запуска мини-апа. */
+const LAUNCH_FUNNEL_WAIT_MS = 2000
+
+const pause = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
+
 /**
  * initData, которую нужно привязать после регистрации или входа: Telegram
  * ответил not_linked. Привязываем один раз — дальше значение стирается.
  */
 let telegramToLink: string | null = null
 
+/** Одна попытка входа по Telegram на загрузку страницы — и на оба запуска эффекта в StrictMode. */
+let telegramSignIn: Promise<boolean> | null = null
+
 /**
- * Вход в мини-апе по initData. true — вошли. not_linked и отказы по
- * существу — false: человек увидит обычные экраны входа. Сеть и 5xx
- * пробрасываем — их повторяет общий цикл запуска.
+ * Вход в мини-апе по initData — попытка «бонусом». true — вошли. Любой
+ * неуспех — false, и человек видит обычные экраны, как на сайте:
+ * not_linked, 503 TELEGRAM_DISABLED (у бэкенда нет токена бота),
+ * 401 TELEGRAM_BAD_SIGNATURE, 429, таймаут, любой другой ответ. Не падает и
+ * в цикл повторов запуска не попадает; повтор один — если запрос не дошёл
+ * до сервера вовсе.
  */
-async function signInWithTelegram(): Promise<boolean> {
-  const initData = telegramInitData()
-  if (!initData) return false
-  try {
-    const res = await api.telegramAuth(initData)
-    if (res.status === 'logged_in') return true
-    telegramToLink = initData
-  } catch (e) {
-    if (isTemporary(e)) throw e
-    // TELEGRAM_BAD_SIGNATURE, TELEGRAM_DISABLED — входим как на сайте.
-    telegramLog('вход по initData не прошёл', e)
-  }
-  return false
+function signInWithTelegram(): Promise<boolean> {
+  telegramSignIn ??= (async () => {
+    const initData = telegramInitData()
+    if (!initData) return false
+    try {
+      const res = await api.telegramAuth(initData).catch(async (e: unknown) => {
+        if (!noConnection(e)) throw e
+        await pause(TELEGRAM_RETRY_MS)
+        return api.telegramAuth(initData)
+      })
+      if (res.status === 'logged_in') return true
+      // Telegram ещё не привязан — привяжем сразу после регистрации или входа.
+      telegramToLink = initData
+    } catch (e) {
+      telegramLog('вход по initData не прошёл — входим как на сайте', e)
+    }
+    return false
+  })()
+  return telegramSignIn
 }
 
 type SessionValue = {
@@ -133,6 +159,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (alive.current) setMe(null)
     })
 
+    // Мини-ап открыли ссылкой t.me/<бот>/<app>?startapp=<токен> — визит
+    // воронки уходит сразу, параллельно входу. Вне Telegram — сразу null.
+    const launch = launchFunnel()
+    // Токен нужен только будущей регистрации: запоминаем его, если к ответу
+    // визита человек так и не вошёл. Уже вошёл — ничего не меняем. Экраны
+    // ждут визит не дольше пары секунд; сбой визита — молча дальше.
+    const rememberLaunchFunnel = () =>
+      Promise.race([
+        launch.then((token) => {
+          if (token && !meRef.current) saveFunnelToken(token)
+        }),
+        pause(LAUNCH_FUNNEL_WAIT_MS),
+      ])
+
     const settle = (next: Me | null) => {
       setMe(next)
       setOffline(false)
@@ -152,7 +192,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             await api.refresh()
           } catch (e) {
             // По cookie не вошёл, но открыты из Telegram — пробуем initData.
-            // Не вышло — дальше та же ветка «не вошёл», что и на сайте.
+            // Не вышло по любой причине — дальше та же ветка «не вошёл», что
+            // и на сайте. «Нет связи» — только от сбоя самого refresh.
             if (isTemporary(e) || !IN_TELEGRAM || !(await signInWithTelegram())) throw e
           }
           refreshed = true
@@ -163,7 +204,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
         if (!isTemporary(e)) {
           // Обычное «не вошёл»: cookie нет или она уже не действует.
-          settle(null)
+          await rememberLaunchFunnel()
+          if (!cancelled) settle(null)
           return
         }
         // Сервер не ответил по существу — это не «не вошёл». Ждём и пробуем

@@ -12,6 +12,9 @@
  *
  * Оплаты внутри мини-апа нет — так требуют правила Telegram. Кнопки оплаты
  * там открывают тарифы сайта во внешнем браузере (openTariffsOnSite).
+ *
+ * Ссылка t.me/<бот>/<app>?startapp=<значение> открывает мини-ап с параметром
+ * запуска (telegramStartParam): им приходит токен воронки, как в /go/<токен>.
  */
 
 type BackButton = {
@@ -24,6 +27,7 @@ type BackButton = {
 /** Только то, чем пользуемся. Методы новых версий — необязательные. */
 type WebApp = {
   initData: string
+  initDataUnsafe?: { start_param?: string }
   ready(): void
   expand(): void
   openLink(url: string): void
@@ -102,6 +106,26 @@ const launchParams = readLaunchParams()
 /** Сайт открыт внутри Telegram как мини-ап. Не меняется до перезагрузки. */
 export const IN_TELEGRAM: boolean = launchParams !== null || Boolean(window.Telegram?.WebApp)
 
+/**
+ * Параметр запуска из адреса (?tgWebAppStartParam=…). Как и параметры выше,
+ * читается при загрузке модуля — до того, как роутер сменит адрес.
+ */
+function readUrlStartParam(): string {
+  if (!IN_TELEGRAM) return ''
+  try {
+    const { hash, search } = window.location
+    for (const raw of [search.slice(1), hash.slice(1), launchParams ?? '']) {
+      const value = raw ? new URLSearchParams(raw).get('tgWebAppStartParam') : null
+      if (value) return value
+    }
+  } catch {
+    /* адрес не разобрался — параметра нет */
+  }
+  return ''
+}
+
+const urlStartParam = readUrlStartParam()
+
 /** Хук-обёртка над тем же флагом: так экраны не зависят от того, откуда он. */
 export function useInTelegram(): boolean {
   return IN_TELEGRAM
@@ -121,6 +145,25 @@ export function telegramInitData(): string {
   } catch {
     return ''
   }
+}
+
+/**
+ * Параметр запуска мини-апа: значение startapp из ссылки
+ * t.me/<бот>/<app>?startapp=<значение>. Telegram кладёт его в initData
+ * (start_param) и в адрес. Скрипт Telegram не нужен: initData уже есть в
+ * параметрах запуска и переживает перезагрузку. Вне мини-апа — пусто.
+ */
+export function telegramStartParam(): string {
+  if (!IN_TELEGRAM) return ''
+  const fromApp = window.Telegram?.WebApp?.initDataUnsafe?.start_param
+  if (fromApp) return fromApp
+  try {
+    const fromInitData = new URLSearchParams(telegramInitData()).get('start_param')
+    if (fromInitData) return fromInitData
+  } catch {
+    /* initData не разобралась — остаётся адрес */
+  }
+  return urlStartParam
 }
 
 /** Ошибки Telegram человеку не показываем — только в консоль при разработке. */

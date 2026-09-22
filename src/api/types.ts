@@ -365,6 +365,11 @@ export class ApiError extends Error {
   /** У 403 access_required состояние доступа приходит прямо в теле ошибки. */
   readonly access?: Access
   readonly request_id?: string
+  /**
+   * Только у ошибки клиента: сеть была, но ответ не пришёл вовремя. Для
+   * человека это та же «нет связи», а повторять такой запрос сразу незачем.
+   */
+  readonly timedOut?: boolean
 
   constructor(
     status: number,
@@ -375,6 +380,7 @@ export class ApiError extends Error {
       details?: FieldError[]
       access?: Access
       request_id?: string
+      timedOut?: boolean
     } = {},
   ) {
     super(message)
@@ -385,6 +391,7 @@ export class ApiError extends Error {
     this.details = extra.details
     this.access = extra.access
     this.request_id = extra.request_id
+    this.timedOut = extra.timedOut
   }
 
   /**
@@ -438,6 +445,7 @@ export class ApiError extends Error {
       0,
       'NETWORK',
       'Нет связи с сервером: ответ так и не пришёл. Проверьте интернет и попробуйте ещё раз',
+      { timedOut: true },
     )
   }
 }
