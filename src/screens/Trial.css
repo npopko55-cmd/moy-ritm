@@ -1,0 +1,30 @@
+/* ═══════ Страницы пробного периода: /trial-ended и /offer ═══════
+   Оболочка — как у страниц кабинета (Page.css), карточки тарифов — общие
+   (components/TariffPlans.css). Здесь только низ страницы. */
+
+.trial__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: clamp(26px, 3.4vh, 40px);
+}
+
+/* Вторичная кнопка: вид .page__btn, но во всю ширину на телефоне. */
+.trial__continue { white-space: normal; text-align: center; }
+
+.trial__help {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .trial__help:hover { color: var(--pink-600); }
+}
+
+@media (max-width: 639.98px) {
+  .trial__continue { width: 100%; }
+}

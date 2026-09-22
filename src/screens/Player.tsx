@@ -27,6 +27,7 @@ import { createChunkQueue, uuid, type ChunkQueue } from '../lib/chunks'
 import { createDeck, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { loadMoveInterval } from '../lib/settings'
+import { loadBootstrap, markTrialStale } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
@@ -399,11 +400,13 @@ export default function Player() {
 
   // Цифры при открытии плеера — из одного запроса. Не получилось (доступ
   // кончился между переходами) — берём хотя бы сводку: она открыта без оплаты.
+  // Ответ общий с охранником тренировки (src/lib/trial.ts): если тот только
+  // что спрашивал сервер о пробном периоде, второго запроса нет.
   useEffect(() => {
     let alive = true
     void (async () => {
       try {
-        const data = await api.playerBootstrap()
+        const data = await (userId ? loadBootstrap(userId) : api.playerBootstrap())
         if (!alive) return
         setBoot(data.settings)
         setSummary(data.stats)
@@ -420,7 +423,13 @@ export default function Player() {
     return () => {
       alive = false
     }
+    // Один раз при открытии: человек за время жизни плеера не меняется.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Плеер закрылся — у trial20 могли прибавиться тренировки: следующий вход
+  // в тренировку спросит сервер заново, а не поверит старому ответу.
+  useEffect(() => markTrialStale, [])
 
   /* ─────────────  Смена суток  ───────────── */
 

@@ -192,164 +192,6 @@
   white-space: pre-line;
 }
 
-/* ——— Четыре тарифа ——— */
-.tariffs__plans {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(12px, 1.4vw, 20px);
-  /* Отступ с запасом: корона выступает над рекомендованной карточкой. */
-  margin-top: clamp(30px, 3.4vw, 46px);
-}
-
-.plan {
-  --tone: var(--pink-500);
-  --tone-ink: var(--pink-600);
-  --tone-soft: var(--pink-50);
-
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: clamp(20px, 2vw, 28px) clamp(12px, 1.2vw, 20px) clamp(18px, 1.8vw, 24px);
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: 20px;
-  box-shadow: var(--shadow-card);
-}
-
-.plan--half {
-  --tone: var(--orange-500);
-  --tone-ink: var(--orange-600);
-  --tone-soft: var(--orange-100);
-  border: 2px solid var(--orange-500);
-  box-shadow: 0 14px 34px rgba(255, 122, 24, .18);
-}
-
-.plan--year {
-  --tone: var(--green-600);
-  --tone-ink: var(--green-600);
-  --tone-soft: #e4f7ed;
-  background: #fafefb;
-}
-
-.plan__crown {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border-radius: var(--r-pill);
-  background: var(--grad-warm);
-  color: var(--white);
-  font-family: var(--font-head);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .03em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  box-shadow: 0 6px 16px rgba(242, 96, 12, .30);
-}
-
-.plan__badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 4px 10px;
-  border-radius: var(--r-pill);
-  background: var(--pink-100);
-  color: var(--pink-600);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* Годовой — самая заметная скидка, поэтому бейдж залитый. */
-.plan--year .plan__badge { background: var(--green-500); color: var(--white); }
-
-.plan__name {
-  font-size: clamp(16px, 1.5vw, 20px);
-  font-weight: 700;
-  color: var(--ink-900);
-}
-
-.plan__price {
-  margin-top: clamp(8px, 1vw, 14px);
-  font-family: var(--font-head);
-  font-size: clamp(28px, 3.2vw, 44px);
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  color: var(--tone);
-  white-space: nowrap;
-}
-
-.plan__per {
-  margin-top: 4px;
-  font-size: clamp(12.5px, 1.1vw, 15px);
-  color: var(--gray-500);
-  white-space: nowrap;
-}
-
-.plan__save {
-  margin-top: 12px;
-  padding: 6px 14px;
-  border-radius: var(--r-pill);
-  background: var(--tone-soft);
-  color: var(--tone-ink);
-  font-size: clamp(11.5px, 1vw, 13.5px);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-/* У месячного тарифа экономии нет — на её месте разделитель той же высоты,
-   чтобы описания в четырёх карточках стояли на одной строке. */
-.plan__rule {
-  margin-top: 12px;
-  width: 56px;
-  height: clamp(26px, 2.4vw, 31px);
-  background: linear-gradient(var(--gray-200), var(--gray-200)) center / 100% 1px no-repeat;
-}
-
-/* margin-bottom: auto — свободная высота уходит под описание,
-   кнопки во всех карточках оказываются на одном уровне. */
-.plan__note {
-  margin: 14px 0 auto;
-  font-size: clamp(12.5px, 1.05vw, 15px);
-  line-height: 1.4;
-  color: var(--gray-600);
-}
-
-.plan__cta {
-  width: 85%;
-  min-height: 48px;
-  margin-top: 18px;
-  border-radius: var(--r-pill);
-  border: 1.6px solid var(--tone);
-  background: var(--white);
-  color: var(--tone-ink);
-  font-family: var(--font-head);
-  font-size: clamp(14px, 1.15vw, 16px);
-  font-weight: 700;
-  transition: background-color .16s ease, box-shadow .16s ease, transform .16s ease;
-}
-
-.plan__cta:active { transform: translateY(1px); }
-
-.plan--half .plan__cta {
-  border-color: transparent;
-  background: var(--grad-warm);
-  color: var(--white);
-  box-shadow: 0 8px 20px rgba(242, 96, 12, .30);
-}
-
-@media (hover: hover) {
-  .plan__cta:hover { background: var(--tone-soft); }
-  .plan--half .plan__cta:hover { background: var(--grad-warm); box-shadow: 0 12px 28px rgba(242, 96, 12, .40); }
-}
-
 /* ——— Строка состояния доступа ———
    Стоит первой в карточке, поэтому справа оставлено место под крестик. */
 .tariffs__access {
@@ -366,73 +208,6 @@
 
 /* Доступ закончился — тон тревожнее, но это всё та же строка, не окно. */
 .tariffs__access--warn { background: var(--orange-100); color: var(--orange-600); }
-
-/* ——— Сообщение под тарифами ———
-   Подтверждение почты, «оплата не настроена», ошибки загрузки. */
-.tariffs__msg {
-  margin-top: clamp(14px, 1.8vw, 22px);
-  padding: clamp(12px, 1.4vw, 18px) clamp(14px, 1.6vw, 20px);
-  border-radius: var(--r-lg);
-  background: var(--pink-50);
-  color: var(--pink-700);
-  font-size: clamp(13.5px, 1.15vw, 15px);
-  line-height: 1.5;
-  text-align: center;
-}
-
-.tariffs__msg.is-bad { background: #fff1ee; color: var(--red-500); }
-
-.tariffs__msg-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  margin-top: 10px;
-  padding: 10px 22px;
-  border: 1px solid currentColor;
-  border-radius: var(--r-pill);
-  background: var(--white);
-  color: inherit;
-  font-size: 14.5px;
-  font-weight: 600;
-}
-
-.tariffs__msg-btn:disabled { opacity: .6; cursor: default; }
-
-/* Цифры отсчёта «Повторно через 0:59» одной ширины — кнопка не дёргается. */
-button.tariffs__msg-btn { font-variant-numeric: tabular-nums; }
-
-.tariffs__msg-ok { margin-top: 8px; color: var(--green-600); font-weight: 600; }
-.tariffs__msg-bad { margin-top: 8px; color: var(--red-500); font-weight: 600; }
-
-/* ——— Скелетон карточки ———
-   Разметка та же, что у настоящей: полоски стоят внутри реальных
-   .plan__name, .plan__price и прочих, поэтому высоты совпадают. */
-.plan.is-skeleton { border-color: var(--gray-100); box-shadow: none; }
-
-.sk {
-  display: block;
-  height: 1em;
-  margin: 0 auto;
-  border-radius: 6px;
-  background: var(--gray-100);
-}
-
-.sk + .sk { margin-top: .3em; }
-.sk--sm { width: 58%; }
-.sk--md { width: 76%; }
-.sk--lg { width: 92%; }
-
-.plan.is-skeleton .plan__cta { border-color: var(--gray-200); background: var(--gray-100); }
-.plan.is-skeleton .plan__cta .sk { background: var(--gray-200); }
-
-@media (prefers-reduced-motion: no-preference) {
-  .sk { animation: sk-pulse 1.3s ease-in-out infinite; }
-}
-
-@keyframes sk-pulse {
-  50% { opacity: .55; }
-}
 
 /* ——— Нижний ряд ——— */
 .tariffs__facts {
@@ -489,16 +264,6 @@ button.tariffs__msg-btn { font-variant-numeric: tabular-nums; }
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 1179.98px) {
   .tariffs { --photo-h: clamp(200px, 22vw, 260px); }
-
-  .plan__crown { padding: 6px 11px; font-size: 11px; letter-spacing: .02em; }
-  .plan__crown svg { width: 12px; height: 12px; }
-}
-
-/* В узкой карточке «12 месяцев» уже не помещается рядом с бейджем скидки —
-   опускаем названия под бейдж. Отступ одинаковый у всех четырёх, чтобы
-   строки не разъехались. */
-@media (min-width: 900px) and (max-width: 1179.98px) {
-  .plan { padding-top: 44px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -518,14 +283,6 @@ button.tariffs__msg-btn { font-variant-numeric: tabular-nums; }
   /* Разделители — только между колонками, а не в начале второй строки. */
   .perk { border-left: none; padding-left: 0; }
   .perk:not(:nth-child(3n + 1)) { border-left: 1px solid var(--gray-200); padding-left: clamp(10px, 1.6vw, 18px); }
-
-  .tariffs__plans { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 34px; }
-
-  .plan__price { font-size: clamp(30px, 4.4vw, 40px); }
-  .plan__name  { font-size: 18px; }
-  .plan__note  { font-size: 14px; }
-  .plan__per   { font-size: 14px; }
-  .plan__save  { font-size: 13px; }
 
   .tariffs__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 20px; }
   .fact { border-left: none; padding-left: 0; }
@@ -555,15 +312,6 @@ button.tariffs__msg-btn { font-variant-numeric: tabular-nums; }
   .perk__icon { width: 32px; height: 32px; border-radius: 10px; }
   /* В узкой колонке ручные переносы дают рваный текст — льём сами. */
   .perk__text { white-space: normal; }
-
-  .tariffs__plans { grid-template-columns: minmax(0, 1fr); row-gap: 30px; }
-  /* Порядок в разметке — от короткого срока к длинному; на телефоне
-     рекомендованный тариф поднимаем наверх, чтобы его увидели первым. */
-  .plan--half { order: -1; }
-
-  .plan { padding: 22px 18px 20px; }
-  .plan__price { font-size: 38px; }
-  .plan__cta { width: 100%; min-height: 50px; }
 
   .tariffs__facts { grid-template-columns: minmax(0, 1fr); row-gap: 16px; }
   .fact:not(:nth-child(2n + 1)) { border-left: none; padding-left: 0; }

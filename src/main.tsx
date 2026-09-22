@@ -5,7 +5,12 @@ import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import { reloadOnce } from './lib/chunkReload'
 import { screenWaiting } from './lib/screens'
+import { startTelegram } from './lib/telegram'
 import './styles/global.css'
+
+// Открыты внутри Telegram — подключаем его скрипт и настраиваем мини-ап.
+// Обычному посетителю ничего не качается (src/lib/telegram.ts).
+startTelegram()
 
 // Вкладка, открытая до выкладки, просит кусок кода, которого уже нет, —
 // одна перезагрузка вместо страницы ошибки (src/lib/chunkReload.ts). Только

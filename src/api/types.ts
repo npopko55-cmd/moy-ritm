@@ -98,6 +98,18 @@ export type RegisterResponse =
 
 export type MessageResponse = { message: string }
 
+/**
+ * Вход из Telegram Mini App по initData.
+ *
+ * `logged_in` — Telegram уже привязан к аккаунту: ответ тот же, что у входа,
+ * refresh-cookie бэкенд поставил. `not_linked` — такого Telegram у нас нет:
+ * человек регистрируется или входит как обычно, а после этого фронтенд один
+ * раз привязывает Telegram (POST /me/telegram).
+ */
+export type TelegramAuthResponse =
+  | ({ status: 'logged_in' } & TokenResponse)
+  | { status: 'not_linked' }
+
 export type SessionRow = {
   id: string
   /** Строка браузера как есть: разбирать её на «iPhone, Safari» — работа фронтенда. */
@@ -194,9 +206,49 @@ export type PlayerBootstrap = {
   settings: Settings
   access: Access
   stats: StatsSummary
-  /** Нет поля или null — бесплатного уровня нет, всё закрыто оплатой. */
+  /**
+   * Нет поля или null — бесплатного уровня нет, всё закрыто оплатой.
+   * exercise_limit уже учитывает пробный период воронки: у trial3d в
+   * активной фазе — 20, у trial20 — 1000 (всё), после окончания — 0.
+   */
   free_tier?: FreeTier | null
+  /** Пробный период воронки. Старый бэкенд поля не присылает — это «воронки нет». */
+  trial?: Trial | null
 }
+
+/* ─────────────────────────  Воронки и пробный период  ───────────────────────── */
+
+/**
+ * Тестовые воронки запуска через Telegram. У каждой своя ссылка входа
+ * (/go/<токен>), метку бэкенд хранит у пользователя. Какой токен к какой
+ * воронке — знает только бэкенд: фронтенд передаёт токен из адреса как есть.
+ *   • trial3d — три дня открыты 20 движений, тренировок сколько угодно;
+ *   • trial20 — открыто всё, но 20 тренировок (засчитывается заход от трёх
+ *     минут движения, считает бэкенд), после 10-й — одно предложение тарифов.
+ */
+export type Funnel = 'trial3d' | 'trial20'
+
+/** none — воронки нет или правила выключены; expired — пробный период кончился. */
+export type TrialState = 'none' | 'active' | 'expired'
+
+export type Trial = {
+  funnel: Funnel | null
+  state: TrialState
+  /** trial3d: когда кончается, ISO. У trial20 — null. */
+  ends_at: string | null
+  /** trial3d: дней осталось, округлено вверх. */
+  days_left: number | null
+  /** trial20: засчитано тренировок. */
+  workouts_done: number | null
+  /** trial20: сколько всего бесплатных (20). */
+  workouts_limit: number | null
+  /** trial20: после скольких тренировок — предложение тарифов (10). */
+  offer_after: number | null
+  /** trial20: предложение пора показать, и человек его ещё не видел. */
+  offer_due: boolean
+}
+
+export type FunnelVisit = { funnel: Funnel }
 
 /** Один кусок движения. `client_chunk_id` плеер придумывает сам до отправки. */
 export type Chunk = {

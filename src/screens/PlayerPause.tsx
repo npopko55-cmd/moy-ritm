@@ -12,11 +12,13 @@
 
 import { useEffect, useRef } from 'react'
 import type { StatsSummary } from '../api/types'
+import { useSession } from '../auth/SessionProvider'
 import Logo from '../components/Logo'
 import Unlock from '../components/Unlock'
 import WaveBg from '../components/WaveBg'
 import { Check, Clock, Close, Moon, Play, PulseWave, Steps, Sun, SunHalf } from '../components/Icons'
 import { duration, durationText, parseLocalDate, pluralWord, toMinutes } from '../lib/date'
+import { trialHint, useTrial } from '../lib/trial'
 import './PlayerPause.css'
 
 /** Шкала полосы «сегодня в движении»: полчаса — это уже полная полоса. */
@@ -96,6 +98,10 @@ export default function PlayerPause({
 }: Props) {
   // Минуты — для шкалы полосы и отметок на ней, `todayTime` — для показа:
   // за короткий заход в нём стоят секунды, а не ноль минут.
+  // Пробный период воронки: строка под итогами, та же, что в блоке разблокировки.
+  const { access } = useSession()
+  const trialNote = trialHint(useTrial(), access)
+
   const todayMinutes = toMinutes(todaySeconds)
   const todayTime = duration(todaySeconds)
   const fill = Math.min(100, (todayMinutes / BAR_SCALE) * 100)
@@ -172,6 +178,8 @@ export default function PlayerPause({
             </strong>
           </li>
         </ul>
+
+        {trialNote && <p className="pause__trial">{trialNote}</p>}
 
         {/* Кнопки — сразу под итогами, а не в самом низу: до них больше не
             нужно листать (просьба владельца). Полоса дня и блок разблокировки

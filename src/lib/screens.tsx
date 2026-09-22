@@ -80,6 +80,8 @@ export const settings = screen(() => import('../screens/Settings'))
 export const profile = screen(() => import('../screens/Profile'))
 export const progress = screen(() => import('../screens/Progress'))
 export const help = screen(() => import('../screens/Help'))
+export const trialEnded = screen(() => import('../screens/TrialEnded'))
+export const offer = screen(() => import('../screens/Offer'))
 
 /** Отсчёт и плеер — заранее, чтобы «Влиться в поток» не ждало скрипта. */
 export function preloadWorkout(): void {

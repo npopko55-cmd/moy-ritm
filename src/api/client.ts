@@ -18,6 +18,7 @@ import type {
   Access,
   Chunk,
   ChunksResponse,
+  FunnelVisit,
   Me,
   MessageResponse,
   PaymentCheck,
@@ -31,6 +32,7 @@ import type {
   SupportCreated,
   SupportTopic,
   Tariff,
+  TelegramAuthResponse,
   TokenResponse,
 } from './types'
 
@@ -40,6 +42,8 @@ export type RegisterBody = {
   name?: string
   /** IANA-строка из Intl.DateTimeFormat().resolvedOptions().timeZone. */
   timezone?: string
+  /** Токен ссылки воронки (/go/<токен>), если человек пришёл по ней. */
+  funnel_token?: string
 }
 
 /** Явный null у name стирает имя; у timezone null игнорируется. */
@@ -92,6 +96,25 @@ export interface Api {
 
   /* ——— Поддержка ——— */
   supportRequest(topic: SupportTopic, message: string): Promise<SupportCreated>
+
+  /* ——— Воронки ——— */
+  /**
+   * Заход по ссылке воронки. Входа не требует. `anonId` — постоянный id
+   * посетителя из localStorage: по нему бэкенд считает уникальные визиты.
+   * Незнакомый токен — 404 FUNNEL_NOT_FOUND.
+   */
+  funnelVisit(token: string, anonId: string): Promise<FunnelVisit>
+  /** Предложение тарифов после 10-й тренировки показано. Требует входа. */
+  funnelOfferSeen(): Promise<{ ok: boolean }>
+
+  /* ——— Telegram Mini App ——— */
+  /**
+   * Вход по initData. При `logged_in` человек уже вошёл — как после login.
+   * 401 TELEGRAM_BAD_SIGNATURE, 503 TELEGRAM_DISABLED.
+   */
+  telegramAuth(initData: string): Promise<TelegramAuthResponse>
+  /** Привязать Telegram к вошедшему. 409 TELEGRAM_ALREADY_LINKED. */
+  linkTelegram(initData: string): Promise<Me>
 
   /* ——— Служебное для контекста сессии ——— */
   /** Забыть access-токен: выход и потерянная сессия. */

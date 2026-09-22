@@ -26,6 +26,8 @@ import {
   type ChunksResponse,
   type DayStats,
   type FreeTier,
+  type Funnel,
+  type FunnelVisit,
   type Me,
   type MessageResponse,
   type PaymentCheck,
@@ -41,6 +43,7 @@ import {
   type Tariff,
   type TokenResponse,
   type Totals,
+  type Trial,
 } from './types'
 
 const PREFIX = 'moy-ritm.demo.'
@@ -97,6 +100,10 @@ type DemoUser = {
    * Нет поля — почта подтверждена: так у тех, кто завёлся раньше.
    */
   verified?: boolean
+  /** Воронка, по ссылке которой человек зарегистрировался. */
+  funnel?: Funnel | null
+  /** trial20: предложение тарифов после 10-й тренировки уже показано. */
+  offer_seen?: boolean
 }
 
 type DemoAccess = { paid_until: string; tariff: { code: string; name: string } | null } | null
@@ -122,6 +129,11 @@ type DemoStats = {
   seen: string[]
   longest_workout_seconds: number
   current_workout_seconds: number
+  /**
+   * Засчитанные тренировки для trial20: заходы, набравшие от трёх минут
+   * движения. В старых записях поля нет — это ноль.
+   */
+  counted?: number
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -146,6 +158,7 @@ const emptyStats = (): DemoStats => ({
   seen: [],
   longest_workout_seconds: 0,
   current_workout_seconds: 0,
+  counted: 0,
 })
 
 /**
@@ -187,6 +200,42 @@ function dropChunkBuffer(userId?: string): void {
 /** Бесплатный уровень: то же правило, что отдаёт бэкенд в bootstrap. */
 const FREE_TIER: FreeTier = DEFAULT_FREE_TIER
 
+/*
+ * Воронки. На настоящем бэкенде токены ссылок живут в его таблице, а
+ * фронтенд их не знает и передаёт из адреса как есть. Демо изображает
+ * сервер, поэтому здесь они есть — те же, что у боевых ссылок входа.
+ */
+const DEMO_FUNNELS: Record<string, Funnel> = { hx4q7m2p: 'trial3d', tz9w3k6r: 'trial20' }
+
+/** trial3d: столько дней открыт пробный доступ и столько в нём движений. */
+const TRIAL_DAYS = 3
+const TRIAL_MOVES = 20
+/** trial20: бесплатных тренировок, после скольких — предложение тарифов. */
+const TRIAL_WORKOUTS = 20
+const TRIAL_OFFER_AFTER = 10
+/** Тренировка засчитывается в trial20 от трёх минут движения — как на бэкенде. */
+const TRIAL_WORKOUT_SECONDS = 180
+
+const NO_TRIAL: Trial = {
+  funnel: null,
+  state: 'none',
+  ends_at: null,
+  days_left: null,
+  workouts_done: null,
+  workouts_limit: null,
+  offer_after: null,
+  offer_due: false,
+}
+
+/** Бесплатный уровень с поправкой на пробный период — как free_tier бэкенда. */
+function freeTierOf(trial: Trial): FreeTier {
+  if (trial.state === 'expired') return { ...FREE_TIER, exercise_limit: 0 }
+  if (trial.state === 'active') {
+    return { ...FREE_TIER, exercise_limit: trial.funnel === 'trial3d' ? TRIAL_MOVES : 1000 }
+  }
+  return FREE_TIER
+}
+
 /**
  * Потоки для bootstrap.
  *
@@ -194,13 +243,13 @@ const FREE_TIER: FreeTier = DEFAULT_FREE_TIER
  * движений, остальные — с замком и без содержимого. Плеер берёт контент из
  * локальных данных фронтенда, но форма ответа должна совпадать с настоящей.
  */
-function demoStreams(access: Access): PlayerStream[] {
+function demoStreams(access: Access, tier: FreeTier): PlayerStream[] {
   const limited = !hasAccess(access)
   return STREAMS.map((s) => {
-    if (limited && s.id !== FREE_TIER.stream_code) {
+    if (limited && s.id !== tier.stream_code) {
       return { id: s.id, title: s.title, description: s.subtitle, locked: true, exercises: [], tracks: [] }
     }
-    const loops = limited ? s.loops.slice(0, FREE_TIER.exercise_limit) : s.loops
+    const loops = limited ? s.loops.slice(0, tier.exercise_limit) : s.loops
     return {
       id: s.id,
       title: s.title,
@@ -547,6 +596,41 @@ export function createDemoApi(): Api {
 
   const summaryOf = (email: string): StatsSummary => aggregate(email).summary
 
+  /* ——— Пробный период воронки ——— */
+
+  /**
+   * trial3d кончается через три дня после регистрации, trial20 — на 20-й
+   * засчитанной тренировке. Считается на лету из того, что уже лежит в
+   * демо: даты регистрации и накопленных кусков.
+   */
+  function trialOf(user: DemoUser): Trial {
+    if (user.funnel === 'trial3d') {
+      const ends = Date.parse(user.created_at) + TRIAL_DAYS * DAY_MS
+      const left = ends - Date.now()
+      return {
+        ...NO_TRIAL,
+        funnel: 'trial3d',
+        state: left > 0 ? 'active' : 'expired',
+        ends_at: new Date(ends).toISOString(),
+        days_left: Math.max(0, Math.ceil(left / DAY_MS)),
+      }
+    }
+    if (user.funnel === 'trial20') {
+      const done = statsOf(user.email).counted ?? 0
+      const expired = done >= TRIAL_WORKOUTS
+      return {
+        ...NO_TRIAL,
+        funnel: 'trial20',
+        state: expired ? 'expired' : 'active',
+        workouts_done: done,
+        workouts_limit: TRIAL_WORKOUTS,
+        offer_after: TRIAL_OFFER_AFTER,
+        offer_due: !expired && done >= TRIAL_OFFER_AFTER && !user.offer_seen,
+      }
+    }
+    return NO_TRIAL
+  }
+
   /* ——— Профиль целиком ——— */
 
   function meOf(user: DemoUser): Me {
@@ -636,6 +720,8 @@ export function createDemoApi(): Api {
         timezone: body.timezone || timezone(),
         created_at: new Date().toISOString(),
         verified: false,
+        // Пришёл по ссылке воронки — метка остаётся при нём, как на бэкенде.
+        funnel: (body.funnel_token && DEMO_FUNNELS[body.funnel_token]) || null,
       }
       all[email] = user
       write('users', all)
@@ -807,14 +893,17 @@ export function createDemoApi(): Api {
     async playerBootstrap() {
       const user = requireUser()
       const access = accessInfo(user.email)
+      const trial = trialOf(user)
+      const tier = freeTierOf(trial)
       return {
         // Контент плеер берёт из локальных данных фронтенда, но форма
         // ответа та же: у человека без доступа платные потоки с замком.
-        streams: demoStreams(access),
+        streams: demoStreams(access, tier),
         settings: read<Settings>(`settings.${user.email}`, DEFAULT_SETTINGS),
         access,
         stats: summaryOf(user.email),
-        free_tier: FREE_TIER,
+        free_tier: tier,
+        trial,
       } satisfies PlayerBootstrap
     },
 
@@ -856,7 +945,12 @@ export function createDemoApi(): Api {
         day.last_end = ends
         stats.days[key] = day
 
+        // trial20 засчитывает тренировку, когда в ней набралось три минуты.
+        const before = stats.current_workout_seconds
         stats.current_workout_seconds += duration
+        if (before < TRIAL_WORKOUT_SECONDS && stats.current_workout_seconds >= TRIAL_WORKOUT_SECONDS) {
+          stats.counted = (stats.counted ?? 0) + 1
+        }
         stats.longest_workout_seconds = Math.max(
           stats.longest_workout_seconds,
           stats.current_workout_seconds,
@@ -901,6 +995,34 @@ export function createDemoApi(): Api {
     async supportRequest(_topic: SupportTopic, _message: string) {
       requireUser()
       return { id: uuid(), created_at: new Date().toISOString() } satisfies SupportCreated
+    },
+
+    /* ——— Воронки ——— */
+
+    async funnelVisit(token: string) {
+      const funnel = DEMO_FUNNELS[token]
+      if (!funnel) throw new ApiError(404, 'FUNNEL_NOT_FOUND', 'Такой ссылки нет')
+      return { funnel } satisfies FunnelVisit
+    },
+
+    async funnelOfferSeen() {
+      const user = requireUser()
+      const all = users()
+      all[user.email].offer_seen = true
+      write('users', all)
+      return { ok: true }
+    },
+
+    /* ——— Telegram Mini App ——— */
+
+    // Мини-ап открывается только с боевого сайта: в демо Telegram выключен —
+    // тем же ответом, что у бэкенда без токена бота.
+    async telegramAuth() {
+      throw new ApiError(503, 'TELEGRAM_DISABLED', 'Вход через Telegram выключен')
+    },
+
+    async linkTelegram() {
+      throw new ApiError(503, 'TELEGRAM_DISABLED', 'Вход через Telegram выключен')
     },
 
     /* ——— Служебное ——— */

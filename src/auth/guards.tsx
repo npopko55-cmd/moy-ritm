@@ -6,10 +6,11 @@
  * в адресной строке ничего не даёт.
  */
 
-import type { ReactNode } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
-import { DEFAULT_STREAM } from '../data/streams'
-import type { FlowSession } from '../flow/FlowSession'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Navigate, useLocation, useParams } from 'react-router-dom'
+import { DEFAULT_STREAM, getStream } from '../data/streams'
+import { useFlow, type FlowSession } from '../flow/FlowSession'
+import { loadBootstrap, offerDue, trialBlocks, useTrialState } from '../lib/trial'
 import { OFFLINE_WAITING, Waiting } from '../screens/Account'
 import { useSession } from './SessionProvider'
 
@@ -61,6 +62,51 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (loading) return <Waiting text={offline ? OFFLINE_WAITING : undefined} />
   if (!me) return <Navigate to={`/login${nextParam(pathname, search)}`} replace />
+  return <>{children}</>
+}
+
+/** Сколько ждём ответа о пробном периоде, прежде чем пустить без него. */
+const TRIAL_WAIT_MS = 5000
+
+/**
+ * Пробный период воронки — единственное место, где он решает, пускать ли в
+ * тренировку. Стоит на отсчёте (`start`) и плеере, поэтому сюда приходят
+ * все кнопки разом: «Влиться в поток» на главной, в «Моём прогрессе», в
+ * меню, «Вернуться в поток» и прямые ссылки.
+ *
+ *   • пробный кончился, оплаченного доступа нет → /trial-ended;
+ *   • trial20 и пора предложение (offer_due) → /offer, но только перед
+ *     отсчётом и не посреди идущей тренировки: в плеер возвращаем как есть.
+ *
+ * Пока ответа bootstrap нет — пустой фон, как у подгрузки экрана. Сервер
+ * молчит дольше TRIAL_WAIT_MS или ответил ошибкой — пускаем: закрывает
+ * контент всё равно бэкенд, а тренировку из-за сети не отнимаем.
+ */
+export function RequireTrial({ start = false, children }: { start?: boolean; children: ReactNode }) {
+  const { access } = useSession()
+  const { session: flow } = useFlow()
+  const { streamId } = useParams()
+  const { trial, known, userId } = useTrialState()
+  const [gaveUp, setGaveUp] = useState(false)
+
+  useEffect(() => {
+    if (known || !userId) return
+    let alive = true
+    const stop = () => {
+      if (alive) setGaveUp(true)
+    }
+    const timer = window.setTimeout(stop, TRIAL_WAIT_MS)
+    loadBootstrap(userId, 0).catch(stop)
+    return () => {
+      alive = false
+      window.clearTimeout(timer)
+    }
+  }, [known, userId])
+
+  if (!known && !gaveUp) return null
+  if (trialBlocks(trial, access)) return <Navigate to="/trial-ended" replace />
+  const resuming = flow?.streamId === getStream(streamId).id
+  if (start && !resuming && offerDue(trial, access)) return <Navigate to="/offer" replace />
   return <>{children}</>
 }
 

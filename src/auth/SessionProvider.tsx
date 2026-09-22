@@ -12,6 +12,14 @@
  *
  * Состояние доступа приходит вместе с профилем, поэтому отдельного запроса
  * «а оплачено ли» нет: `access` — это `me.access`.
+ *
+ * В Telegram Mini App cookie ещё нет, зато есть initData: не вошёл по
+ * cookie — пробуем войти по ней (POST /auth/telegram). Telegram не привязан
+ * — человек регистрируется или входит как обычно, а сразу после этого мы
+ * один раз и молча привязываем Telegram к аккаунту.
+ *
+ * Регистрация сама передаёт токен воронки, если человек пришёл по ссылке
+ * /go/<токен> (src/lib/funnel.ts): экраны об этом не знают.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
@@ -19,13 +27,41 @@ import type { ReactNode } from 'react'
 import { api, type RegisterBody } from '../api/client'
 import { ApiError, type Access, type Me, type RegisterResponse } from '../api/types'
 import { flushBeforeSignOut } from '../lib/chunks'
+import { forgetFunnelToken, readFunnelToken } from '../lib/funnel'
 import { saveMoveInterval } from '../lib/settings'
+import { IN_TELEGRAM, telegramInitData, telegramLog } from '../lib/telegram'
 
 /** Паузы между попытками узнать, вошёл ли человек, пока сервер не отвечает; дальше — по последней. */
 const RETRY_MS = [1000, 2000, 4000, 8000, 15000, 30000]
 
 /** Сервер ответил, но это сбой, а не отказ: сеть, 5xx, 429. */
 const isTemporary = (e: unknown) => !(e instanceof ApiError) || e.temporary
+
+/**
+ * initData, которую нужно привязать после регистрации или входа: Telegram
+ * ответил not_linked. Привязываем один раз — дальше значение стирается.
+ */
+let telegramToLink: string | null = null
+
+/**
+ * Вход в мини-апе по initData. true — вошли. not_linked и отказы по
+ * существу — false: человек увидит обычные экраны входа. Сеть и 5xx
+ * пробрасываем — их повторяет общий цикл запуска.
+ */
+async function signInWithTelegram(): Promise<boolean> {
+  const initData = telegramInitData()
+  if (!initData) return false
+  try {
+    const res = await api.telegramAuth(initData)
+    if (res.status === 'logged_in') return true
+    telegramToLink = initData
+  } catch (e) {
+    if (isTemporary(e)) throw e
+    // TELEGRAM_BAD_SIGNATURE, TELEGRAM_DISABLED — входим как на сайте.
+    telegramLog('вход по initData не прошёл', e)
+  }
+  return false
+}
 
 type SessionValue = {
   /** null — не вошёл. */
@@ -112,7 +148,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       try {
         // Токен уже получили, а профиль не пришёл — второй раз cookie не крутим.
         if (!refreshed) {
-          await api.refresh()
+          try {
+            await api.refresh()
+          } catch (e) {
+            // По cookie не вошёл, но открыты из Telegram — пробуем initData.
+            // Не вышло — дальше та же ветка «не вошёл», что и на сайте.
+            if (isTemporary(e) || !IN_TELEGRAM || !(await signInWithTelegram())) throw e
+          }
           refreshed = true
         }
         const next = await api.getMe()
@@ -153,22 +195,50 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const signUp = useCallback(async (body: RegisterBody) => {
-    const res = await api.register(body)
-    // Занятая почта токенов не даёт — в контексте ничего не меняем.
-    if (res.status === 'registered') {
-      const next = await api.getMe()
-      if (alive.current) setMe(next)
-    }
-    return res
+  /**
+   * Привязать Telegram после регистрации или входа, если мини-ап ответил
+   * not_linked. Молча: не вышло (уже привязан к другому, сеть) — человек
+   * всё равно вошёл, а ошибку видно только в консоли при разработке.
+   */
+  const linkTelegram = useCallback(() => {
+    const initData = telegramToLink
+    if (!initData) return
+    telegramToLink = null
+    api.linkTelegram(initData).then(
+      (next) => {
+        if (alive.current) setMe(next)
+      },
+      (e) => telegramLog('привязка Telegram не прошла', e),
+    )
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    await api.login(email, password)
-    const next = await api.getMe()
-    setMe(next)
-    return next
-  }, [])
+  const signUp = useCallback(
+    async (body: RegisterBody) => {
+      // Пришёл по ссылке воронки — метку получит бэкенд вместе с регистрацией.
+      const funnelToken = readFunnelToken()
+      const res = await api.register(funnelToken ? { ...body, funnel_token: funnelToken } : body)
+      // Занятая почта токенов не даёт — в контексте ничего не меняем.
+      if (res.status === 'registered') {
+        forgetFunnelToken()
+        const next = await api.getMe()
+        if (alive.current) setMe(next)
+        linkTelegram()
+      }
+      return res
+    },
+    [linkTelegram],
+  )
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      await api.login(email, password)
+      const next = await api.getMe()
+      setMe(next)
+      linkTelegram()
+      return next
+    },
+    [linkTelegram],
+  )
 
   const signOut = useCallback(async () => {
     const userId = meRef.current?.user.id

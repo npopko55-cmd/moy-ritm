@@ -11,6 +11,7 @@ import { loopPoster, loopSrc } from '../data/loops'
 import { useMascotVideo } from '../lib/mascot'
 import { prefetchFiles, prefetchImages, whenIdle } from '../lib/prefetch'
 import { login, preloadWorkout } from '../lib/screens'
+import { warmTrial } from '../lib/trial'
 import { useResendConfirmation } from '../lib/useResendConfirmation'
 import { DEFAULT_STREAM, WARM_MOVES } from '../data/streams'
 import '../components/Logo.css'
@@ -81,6 +82,14 @@ export default function Landing() {
       stopIdle?.()
     }
   }, [])
+
+  // Вошедшему — заранее спросить о пробном периоде воронки: охранник
+  // тренировки решает по нему, и «Влиться в поток» тогда не ждёт ответа.
+  const userId = me?.user.id
+  useEffect(() => {
+    if (!userId) return
+    return whenIdle(() => warmTrial(userId))
+  }, [userId])
 
   return (
     <div className="landing">

@@ -1,8 +1,10 @@
 import { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './screens/Landing'
+import GoFunnel from './screens/GoFunnel'
+import TelegramBridge from './components/TelegramBridge'
 import { SessionProvider } from './auth/SessionProvider'
-import { RequireAuth } from './auth/guards'
+import { RequireAuth, RequireTrial } from './auth/guards'
 import { FlowProvider } from './flow/FlowSession'
 import { MusicProvider } from './music/MusicProvider'
 import {
@@ -13,6 +15,7 @@ import {
   forgotPassword,
   help,
   login,
+  offer,
   paymentSuccess,
   player,
   profile,
@@ -21,6 +24,7 @@ import {
   resetPassword,
   settings,
   tariffs,
+  trialEnded,
 } from './lib/screens'
 
 // Лендинг — в основном бандле: это первый экран. Остальные экраны
@@ -40,6 +44,8 @@ const PaymentSuccess = paymentSuccess.Screen
 const Profile = profile.Screen
 const Progress = progress.Screen
 const Help = help.Screen
+const TrialEnded = trialEnded.Screen
+const Offer = offer.Screen
 
 export default function App() {
   return (
@@ -48,11 +54,16 @@ export default function App() {
         {/* Тренировка живёт выше маршрутов: плеер размонтируется при уходе
             в меню, а заход при этом не заканчивается. */}
         <FlowProvider>
+        {/* Кнопка «Назад» Telegram Mini App. Вне Telegram ничего не делает. */}
+        <TelegramBridge />
         {/* Пока скачивается код экрана — пустой фон страницы, без спиннеров:
             обычно это доли секунды, и мигание было бы заметнее ожидания. */}
         <Suspense fallback={null}>
         <Routes>
           <Route path="/" element={<Landing />} />
+
+          {/* Ссылка входа тестовой воронки из Telegram: /go/<токен>. */}
+          <Route path="/go/:token" element={<GoFunnel />} />
 
           {/* Учётная запись. Адреса совпадают со ссылками в письмах —
               их строит бэкенд от PUBLIC_BASE_URL, см. docs/EMAILS.md. */}
@@ -82,12 +93,17 @@ export default function App() {
               доступен бесплатный поток из нескольких движений, остальные —
               с замком; на тарифы ведёт только яркий блок разблокировки.
               Пускать или нет по-прежнему решает бэкенд: контентные ручки
-              отвечают 403 access_required. */}
+              отвечают 403 access_required.
+              RequireTrial — пробный период воронки: кончился — вместо
+              отсчёта и плеера «Бесплатный доступ истёк», у trial20 после
+              10-й тренировки — один раз предложение тарифов перед отсчётом. */}
           <Route
             path="/start/:streamId"
             element={
               <RequireAuth>
-                <Countdown />
+                <RequireTrial start>
+                  <Countdown />
+                </RequireTrial>
               </RequireAuth>
             }
           />
@@ -95,7 +111,25 @@ export default function App() {
             path="/player/:streamId"
             element={
               <RequireAuth>
-                <Player />
+                <RequireTrial>
+                  <Player />
+                </RequireTrial>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/trial-ended"
+            element={
+              <RequireAuth>
+                <TrialEnded />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/offer"
+            element={
+              <RequireAuth>
+                <Offer />
               </RequireAuth>
             }
           />

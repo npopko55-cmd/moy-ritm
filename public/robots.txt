@@ -16,4 +16,8 @@ Disallow: /player/
 Disallow: /settings
 Disallow: /profile
 Disallow: /progress
+Disallow: /go/
+Disallow: /trial-ended
+Disallow: /offer
+Disallow: /admin
 Disallow: /api/

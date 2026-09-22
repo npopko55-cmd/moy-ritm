@@ -40,6 +40,7 @@ import {
 } from '../components/Icons'
 import { DEFAULT_STREAM, VISIBLE_STREAMS, getStream } from '../data/streams'
 import { asset } from '../lib/asset'
+import { warmTrial } from '../lib/trial'
 import {
   duration,
   durationText,
@@ -152,6 +153,11 @@ export default function Progress() {
   const { me, access, reload } = useSession()
   const { session: flow } = useFlow()
   const [params] = useSearchParams()
+
+  // Здесь тоже есть «Влиться в поток»: ответ о пробном периоде воронки —
+  // заранее, чтобы охранник тренировки не заставлял ждать.
+  const userId = me?.user.id
+  useEffect(() => warmTrial(userId), [userId])
 
   // «Сегодня» и «текущий месяц» считаем в поясе профиля, а не браузера:
   // иначе у человека, улетевшего на восток, календарь начнётся не с того дня.

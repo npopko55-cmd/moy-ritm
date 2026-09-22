@@ -9,13 +9,21 @@
  * начал врать, когда появятся новые ролики или изменится тариф. Цена —
  * стоимость самого короткого тарифа (месяц) из тарифов сервера, пока они не
  * пришли — локального месячного тарифа.
+ *
+ * Идёт пробный период воронки — вместо цены строка о нём: «Пробный доступ:
+ * ещё 2 дня» (trial3d) или «Бесплатных тренировок: осталось 12 из 20»
+ * (trial20). В Telegram Mini App платить нельзя: кнопка «Оформить на
+ * сайте» открывает тарифы сайта во внешнем браузере.
  */
 
 import { Link } from 'react-router-dom'
+import { useSession } from '../auth/SessionProvider'
 import { ALL_MOVES } from '../data/streams'
 import { TARIFFS, rub } from '../data/tariffs'
 import { plural } from '../lib/date'
 import { useFromPrice } from '../lib/tariffs'
+import { openTariffsOnSite, useInTelegram } from '../lib/telegram'
+import { trialHint, useTrial } from '../lib/trial'
 import './Unlock.css'
 
 /**
@@ -32,6 +40,9 @@ type Props = {
 
 export default function Unlock({ compact = false }: Props) {
   const fromPrice = useFromPrice(FALLBACK_PRICE)
+  const { access } = useSession()
+  const hint = trialHint(useTrial(), access)
+  const inTelegram = useInTelegram()
   return (
     <div className={`unlock ${compact ? 'unlock--compact' : ''}`}>
       <span className="unlock__text">
@@ -39,11 +50,17 @@ export default function Unlock({ compact = false }: Props) {
         <span className="unlock__title">
           Откройте все {plural(ALL_MOVES.length, 'движение', 'движения', 'движений')}
         </span>
-        <span className="unlock__price">от {rub(fromPrice)} в месяц</span>
+        <span className="unlock__price">{hint ?? `от ${rub(fromPrice)} в месяц`}</span>
       </span>
-      <Link className="unlock__cta" to="/tariffs">
-        Открыть
-      </Link>
+      {inTelegram ? (
+        <button className="unlock__cta" type="button" onClick={openTariffsOnSite}>
+          Оформить на сайте
+        </button>
+      ) : (
+        <Link className="unlock__cta" to="/tariffs">
+          Открыть
+        </Link>
+      )}
     </div>
   )
 }

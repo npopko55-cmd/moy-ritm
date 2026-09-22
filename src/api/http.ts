@@ -17,6 +17,7 @@ import {
   ApiError,
   type Chunk,
   type ChunksResponse,
+  type FunnelVisit,
   type Me,
   type MessageResponse,
   type PaymentCheck,
@@ -30,6 +31,7 @@ import {
   type SupportCreated,
   type SupportTopic,
   type Tariff,
+  type TelegramAuthResponse,
   type TokenResponse,
 } from './types'
 
@@ -322,6 +324,30 @@ export function createHttpApi(rawBase: string): Api {
 
     supportRequest: (topic: SupportTopic, message: string) =>
       request<SupportCreated>('POST', '/support/requests', { body: { topic, message } }),
+
+    /* ——— Воронки ——— */
+
+    funnelVisit: (token, anonId) =>
+      request<FunnelVisit>('POST', '/funnel/visit', {
+        body: { token, anon_id: anonId },
+        auth: false,
+      }),
+
+    funnelOfferSeen: () => request<{ ok: boolean }>('POST', '/funnel/offer-seen'),
+
+    /* ——— Telegram Mini App ——— */
+
+    async telegramAuth(initData) {
+      const data = await request<TelegramAuthResponse>('POST', '/auth/telegram', {
+        body: { init_data: initData },
+        auth: false,
+      })
+      // Привязанный Telegram — это вход: refresh-cookie бэкенд уже поставил.
+      if (data.status === 'logged_in') accessToken = data.access_token
+      return data
+    },
+
+    linkTelegram: (initData) => request<Me>('POST', '/me/telegram', { body: { init_data: initData } }),
 
     /* ——— Служебное ——— */
 
