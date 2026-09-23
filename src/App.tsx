@@ -15,6 +15,7 @@ import {
   deleteAccount,
   forgotPassword,
   help,
+  legal,
   login,
   offer,
   paymentSuccess,
@@ -48,6 +49,7 @@ const Help = help.Screen
 const TrialEnded = trialEnded.Screen
 const Offer = offer.Screen
 const Admin = admin.Screen
+const Legal = legal.Screen
 
 export default function App() {
   return (
@@ -77,9 +79,14 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/delete-account" element={<DeleteAccount />} />
 
-          {/* FAQ открыт всем: он нужен и до входа. Форма обращения внутри
-              появляется только вошедшим — её ручка требует входа. */}
+          {/* Помощь открыта всем: она нужна и до входа. */}
           <Route path="/help" element={<Help />} />
+
+          {/* Документы — без входа: на них ссылаются регистрация, строка
+              под тарифами и подвал. Экран один, документ — по адресу. */}
+          <Route path="/oferta" element={<Legal />} />
+          <Route path="/privacy" element={<Legal />} />
+          <Route path="/consent" element={<Legal />} />
 
           <Route path="/tariffs" element={<Tariffs />} />
           <Route

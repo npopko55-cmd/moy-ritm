@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import LegalLinks from '../components/LegalLinks'
 import Logo from '../components/Logo'
 import TariffPlans from '../components/TariffPlans'
 import WaveBg from '../components/WaveBg'
@@ -145,6 +146,9 @@ export default function Tariffs() {
         </ul>
 
         <p className="tariffs__hand tariffs__hand--footer">Движение — это забота о себе ♡</p>
+
+        {/* Подвал с документами — последней строкой карточки. */}
+        <LegalLinks className="tariffs__legal" />
       </div>
     </div>
   )

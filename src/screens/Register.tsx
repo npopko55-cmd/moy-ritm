@@ -8,9 +8,17 @@
  * Занятая почта — ответ бэкенда дословно совпадает с обычным «проверьте
  * почту», иначе по форме перебором узнают, кто у нас зарегистрирован.
  * Только в этом случае и остаётся экран ожидания письма.
+ *
+ * Согласие на обработку персональных данных — отдельная галочка, по
+ * умолчанию не отмечена (так требует 152-ФЗ). Без неё — ошибка под ней, и
+ * запрос не уходит; с ней в запрос идёт personal_data_consent: true.
+ * «Согласие» и «политика конфиденциальности» — ссылки на страницы сайта в
+ * этой же вкладке: в мини-апе другой вкладки нет, а новые вкладки на
+ * телефоне теряются. Вернувшись назад, человек видит форму такой, какой
+ * оставил, — см. черновик ниже.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, IS_DEMO } from '../api/client'
 import { safeNext } from '../auth/guards'
@@ -26,6 +34,16 @@ import {
   isEmail,
   passwordProblem,
 } from './Account'
+
+/**
+ * Черновик формы — в памяти страницы, не в хранилище. Человек ушёл прочитать
+ * согласие или политику и вернулся — поля, пароль и галочка на месте. Только
+ * до перезагрузки: на диск пароль не попадает. После отправки черновик
+ * стирается.
+ */
+type Draft = { email: string; password: string; repeat: string; name: string; consent: boolean }
+const EMPTY_DRAFT: Draft = { email: '', password: '', repeat: '', name: '', consent: false }
+let draft: Draft = EMPTY_DRAFT
 
 /** Часовой пояс браузера. Без него «сегодня» в статистике считается неверно. */
 const browserTimezone = () => {
@@ -43,26 +61,32 @@ export default function Register() {
   const loginNext = next ? `?next=${encodeURIComponent(next)}` : ''
   const { me, signUp } = useSession()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [repeat, setRepeat] = useState('')
-  const [name, setName] = useState('')
-  const [bad, setBad] = useState({ email: '', password: '', repeat: '' })
+  const [email, setEmail] = useState(draft.email)
+  const [password, setPassword] = useState(draft.password)
+  const [repeat, setRepeat] = useState(draft.repeat)
+  const [name, setName] = useState(draft.name)
+  const [consent, setConsent] = useState(draft.consent)
+  const [bad, setBad] = useState({ email: '', password: '', repeat: '', consent: '' })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
 
   const [resend, setResend] = useState({ ok: '', error: '', busy: false })
 
+  useEffect(() => {
+    draft = { email, password, repeat, name, consent }
+  }, [email, password, repeat, name, consent])
+
   const submit = async () => {
     const problems = {
       email: isEmail(email) ? '' : 'Похоже, в адресе опечатка',
       password: passwordProblem(password),
       repeat: password === repeat ? '' : 'Пароли не совпадают',
+      consent: consent ? '' : 'Отметьте согласие — без него зарегистрироваться нельзя',
     }
     setBad(problems)
     setError('')
-    if (problems.email || problems.password || problems.repeat) return
+    if (problems.email || problems.password || problems.repeat || problems.consent) return
 
     setBusy(true)
     try {
@@ -71,7 +95,9 @@ export default function Register() {
         password,
         name: name.trim() || undefined,
         timezone: browserTimezone(),
+        personal_data_consent: true,
       })
+      draft = EMPTY_DRAFT
       if (res.status === 'registered') {
         // Человек уже вошёл. Шёл куда-то (гость с тарифов к оплате) — туда;
         // иначе главная встретит его своим и плашкой про подтверждение почты.
@@ -185,6 +211,36 @@ export default function Register() {
           hint="Необязательно — так письма будут теплее"
           disabled={busy}
         />
+
+        {/* Согласие — отдельной галочкой, по умолчанию не отмечено. Ссылка
+            внутри подписи галочку не переключает: это свой элемент. */}
+        <div className={`consent ${bad.consent ? 'is-bad' : ''}`}>
+          <label className="consent__row">
+            <input
+              className="consent__box"
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => {
+                setConsent(e.target.checked)
+                if (e.target.checked) setBad((b) => ({ ...b, consent: '' }))
+              }}
+              disabled={busy}
+              aria-invalid={bad.consent ? true : undefined}
+              aria-describedby={bad.consent ? 'consent-note' : undefined}
+            />
+            <span>
+              Я даю <Link to="/consent">согласие</Link> на обработку персональных данных
+            </span>
+          </label>
+          {bad.consent && (
+            <p id="consent-note" className="field__note is-bad">
+              {bad.consent}
+            </p>
+          )}
+          <p className="consent__more">
+            Подробнее — в <Link to="/privacy">политике конфиденциальности</Link>
+          </p>
+        </div>
 
         <div className="form__actions">
           <button className="form__submit" type="submit" disabled={busy}>

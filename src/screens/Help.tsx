@@ -7,11 +7,13 @@
  * адрес есть в me.support, но гостю me недоступен, и тогда берётся
  * константа из data/support.
  *
- * FAQ — статика фронтенда, бэкенду он не нужен.
+ * FAQ — статика фронтенда, бэкенду он не нужен. Внизу — тихая строка
+ * ссылок на оферту и политику конфиденциальности.
  */
 
 import { useSession } from '../auth/SessionProvider'
 import { Telegram } from '../components/Icons'
+import LegalLinks from '../components/LegalLinks'
 import { TELEGRAM_URL } from '../data/support'
 import PageShell, { Card } from './Page'
 import './Help.css'
@@ -83,6 +85,8 @@ export default function Help() {
           ))}
         </div>
       </Card>
+
+      <LegalLinks className="help__legal" />
     </PageShell>
   )
 }

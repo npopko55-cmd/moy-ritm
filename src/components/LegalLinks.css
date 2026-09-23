@@ -1,0 +1,28 @@
+/* Подвал со ссылками на документы: главная, помощь, тарифы. */
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--gray-300);
+}
+
+.legal-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--gray-400);
+  transition: color .15s ease;
+}
+
+@media (hover: hover) {
+  .legal-links a:hover { color: var(--pink-600); }
+}
+
+/* Палец: ссылки подвала тоже от 44 px. */
+@media (pointer: coarse) {
+  .legal-links a { min-height: 44px; }
+}

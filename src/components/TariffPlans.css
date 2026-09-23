@@ -165,6 +165,25 @@
   .plan--half .plan__cta:hover { background: var(--grad-warm); box-shadow: 0 12px 28px rgba(242, 96, 12, .40); }
 }
 
+/* ——— Строка об оферте под карточками ——— */
+.tariffs__oferta {
+  margin-top: clamp(12px, 1.4vw, 16px);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--gray-400);
+  text-align: center;
+}
+
+.tariffs__oferta a {
+  color: var(--gray-500);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .tariffs__oferta a:hover { color: var(--pink-600); }
+}
+
 /* ——— Сообщение под тарифами ———
    Подтверждение почты, «оплата не настроена», ошибки загрузки. */
 .tariffs__msg {

@@ -1,0 +1,81 @@
+/* ═══════ Документы: /oferta, /privacy, /consent ═══════
+   Оболочка и карточки — Page.css. Документ — одним листом: разделы с
+   заголовками, пункты с номерами «4.2.» в своей колонке, чтобы текст
+   пунктов шёл ровным краем. */
+
+.legal__section + .legal__section { margin-top: clamp(22px, 3vh, 30px); }
+
+.legal__title {
+  font-size: clamp(17px, 1.9vh, 20px);
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.legal__items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legal__item {
+  display: grid;
+  grid-template-columns: 3em minmax(0, 1fr);
+  gap: 8px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-700);
+}
+
+.legal__num {
+  color: var(--gray-500);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.legal a {
+  color: var(--pink-600);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+/* ——— Реквизиты и ссылки на другие документы ——— */
+.legal__req {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-700);
+}
+
+.legal__docs {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-100);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--gray-400);
+}
+
+.legal__req a,
+.legal__docs a {
+  color: var(--pink-600);
+  font-weight: 600;
+}
+
+@media (hover: hover) {
+  .legal a:hover,
+  .legal__req a:hover,
+  .legal__docs a:hover { color: var(--pink-700); }
+}
+
+@media (max-width: 639.98px) {
+  .legal__item { grid-template-columns: 2.6em minmax(0, 1fr); gap: 6px; font-size: 14.5px; }
+  .legal__req { font-size: 14.5px; }
+}

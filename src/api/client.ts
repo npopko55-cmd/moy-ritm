@@ -43,6 +43,11 @@ export type RegisterBody = {
   timezone?: string
   /** Токен ссылки воронки (/go/<токен>), если человек пришёл по ней. */
   funnel_token?: string
+  /**
+   * Согласие на обработку персональных данных (/consent) — галочка в форме
+   * регистрации. Без неё запрос не уходит, поэтому здесь всегда true.
+   */
+  personal_data_consent: true
 }
 
 /** Явный null у name стирает имя; у timezone null игнорируется. */

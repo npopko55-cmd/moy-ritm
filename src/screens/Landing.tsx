@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider'
 import { flowLabel, useFlowStart } from '../auth/guards'
 import { useFlow } from '../flow/FlowSession'
+import LegalLinks from '../components/LegalLinks'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
@@ -227,6 +228,9 @@ export default function Landing() {
           </div>
         </div>
       </main>
+
+      {/* Подвал: оферта и политика — тихой строкой под героем. */}
+      <LegalLinks className="landing__legal" />
     </div>
   )
 }

@@ -53,6 +53,8 @@ VITE_API_URL=https://ritmritm.ru/api/v1 npm run build
 | `/confirm-email?token=`  | Подтверждение почты по ссылке из письма                   |
 | `/confirm-new-email?token=` | Подтверждение смены почты                              |
 | `/tariffs`               | Тарифы и оплата                                           |
+| `/help`                  | Помощь: ответы на частые вопросы и Telegram                |
+| `/oferta`, `/privacy`, `/consent` | Оферта, политика конфиденциальности, согласие на обработку данных (`src/data/legal.ts`) |
 | `/payment/success`       | «Проверяем оплату» — сюда возвращает GetCourse             |
 | `/start/:streamId`       | Отсчёт 3-2-1, затем сам уводит в плеер                    |
 | `/player/:streamId`      | Плеер: персонаж, таймеры, переключение потоков            |

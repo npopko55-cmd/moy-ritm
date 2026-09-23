@@ -106,6 +106,13 @@
   .verify-note__btn:hover:not(:disabled) { background: #ffdcbe; }
 }
 
+/* ——— Подвал: оферта и политика ——— */
+.landing__legal {
+  padding:
+    0 calc(16px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom))
+    calc(16px + env(safe-area-inset-left));
+}
+
 /* ——— Герой ——— */
 .landing__hero {
   flex: 1;
