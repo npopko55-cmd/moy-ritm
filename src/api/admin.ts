@@ -69,6 +69,63 @@ export type Period = { from?: string; to?: string }
 
 export type UsersQuery = { funnel: Funnel; page: number; per_page: number; sort: UsersSort }
 
+/* ——— Посты в Telegram-каналы (docs/POSTS.md бэкенда) ——— */
+
+/** Канал постов: f1 — «Мой ритм! 1» (3 дня), f2 — «Мой ритм! 2» (20 тренировок). */
+export type PostChannelKey = 'f1' | 'f2'
+
+export type PostStatus = 'draft' | 'scheduled' | 'sending' | 'published' | 'failed' | 'cancelled'
+
+export type PostMediaType = 'none' | 'photo' | 'video' | 'animation'
+
+export type ChannelPost = {
+  id: number
+  channel: PostChannelKey
+  channel_title: string
+  /** ISO с поясом; null — черновик без времени. */
+  publish_at: string | null
+  /** Telegram HTML. */
+  text: string
+  /** Видимая длина (без тегов, как считает Telegram) и лимит: 4096 или 1024 с медиа. */
+  text_length: number
+  text_limit: number
+  media_type: PostMediaType
+  has_media: boolean
+  button_text: string | null
+  button_url: string | null
+  status: PostStatus
+  telegram_message_id: number | null
+  error: string | null
+  source_ref: string | null
+  created_at: string
+  updated_at: string
+  published_at: string | null
+}
+
+export type PostChannelInfo = {
+  key: PostChannelKey
+  title: string
+  note: string
+  /** false — id канала не задан в .env сервера, публиковать туда нельзя. */
+  configured: boolean
+  chat_id: number | null
+}
+
+export type PostChannels = {
+  channels: PostChannelInfo[]
+  preview_configured: boolean
+  bot_configured: boolean
+}
+
+/** Что пишет человек в форме поста. */
+export type PostInput = {
+  channel: PostChannelKey
+  publish_at: string | null
+  text: string
+  button_text: string | null
+  button_url: string | null
+}
+
 export interface AdminApi {
   readonly isDemo: boolean
   /** Токен администратора. 401 — неверная почта, пароль или это не админ. */
@@ -76,9 +133,27 @@ export interface AdminApi {
   summary(token: string, period: Period): Promise<FunnelSummary[]>
   users(token: string, query: UsersQuery): Promise<FunnelUsersPage>
   usersCsv(token: string, funnel: Funnel): Promise<Blob>
+
+  postChannels(token: string): Promise<PostChannels>
+  posts(token: string, channel: PostChannelKey): Promise<ChannelPost[]>
+  createPost(token: string, input: PostInput): Promise<ChannelPost>
+  updatePost(token: string, id: number, input: PostInput): Promise<ChannelPost>
+  deletePost(token: string, id: number): Promise<void>
+  uploadPostMedia(token: string, id: number, file: File): Promise<ChannelPost>
+  deletePostMedia(token: string, id: number): Promise<ChannelPost>
+  schedulePost(token: string, id: number): Promise<ChannelPost>
+  cancelPost(token: string, id: number): Promise<ChannelPost>
+  /** Итог — в самом посте: published или failed с причиной. */
+  publishPostNow(token: string, id: number): Promise<ChannelPost>
+  previewPost(token: string, id: number): Promise<void>
 }
 
 const TIMEOUT_MS = 20_000
+/**
+ * Загрузка ролика до 50 МБ, публикация и предпросмотр: бэкенд отвечает,
+ * только когда файл дошёл до Telegram, — это минуты, а не секунды.
+ */
+const LONG_TIMEOUT_MS = 6 * 60_000
 const TOKEN_KEY = 'moy-ritm.admin_token'
 
 /* ——— Токен администратора ——— */
@@ -125,23 +200,31 @@ function query(params: Record<string, string | number | undefined>): string {
 function createHttpAdminApi(rawBase: string): AdminApi {
   const base = rawBase.trim().replace(/\/+$/, '')
 
-  async function send(method: 'GET' | 'POST', path: string, token?: string, body?: unknown): Promise<Response> {
+  async function send(
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    path: string,
+    token?: string,
+    body?: unknown,
+    timeoutMs = TIMEOUT_MS,
+  ): Promise<Response> {
     const headers: Record<string, string> = {}
-    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    // FormData (файл) — тип с границей частей ставит сам браузер.
+    const isForm = body instanceof FormData
+    if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
     if (token) headers.Authorization = `Bearer ${token}`
     const ctrl = new AbortController()
     let timedOut = false
     const timer = setTimeout(() => {
       timedOut = true
       ctrl.abort()
-    }, TIMEOUT_MS)
+    }, timeoutMs)
     try {
       const res = await fetch(base + path, {
         method,
         headers,
         // Без cookie в обе стороны: см. комментарий в начале файла.
         credentials: 'omit',
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
         signal: ctrl.signal,
       })
       if (!res.ok) {
@@ -194,6 +277,40 @@ function createHttpAdminApi(rawBase: string): AdminApi {
       const res = await send('GET', `/admin/funnels/users.csv${query({ funnel })}`, token)
       return res.blob()
     },
+
+    postChannels: (token) => json<PostChannels>(send('GET', '/admin/posts/channels', token)),
+
+    async posts(token, channel) {
+      const data = await json<{ items: ChannelPost[] }>(send('GET', `/admin/posts${query({ channel })}`, token))
+      return data.items
+    },
+
+    createPost: (token, input) => json<ChannelPost>(send('POST', '/admin/posts', token, input)),
+
+    updatePost: (token, id, input) => json<ChannelPost>(send('PATCH', `/admin/posts/${id}`, token, input)),
+
+    async deletePost(token, id) {
+      await send('DELETE', `/admin/posts/${id}`, token)
+    },
+
+    uploadPostMedia(token, id, file) {
+      const form = new FormData()
+      form.append('file', file)
+      return json<ChannelPost>(send('POST', `/admin/posts/${id}/media`, token, form, LONG_TIMEOUT_MS))
+    },
+
+    deletePostMedia: (token, id) => json<ChannelPost>(send('DELETE', `/admin/posts/${id}/media`, token)),
+
+    schedulePost: (token, id) => json<ChannelPost>(send('POST', `/admin/posts/${id}/schedule`, token)),
+
+    cancelPost: (token, id) => json<ChannelPost>(send('POST', `/admin/posts/${id}/cancel`, token)),
+
+    publishPostNow: (token, id) =>
+      json<ChannelPost>(send('POST', `/admin/posts/${id}/publish-now`, token, undefined, LONG_TIMEOUT_MS)),
+
+    async previewPost(token, id) {
+      await send('POST', `/admin/posts/${id}/preview`, token, undefined, LONG_TIMEOUT_MS)
+    },
   }
 }
 
@@ -209,6 +326,17 @@ function lazyDemoAdminApi(): AdminApi {
     summary: (token, period) => impl().then((a) => a.summary(token, period)),
     users: (token, q) => impl().then((a) => a.users(token, q)),
     usersCsv: (token, funnel) => impl().then((a) => a.usersCsv(token, funnel)),
+    postChannels: (token) => impl().then((a) => a.postChannels(token)),
+    posts: (token, channel) => impl().then((a) => a.posts(token, channel)),
+    createPost: (token, input) => impl().then((a) => a.createPost(token, input)),
+    updatePost: (token, id, input) => impl().then((a) => a.updatePost(token, id, input)),
+    deletePost: (token, id) => impl().then((a) => a.deletePost(token, id)),
+    uploadPostMedia: (token, id, file) => impl().then((a) => a.uploadPostMedia(token, id, file)),
+    deletePostMedia: (token, id) => impl().then((a) => a.deletePostMedia(token, id)),
+    schedulePost: (token, id) => impl().then((a) => a.schedulePost(token, id)),
+    cancelPost: (token, id) => impl().then((a) => a.cancelPost(token, id)),
+    publishPostNow: (token, id) => impl().then((a) => a.publishPostNow(token, id)),
+    previewPost: (token, id) => impl().then((a) => a.previewPost(token, id)),
   }
 }
 

@@ -16,8 +16,18 @@ import { loopSrc } from '../data/loops'
 import { DEFAULT_FREE_TIER, EXTRA_MOVES_LABEL, STREAMS } from '../data/streams'
 import { PLACEHOLDER_EMAIL, TELEGRAM_URL } from '../data/support'
 import { TARIFFS } from '../data/tariffs'
+import { CAPTION_LIMIT, TEXT_LIMIT, visibleLength } from '../lib/posts'
 import { uuid } from '../lib/uuid'
-import type { AdminApi, FunnelSummary, FunnelUser, Period, UsersQuery } from './admin'
+import type {
+  AdminApi,
+  ChannelPost,
+  FunnelSummary,
+  FunnelUser,
+  Period,
+  PostChannelKey,
+  PostInput,
+  UsersQuery,
+} from './admin'
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
 import {
   ApiError,
@@ -1136,12 +1146,115 @@ function demoFunnelPeople(): FunnelUser[] {
   return people
 }
 
+/* ——— Посты в каналы: несколько выдуманных, живут в памяти вкладки ——— */
+
+const DEMO_CHANNEL_TITLES: Record<PostChannelKey, string> = { f1: 'Мой ритм! 1', f2: 'Мой ритм! 2' }
+
+function demoPost(id: number, fields: Partial<ChannelPost> & Pick<ChannelPost, 'channel' | 'text'>): ChannelPost {
+  const now = new Date().toISOString()
+  const post: ChannelPost = {
+    id,
+    channel_title: DEMO_CHANNEL_TITLES[fields.channel],
+    publish_at: null,
+    text_length: 0,
+    text_limit: TEXT_LIMIT,
+    media_type: 'none',
+    has_media: false,
+    button_text: null,
+    button_url: null,
+    status: 'draft',
+    telegram_message_id: null,
+    error: null,
+    source_ref: null,
+    created_at: now,
+    updated_at: now,
+    published_at: null,
+    ...fields,
+  }
+  return withLengths(post)
+}
+
+function withLengths(post: ChannelPost): ChannelPost {
+  return {
+    ...post,
+    channel_title: DEMO_CHANNEL_TITLES[post.channel],
+    has_media: post.media_type !== 'none',
+    text_length: visibleLength(post.text),
+    text_limit: post.media_type === 'none' ? TEXT_LIMIT : CAPTION_LIMIT,
+  }
+}
+
+function demoPosts(): ChannelPost[] {
+  const at = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString()
+  return [
+    demoPost(1, {
+      channel: 'f1',
+      text: '<b>День 1.</b> Три минуты под музыку — и вы уже в ритме 💃',
+      publish_at: at(-26),
+      status: 'published',
+      published_at: at(-26),
+      telegram_message_id: 12,
+      button_text: 'Начать',
+      button_url: 'https://t.me/ritmritm_bot?start=hx4q7m2p',
+    }),
+    demoPost(2, {
+      channel: 'f1',
+      text: '<b>День 2.</b> Сегодня — шаги с поворотом. Включайте любимый трек!',
+      publish_at: at(20),
+      status: 'scheduled',
+      media_type: 'photo',
+    }),
+    demoPost(3, { channel: 'f1', text: 'Черновик: итоги недели', publish_at: null }),
+    demoPost(4, {
+      channel: 'f2',
+      text: '<i>Двадцать тренировок</i> — это меньше, чем кажется.',
+      publish_at: at(-3),
+      status: 'failed',
+      error: 'Канал «Мой ритм! 2» не подключён: задайте POST_CHANNEL_F2_ID в .env сервера (docs/POSTS.md)',
+    }),
+  ]
+}
+
 /** YYYY-MM-DD по времени браузера → границы суток в мс. */
 const dayStart = (date: string) => Date.parse(`${date}T00:00:00`)
 
 export function createDemoAdminApi(): AdminApi {
   const people = demoFunnelPeople()
   const DEMO_TOKEN = 'demo-admin'
+  const posts = demoPosts()
+  let nextPostId = posts.length + 1
+
+  const findPost = (id: number) => {
+    const post = posts.find((p) => p.id === id)
+    if (!post) throw new ApiError(404, 'NOT_FOUND', 'Пост не найден')
+    return post
+  }
+  const editable = (id: number) => {
+    const post = findPost(id)
+    if (post.status === 'published' || post.status === 'sending') {
+      throw new ApiError(409, 'POST_CONFLICT', 'Пост уже опубликован или отправляется прямо сейчас — его не изменить')
+    }
+    return post
+  }
+  const save = (next: ChannelPost) => {
+    const post = withLengths(next)
+    posts[posts.findIndex((p) => p.id === post.id)] = post
+    return post
+  }
+  const checkInput = (input: PostInput, media: ChannelPost['media_type']) => {
+    const limit = media === 'none' ? TEXT_LIMIT : CAPTION_LIMIT
+    const length = visibleLength(input.text)
+    if (media === 'none' && !input.text.trim()) throw new ApiError(422, 'POST_INVALID', 'Пустой пост: нужен текст или картинка/ролик')
+    if (length > limit) throw new ApiError(422, 'POST_INVALID', `Длина текста — ${length} символов, Telegram принимает до ${limit}`)
+    if (!input.button_text !== !input.button_url) {
+      throw new ApiError(422, 'POST_INVALID', 'У кнопки нужны и надпись, и ссылка — или ни того, ни другого')
+    }
+  }
+  const channelReady = (channel: PostChannelKey) => {
+    if (channel === 'f2') {
+      throw new ApiError(409, 'POST_CONFLICT', 'Канал «Мой ритм! 2» не подключён: задайте POST_CHANNEL_F2_ID в .env сервера (docs/POSTS.md)')
+    }
+  }
 
   const check = (token: string) => {
     if (token !== DEMO_TOKEN) throw new ApiError(401, 'UNAUTHORIZED', 'Нужно войти')
@@ -1225,6 +1338,96 @@ export function createDemoAdminApi(): AdminApi {
         )
       // BOM — чтобы Excel сразу открыл кириллицу правильно.
       return new Blob(['\ufeff' + [head.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' })
+    },
+
+    async postChannels(token) {
+      check(token)
+      return {
+        channels: [
+          { key: 'f1', title: 'Мой ритм! 1', note: 'воронка 1 — 3 дня', configured: true, chat_id: -1001000000001 },
+          // Второй канал в демо «не подключён» — чтобы было видно, как это выглядит.
+          { key: 'f2', title: 'Мой ритм! 2', note: 'воронка 2 — 20 тренировок', configured: false, chat_id: null },
+        ],
+        preview_configured: true,
+        bot_configured: true,
+      }
+    },
+
+    async posts(token, channel) {
+      check(token)
+      return posts
+        .filter((p) => p.channel === channel)
+        .sort((a, b) => (a.publish_at ? Date.parse(a.publish_at) : Infinity) - (b.publish_at ? Date.parse(b.publish_at) : Infinity) || a.id - b.id)
+    },
+
+    async createPost(token, input) {
+      check(token)
+      checkInput(input, 'none')
+      const post = demoPost(nextPostId++, { ...input })
+      posts.push(post)
+      return post
+    },
+
+    async updatePost(token, id, input) {
+      check(token)
+      const post = editable(id)
+      checkInput(input, post.media_type)
+      return save({ ...post, ...input, updated_at: new Date().toISOString() })
+    },
+
+    async deletePost(token, id) {
+      check(token)
+      const post = findPost(id)
+      if (post.status !== 'draft' && post.status !== 'cancelled') {
+        throw new ApiError(409, 'POST_CONFLICT', 'Удалить можно только черновик или отменённый пост — сначала отмените')
+      }
+      posts.splice(posts.indexOf(post), 1)
+    },
+
+    async uploadPostMedia(token, id, file) {
+      check(token)
+      const post = editable(id)
+      const kind = file.type === 'video/mp4' ? 'video' : file.type === 'image/gif' ? 'animation' : 'photo'
+      if (visibleLength(post.text) > CAPTION_LIMIT) {
+        throw new ApiError(422, 'POST_INVALID', `Длина подписи к картинке или ролику — ${visibleLength(post.text)} символов, Telegram принимает до ${CAPTION_LIMIT}`)
+      }
+      return save({ ...post, media_type: kind })
+    },
+
+    async deletePostMedia(token, id) {
+      check(token)
+      return save({ ...editable(id), media_type: 'none' })
+    },
+
+    async schedulePost(token, id) {
+      check(token)
+      const post = editable(id)
+      if (!post.publish_at) throw new ApiError(422, 'POST_INVALID', 'Не задано время публикации')
+      if (Date.parse(post.publish_at) < Date.now() - 60_000) {
+        throw new ApiError(422, 'POST_INVALID', 'Время публикации уже прошло: поставьте новое или нажмите «Опубликовать сейчас»')
+      }
+      channelReady(post.channel)
+      return save({ ...post, status: 'scheduled', error: null })
+    },
+
+    async cancelPost(token, id) {
+      check(token)
+      const post = findPost(id)
+      if (post.status !== 'scheduled') throw new ApiError(409, 'POST_CONFLICT', 'Отменить можно только запланированный пост')
+      return save({ ...post, status: 'cancelled' })
+    },
+
+    async publishPostNow(token, id) {
+      check(token)
+      const post = editable(id)
+      channelReady(post.channel)
+      const now = new Date().toISOString()
+      return save({ ...post, status: 'published', published_at: now, telegram_message_id: 100 + post.id, error: null })
+    },
+
+    async previewPost(token, id) {
+      check(token)
+      findPost(id)
     },
   }
 }

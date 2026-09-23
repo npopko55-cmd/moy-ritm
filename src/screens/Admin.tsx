@@ -16,9 +16,13 @@
  *     прямая на сайт (/go/<токен>). Бот не настроен — одна прямая;
  *   • таблица людей выбранной воронки с сортировкой и страницами, и она же —
  *     CSV-файлом.
+ *
+ * Второй раздел — /admin/posts, посты в Telegram-каналы воронок
+ * (AdminPosts.tsx). Разделы переключаются чипами вверху страницы; вход общий.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   adminApi,
   adminSignedOut,
@@ -36,6 +40,7 @@ import { IS_DEMO } from '../api/client'
 import type { Funnel } from '../api/types'
 import { rub } from '../data/tariffs'
 import { AccountShell, Field, Form, FormError, errorText, isEmail } from './Account'
+import AdminPosts from './AdminPosts'
 import PageShell, { Card } from './Page'
 import './Admin.css'
 
@@ -132,6 +137,30 @@ function useNoindex(): void {
 
 /* ——— Страница ——— */
 
+type Section = 'funnels' | 'posts'
+
+const SECTIONS: { section: Section; path: string; label: string; title: string; lead: string }[] = [
+  {
+    section: 'funnels',
+    path: '/admin',
+    label: 'Аналитика воронок',
+    title: 'Аналитика воронок',
+    lead: 'Две тестовые группы запуска через Telegram: кто пришёл по ссылке, дошёл до тренировки и оплатил.',
+  },
+  {
+    section: 'posts',
+    path: '/admin/posts',
+    label: 'Посты',
+    title: 'Посты в каналы',
+    lead: 'Посты в Telegram-каналы воронок по расписанию. Время — московское.',
+  },
+]
+
+function useSection(): Section {
+  const { pathname } = useLocation()
+  return pathname.replace(/\/+$/, '') === '/admin/posts' ? 'posts' : 'funnels'
+}
+
 export default function Admin() {
   useNoindex()
   const [token, setToken] = useState<string | null>(readAdminToken)
@@ -185,7 +214,7 @@ function AdminLogin({ expired, onSignedIn }: { expired: boolean; onSignedIn(toke
 
   return (
     <AccountShell
-      title="Аналитика воронок"
+      title="Админка «Моего ритма»"
       lead={expired ? 'Сессия администратора закончилась — войдите ещё раз.' : 'Вход для администратора.'}
     >
       <Form onSubmit={() => void submit()}>
@@ -235,6 +264,33 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
     [onSignOut],
   )
 
+  const section = useSection()
+  const navigate = useNavigate()
+  const meta = SECTIONS.find((s) => s.section === section) ?? SECTIONS[0]
+
+  return (
+    <PageShell title={meta.title} lead={meta.lead} back={{ label: 'Выйти', go: () => onSignOut() }} wide>
+      <nav className="chips admin__sections" aria-label="Разделы админки">
+        {SECTIONS.map((s) => (
+          <button
+            key={s.section}
+            type="button"
+            className={`chip ${section === s.section ? 'is-on' : ''}`}
+            aria-current={section === s.section ? 'page' : undefined}
+            onClick={() => navigate(s.path)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </nav>
+      {section === 'posts' ? <AdminPosts token={token} fail={fail} /> : <Funnels token={token} fail={fail} />}
+    </PageShell>
+  )
+}
+
+/* ——— Аналитика воронок ——— */
+
+function Funnels({ token, fail }: { token: string; fail: Fail }) {
   const [kind, setKind] = useState<PeriodKind>('all')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -262,12 +318,7 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
   }, [token, kind, from, to, period.from, period.to, fail])
 
   return (
-    <PageShell
-      title="Аналитика воронок"
-      lead="Две тестовые группы запуска через Telegram: кто пришёл по ссылке, дошёл до тренировки и оплатил."
-      back={{ label: 'Выйти', go: () => onSignOut() }}
-      wide
-    >
+    <>
       <Card title="Период">
         <div className="chips">
           {PERIODS.map((p) => (
@@ -313,7 +364,7 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
       </div>
 
       <People token={token} fail={fail} />
-    </PageShell>
+    </>
   )
 }
 

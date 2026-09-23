@@ -184,6 +184,7 @@ export default function App() {
           {/* Аналитика воронок для владельца. Ссылок на неё нет; вход —
               свой, администраторский (src/api/admin.ts). */}
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/posts" element={<Admin />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

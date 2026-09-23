@@ -209,8 +209,157 @@
   color: var(--gray-500);
 }
 
+/* ——— Разделы админки: воронки и посты ——— */
+.admin__sections { margin-top: 18px; }
+.admin__sections .chip { flex: 0 1 auto; }
+
+/* ═══════ Посты в каналы (/admin/posts) ═══════
+   Список — строки-кнопки: время, статус, начало текста. Редактор — та же
+   карточка на месте списка, подтверждения — строкой под кнопками. */
+
+.posts__chip { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+.posts__chip-note {
+  font-size: 12.5px;
+  font-weight: 500;
+  opacity: .75;
+}
+
+.posts__list { margin-top: 14px; list-style: none; }
+
+.posts__item + .posts__item { border-top: 1px solid var(--gray-100); }
+
+.posts__row {
+  display: grid;
+  grid-template-columns: 190px auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 14px;
+  width: 100%;
+  padding: 12px 6px;
+  text-align: left;
+  border-radius: var(--r-md);
+}
+
+@media (hover: hover) {
+  .posts__row:hover { background: var(--bg-panel); }
+}
+
+.posts__when {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.posts__preview {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink-800);
+  overflow-wrap: anywhere;
+}
+
+.posts__meta,
+.posts__error {
+  grid-column: 3;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.posts__meta { color: var(--gray-500); }
+.posts__meta:empty { display: none; }
+.posts__error { color: var(--red-500); }
+
+/* Статус — плашкой: по цвету видно, что ушло, что ждёт и что сломалось. */
+.posts__status {
+  justify-self: start;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--gray-100);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+.posts__status.is-scheduled { background: var(--pink-50); color: var(--pink-600); }
+.posts__status.is-sending { background: #fff5e0; color: #b7791f; }
+.posts__status.is-published { background: #e4f7ed; color: var(--green-600); }
+.posts__status.is-failed { background: #fff1ee; color: var(--red-500); }
+
+/* ——— Редактор ——— */
+.posts__form { margin-top: 16px; }
+
+.posts__text {
+  min-height: 220px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.posts__counter { font-variant-numeric: tabular-nums; }
+
+.posts__form code {
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.posts__media {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.posts__media-name {
+  flex: 1 1 200px;
+  font-size: 14.5px;
+  color: var(--ink-800);
+}
+
+.posts__button-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 0 16px;
+  margin-top: 16px;
+}
+
+/* В сетке поля стоят рядом — отступ «поле за полем» здесь лишний. */
+.posts__button-fields .field + .field { margin-top: 0; }
+
+.posts__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Подтверждение — блоком в карточке, не окном поверх страницы. */
+.posts__confirm {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--pink-100);
+  border-radius: var(--r-md);
+  background: var(--pink-50);
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--ink-900);
+}
+
+.posts__confirm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 /* Телефон: воронки одна под другой. */
 @media (max-width: 767.98px) {
   .admin__funnels { grid-template-columns: minmax(0, 1fr); }
   .admin__pager span { text-align: center; }
+  .posts__row { grid-template-columns: auto minmax(0, 1fr); }
+  .posts__preview,
+  .posts__meta,
+  .posts__error { grid-column: 1 / -1; }
+  .posts__button-fields { grid-template-columns: minmax(0, 1fr); }
+  .posts__button-fields .field + .field { margin-top: 16px; }
 }
