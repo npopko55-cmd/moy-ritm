@@ -165,7 +165,7 @@ a.page__btn { display: inline-flex; align-items: center; justify-content: center
   .page__link:hover { color: var(--pink-700); }
 }
 
-/* ——— Чипы: интервал в настройках и тема обращения в помощи ——— */
+/* ——— Чипы: интервал в настройках и период в админке ——— */
 .chips { display: flex; gap: 12px; flex-wrap: wrap; }
 
 .chip {

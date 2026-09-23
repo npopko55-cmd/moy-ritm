@@ -16,6 +16,7 @@ import { loopSrc } from '../data/loops'
 import { DEFAULT_FREE_TIER, EXTRA_MOVES_LABEL, STREAMS } from '../data/streams'
 import { PLACEHOLDER_EMAIL, TELEGRAM_URL } from '../data/support'
 import { TARIFFS } from '../data/tariffs'
+import { uuid } from '../lib/uuid'
 import type { AdminApi, FunnelSummary, FunnelUser, Period, UsersQuery } from './admin'
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
 import {
@@ -39,8 +40,6 @@ import {
   type StatsProgress,
   type StatsSummary,
   type StreamStat,
-  type SupportCreated,
-  type SupportTopic,
   type Tariff,
   type TokenResponse,
   type Totals,
@@ -81,11 +80,6 @@ function drop(key: string): void {
     /* см. выше */
   }
 }
-
-const uuid = () =>
-  typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`
 
 /* ─────────────────────────  Что храним  ───────────────────────── */
 
@@ -991,13 +985,6 @@ export function createDemoApi(): Api {
       return aggregate(requireUser().email).progress(month)
     },
 
-    /* ——— Поддержка ——— */
-
-    async supportRequest(_topic: SupportTopic, _message: string) {
-      requireUser()
-      return { id: uuid(), created_at: new Date().toISOString() } satisfies SupportCreated
-    },
-
     /* ——— Воронки ——— */
 
     async funnelVisit(token: string) {
@@ -1066,8 +1053,9 @@ const DEMO_MAILS = ['mail.ru', 'yandex.ru', 'gmail.com', 'bk.ru', 'inbox.ru']
 type DemoFunnel = { funnel: Funnel; token: string; people: number; visitors: number; botStarts: number }
 
 const DEMO_FUNNEL_TABLE: DemoFunnel[] = [
-  { funnel: 'trial3d', token: 'hx4q7m2p', people: 38, visitors: 214, botStarts: 131 },
-  { funnel: 'trial20', token: 'tz9w3k6r', people: 33, visitors: 197, botStarts: 122 },
+  // Путь из канала — через бота: стартов бота больше, чем визитов на сайт.
+  { funnel: 'trial3d', token: 'hx4q7m2p', people: 38, visitors: 131, botStarts: 214 },
+  { funnel: 'trial20', token: 'tz9w3k6r', people: 33, visitors: 122, botStarts: 197 },
 ]
 
 function demoFunnelPeople(): FunnelUser[] {
@@ -1152,6 +1140,7 @@ export function createDemoAdminApi(): AdminApi {
         return {
           funnel: f.funnel,
           token: f.token,
+          bot_link: `https://t.me/ritmritm_bot?start=${f.token}`,
           visitors: Math.round(f.visitors * share),
           bot_starts: Math.round(f.botStarts * share),
           registered: mine.length,

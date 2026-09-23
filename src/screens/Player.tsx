@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import { hasAccess, type DayStats, type FreeTier, type Settings, type StatsSummary } from '../api/types'
+import {
+  hasAccess,
+  type DayStats,
+  type FreeTier,
+  type PlayerBootstrap,
+  type Settings,
+  type StatsSummary,
+} from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { days, durationTight, toMinutes, weekdayShort } from '../lib/date'
 import Logo from '../components/Logo'
@@ -23,12 +30,14 @@ import { DEFAULT_FREE_TIER, getStream } from '../data/streams'
 import { loopPoster, loopSrc, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
 import { FLOW_RESUME_MINUTES, useFlow, type FlowSession } from '../flow/FlowSession'
-import { createChunkQueue, uuid, type ChunkQueue } from '../lib/chunks'
+import { createChunkQueue, type ChunkQueue } from '../lib/chunks'
 import { createDeck, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
+import { onAppReturn } from '../lib/appReturn'
 import { loadMoveInterval } from '../lib/settings'
-import { loadBootstrap, markTrialStale } from '../lib/trial'
+import { lastBootstrap, loadBootstrap, markTrialStale } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
+import { uuid } from '../lib/uuid'
 import { unlockMedia } from '../media/unlock'
 import { isNotAllowed, pauseVideo, playVideo, setVideoSource, videoPool } from '../media/videoPool'
 import { useMusic } from '../music/MusicProvider'
@@ -135,9 +144,19 @@ export default function Player() {
    * Без оплаты открыты только первые несколько движений. Правило целиком
    * серверное — фронт его не придумывает, а получает в bootstrap.free_tier.
    * При grace всё открыто: доступ ещё не кончился.
+   *
+   * Первое значение — из ответа, который уже дождался охранник тренировки
+   * (src/lib/trial.ts), а не местное «пять движений». Иначе у trial3d и
+   * trial20 (20 и все движения) колода собиралась из пяти, а через секунду-три,
+   * с ответом сервера, пересобиралась с нуля — и движение на экране менялось
+   * само, в том числе сразу после «Вернуться в поток».
    */
-  const [freeTier, setFreeTier] = useState<FreeTier>(DEFAULT_FREE_TIER)
+  const [freeTier, setFreeTier] = useState<FreeTier>(
+    () => lastBootstrap(me?.user.id)?.free_tier ?? DEFAULT_FREE_TIER,
+  )
   const limited = !hasAccess(access)
+  const accessRef = useRef(access)
+  accessRef.current = access
 
   // Счётчик смен движения. Не заворачивается по кругу нарочно: по его
   // чётности выбирается, какой из двух <video> сейчас на виду.
@@ -231,13 +250,15 @@ export default function Player() {
     // сохранённому порядку, чтобы человек увидел ровно то, на чём ушёл.
     // Незнакомый идентификатор обрывает восстановление — дальше колода
     // сдаёт сама (набор движений мог измениться вместе с доступом).
+    // Колода продолжает начатый круг: уже показанные в нём движения до
+    // конца круга не повторятся.
     const list: Loop[] = []
     for (const id of resume?.deck ?? []) {
       const found = moves.find((m) => m.id === id)
       if (!found) break
       list.push(found)
     }
-    orderRef.current = { deck: createDeck(moves), list }
+    orderRef.current = { deck: createDeck(moves, { dealt: list }), list }
   }
 
   const moveAt = (n: number): Loop => {
@@ -407,19 +428,29 @@ export default function Player() {
     }
   }, [closeChunk, renew])
 
+  /** Ответ bootstrap — в плеер: настройки, цифры и бесплатный уровень. */
+  const applyBoot = useCallback((data: PlayerBootstrap) => {
+    setBoot(data.settings)
+    setSummary(data.stats)
+    if (data.free_tier) setFreeTier(data.free_tier)
+  }, [])
+
   // Цифры при открытии плеера — из одного запроса. Не получилось (доступ
   // кончился между переходами) — берём хотя бы сводку: она открыта без оплаты.
   // Ответ общий с охранником тренировки (src/lib/trial.ts): если тот только
   // что спрашивал сервер о пробном периоде, второго запроса нет.
+  //
+  // Сервер и профиль разошлись в том, есть ли доступ (оплата пришла, а
+  // профиль в памяти старый, или наоборот), — перечитываем профиль: доступ
+  // плеера берётся из него.
   useEffect(() => {
     let alive = true
     void (async () => {
       try {
         const data = await (userId ? loadBootstrap(userId) : api.playerBootstrap())
         if (!alive) return
-        setBoot(data.settings)
-        setSummary(data.stats)
-        if (data.free_tier) setFreeTier(data.free_tier)
+        applyBoot(data)
+        if (hasAccess(data.access) !== hasAccess(accessRef.current)) void reload()
       } catch {
         try {
           const stats = await api.statsSummary()
@@ -757,6 +788,32 @@ export default function Player() {
    */
   const playingRef = useRef(playing)
   playingRef.current = playing
+
+  /**
+   * Вернулись в приложение, пока тренировка на паузе (src/lib/appReturn.ts):
+   * человек мог оплатить доступ в браузере. Профиль, а с ним и доступ,
+   * перечитывает SessionProvider; здесь — bootstrap: бесплатный уровень,
+   * настройки и цифры. Доступ стал полным — колода пересоберётся, на паузе
+   * это не мешает. Идущую тренировку не трогаем: движение не должно
+   * смениться посреди захода.
+   */
+  useEffect(() => {
+    if (!userId) return
+    let alive = true
+    const off = onAppReturn(() => {
+      if (playingRef.current) return
+      loadBootstrap(userId, 0).then(
+        (data) => {
+          if (alive) applyBoot(data)
+        },
+        () => undefined,
+      )
+    })
+    return () => {
+      alive = false
+      off()
+    }
+  }, [userId, applyBoot])
 
   /**
    * Снять паузу: «Играть», пробел, «Продолжить сейчас» на экране паузы и

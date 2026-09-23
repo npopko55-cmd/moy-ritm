@@ -6,7 +6,7 @@
  * в адресной строке ничего не даёт.
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, type NavigateOptions } from 'react-router-dom'
 import { DEFAULT_STREAM, getStream } from '../data/streams'
 import { useFlow, type FlowSession } from '../flow/FlowSession'
@@ -106,6 +106,10 @@ const TRIAL_WAIT_MS = 5000
  * Пока ответа bootstrap нет — пустой фон, как у подгрузки экрана. Сервер
  * молчит дольше TRIAL_WAIT_MS или ответил ошибкой — пускаем: закрывает
  * контент всё равно бэкенд, а тренировку из-за сети не отнимаем.
+ *
+ * Ответ устарел, когда тренировка уже на экране (человек вернулся в
+ * приложение, src/lib/appReturn.ts), — перечитываем его в фоне, а отсчёт и
+ * плеер не убираем: иначе плеер размонтировался бы посреди захода.
  */
 export function RequireTrial({ start = false, children }: { start?: boolean; children: ReactNode }) {
   const { access } = useSession()
@@ -113,6 +117,7 @@ export function RequireTrial({ start = false, children }: { start?: boolean; chi
   const { streamId } = useParams()
   const { trial, known, userId } = useTrialState()
   const [gaveUp, setGaveUp] = useState(false)
+  const passed = useRef(false)
 
   useEffect(() => {
     if (known || !userId) return
@@ -128,10 +133,11 @@ export function RequireTrial({ start = false, children }: { start?: boolean; chi
     }
   }, [known, userId])
 
-  if (!known && !gaveUp) return null
+  if (!known && !gaveUp && !passed.current) return null
   if (trialBlocks(trial, access)) return <Navigate to="/trial-ended" replace />
   const resuming = flow?.streamId === getStream(streamId).id
   if (start && !resuming && offerDue(trial, access)) return <Navigate to="/offer" replace />
+  passed.current = true
   return <>{children}</>
 }
 

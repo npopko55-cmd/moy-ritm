@@ -12,8 +12,10 @@
  *
  * Идёт пробный период воронки — вместо цены строка о нём: «Пробный доступ:
  * ещё 2 дня» (trial3d) или «Бесплатных тренировок: осталось 12 из 20»
- * (trial20). В Telegram Mini App платить нельзя: кнопка «Оформить на
- * сайте» открывает тарифы сайта во внешнем браузере.
+ * (trial20). У trial20 все движения и так открыты, поэтому и заголовок
+ * другой — «Шагайте без ограничений»: ограничено только число тренировок.
+ * В Telegram Mini App платить нельзя: кнопка «Оформить на сайте»
+ * открывает тарифы сайта во внешнем браузере.
  */
 
 import { Link } from 'react-router-dom'
@@ -23,7 +25,7 @@ import { TARIFFS, rub } from '../data/tariffs'
 import { plural } from '../lib/date'
 import { useFromPrice } from '../lib/tariffs'
 import { openTariffsOnSite, useInTelegram } from '../lib/telegram'
-import { trialHint, useTrial } from '../lib/trial'
+import { trialHint, trialOpensAll, useTrial } from '../lib/trial'
 import './Unlock.css'
 
 /**
@@ -41,14 +43,17 @@ type Props = {
 export default function Unlock({ compact = false }: Props) {
   const fromPrice = useFromPrice(FALLBACK_PRICE)
   const { access } = useSession()
-  const hint = trialHint(useTrial(), access)
+  const trial = useTrial()
+  const hint = trialHint(trial, access)
   const inTelegram = useInTelegram()
   return (
     <div className={`unlock ${compact ? 'unlock--compact' : ''}`}>
       <span className="unlock__text">
         {/* Склонение по числу: после скрытых роликов их 41 — «все 41 движение». */}
         <span className="unlock__title">
-          Откройте все {plural(ALL_MOVES.length, 'движение', 'движения', 'движений')}
+          {trialOpensAll(trial, access)
+            ? 'Шагайте без ограничений'
+            : `Откройте все ${plural(ALL_MOVES.length, 'движение', 'движения', 'движений')}`}
         </span>
         <span className="unlock__price">{hint ?? `от ${rub(fromPrice)} в месяц`}</span>
       </span>

@@ -81,6 +81,9 @@
 
 .dash__nav-item svg { flex: none; }
 
+/* «Тренировка» — кнопка, а не ссылка: во всю ширину пункта, как соседи. */
+button.dash__nav-item { width: 100%; }
+
 /* ——— Промо и строка доступа ——— */
 .dash__promo {
   margin-top: 10px;
@@ -95,6 +98,16 @@
   font-weight: 800;
   line-height: 1.3;
   color: var(--pink-700);
+}
+
+/* trial20: сколько бесплатных тренировок осталось — строкой под заголовком. */
+.dash__promo-note {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gray-600);
 }
 
 .dash__promo-btn {

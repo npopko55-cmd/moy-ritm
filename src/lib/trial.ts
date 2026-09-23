@@ -9,15 +9,20 @@
  *     запроса сразу после охранника не будет;
  *   • блок разблокировки и экран паузы печатают, сколько пробного осталось.
  *
+ * Вернулся человек в приложение (src/lib/appReturn.ts) — ответ помечается
+ * устаревшим: пока его не было, он мог оплатить доступ или потренироваться в
+ * другом окне, и следующий вход в тренировку спросит сервер заново.
+ *
  * Решает по-прежнему бэкенд: free_tier в том же ответе уже урезан по
  * пробному периоду, а контентные ручки закрыты сами. Здесь — только какой
  * экран показать.
  */
 
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { api } from '../api/client'
 import { hasAccess, type Access, type PlayerBootstrap, type Trial } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
+import { onAppReturn } from './appReturn'
 import { plural } from './date'
 
 const DAY_MS = 86_400_000
@@ -69,6 +74,16 @@ export function loadBootstrap(userId: string, reuseMs = REUSE_MS): Promise<Playe
   return job
 }
 
+/**
+ * Последний ответ bootstrap этого человека — сразу, без запроса, даже
+ * устаревший. Плеер берёт из него бесплатный уровень в первом же рендере:
+ * охранник тренировки этот ответ уже дождался, и колода не пересобирается,
+ * когда плеер спросит сервер сам.
+ */
+export function lastBootstrap(userId: string | undefined): PlayerBootstrap | null {
+  return snap && userId && snap.userId === userId ? snap.boot : null
+}
+
 /** Заранее, пока человек смотрит на кнопку «Влиться в поток»: тогда отсчёт не ждёт ответа. */
 export function warmTrial(userId: string | undefined): void {
   if (userId) loadBootstrap(userId, 60_000).catch(() => undefined)
@@ -76,11 +91,19 @@ export function warmTrial(userId: string | undefined): void {
 
 /**
  * Плеер закрылся — тренировки trial20 могли прибавиться. Следующий вход в
- * тренировку спросит сервер заново.
+ * тренировку спросит сервер заново. То же — при возвращении в приложение.
+ *
+ * Подписчики узнают об этом сразу: охранник тренировки и страницы пробного
+ * периода перечитают ответ в фоне, не убирая того, что уже на экране.
  */
 export function markTrialStale(): void {
-  if (snap) snap = { ...snap, stale: true }
+  if (!snap || snap.stale) return
+  snap = { ...snap, stale: true }
+  emit()
 }
+
+// Вернулись в приложение — ответ мог устареть: оплата, тренировки в другом окне.
+onAppReturn(markTrialStale)
 
 /**
  * Хватает ли того, что знаем, чтобы решить про пробный период. У trial3d
@@ -142,6 +165,13 @@ export const offerDue = (trial: Trial | null | undefined, access: Access | null)
   trial.state === 'active' &&
   trial.offer_due === true
 
+/**
+ * trial20 идёт: открыто всё, ограничено только число тренировок. Блоку
+ * разблокировки обещать «все движения» тут нечего — они уже открыты.
+ */
+export const trialOpensAll = (trial: Trial | null | undefined, access: Access | null): boolean =>
+  !hasAccess(access) && trial?.funnel === 'trial20' && trial.state === 'active' && !trialExpired(trial)
+
 /** trial3d: дней осталось — по ends_at, если он есть, иначе как прислал сервер. */
 function daysLeft(trial: Trial): number {
   if (trial.ends_at) return Math.max(0, Math.ceil((Date.parse(trial.ends_at) - Date.now()) / DAY_MS))
@@ -189,10 +219,16 @@ export function useRecheckOnReturn(): void {
 /**
  * Пробный период для страниц /trial-ended и /offer. Открыли по прямой
  * ссылке — ответа ещё нет, спрашиваем сервер. `failed` — не ответил.
+ *
+ * Страница уже показана, а ответ устарел (вернулись в приложение) — он
+ * перечитывается в фоне, а страница остаётся на месте, а не пропадает до
+ * ответа: `known` для неё остаётся true.
  */
 export function useTrialPage(): { trial: Trial | null; known: boolean; failed: boolean } {
   const { trial, known, userId } = useTrialState()
   const [failed, setFailed] = useState(false)
+  const shown = useRef(false)
+  if (known) shown.current = true
   useEffect(() => {
     if (known || !userId) return
     let alive = true
@@ -203,5 +239,5 @@ export function useTrialPage(): { trial: Trial | null; known: boolean; failed: b
       alive = false
     }
   }, [known, userId])
-  return { trial, known, failed }
+  return { trial, known: known || shown.current, failed }
 }

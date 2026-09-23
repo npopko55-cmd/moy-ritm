@@ -340,12 +340,6 @@ export type StatsProgress = {
   achievements: Achievement[]
 }
 
-/* ─────────────────────────  Поддержка  ───────────────────────── */
-
-export type SupportTopic = 'payment' | 'access' | 'music' | 'other'
-
-export type SupportCreated = { id: string; created_at: string }
-
 /* ─────────────────────────  Ошибка  ───────────────────────── */
 
 export type FieldError = { field: string; message: string }

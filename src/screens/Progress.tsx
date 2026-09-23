@@ -38,9 +38,9 @@ import {
   Trophy,
   User,
 } from '../components/Icons'
-import { DEFAULT_STREAM, VISIBLE_STREAMS, getStream } from '../data/streams'
+import { VISIBLE_STREAMS, getStream } from '../data/streams'
 import { asset } from '../lib/asset'
-import { warmTrial } from '../lib/trial'
+import { trialHint, trialOpensAll, useTrial, warmTrial } from '../lib/trial'
 import {
   duration,
   durationText,
@@ -69,13 +69,20 @@ const WEEKS_SHOWN = 4
 
 const WEEKDAYS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']
 
-const MENU = [
+/**
+ * Меню кабинета. «Тренировка» — не ссылка, а кнопка: переход в тренировку
+ * идёт через useFlowStart, как у «Влиться в поток». Касание заодно
+ * разблокирует ролики и музыку (иначе на iPhone в Telegram плеер встречал
+ * лишним «Нажмите, чтобы начать»), а новый заход начинается с отсчёта;
+ * идущий — продолжается в плеере.
+ */
+const MENU: { icon: ReactNode; label: string; to?: string }[] = [
   { icon: <Home size={19} />, label: 'Главная', to: '/' },
   { icon: <Clock size={19} />, label: 'Мой прогресс', to: '/progress' },
-  { icon: <PlayCircle size={19} />, label: 'Тренировка', to: `/player/${DEFAULT_STREAM.id}` },
+  { icon: <PlayCircle size={19} />, label: 'Тренировка' },
   { icon: <User size={19} />, label: 'Профиль', to: '/profile' },
   { icon: <Gear size={19} />, label: 'Настройки', to: '/settings' },
-] as const
+]
 
 /**
  * Своя картинка и свой цвет у каждой награды: коды приходят с сервера,
@@ -251,6 +258,10 @@ export default function Progress() {
   const avgTime = duration(data?.averages.per_active_day_seconds ?? 0)
   const recordTime = duration(data?.records.best_day?.seconds ?? 0)
   const paid = access?.status === 'none' || access?.status === 'expired' ? null : access?.paid_until
+  // У trial20 все движения уже открыты — промо зовёт к тарифу, а не к «всем движениям».
+  const trial = useTrial()
+  const opensAll = trialOpensAll(trial, access)
+  const trialNote = opensAll ? trialHint(trial, access) : null
 
   return (
     <div className="dash">
@@ -280,10 +291,17 @@ export default function Progress() {
         <ul className="dash__nav">
           {MENU.map((m) => (
             <li key={m.label}>
-              <Link className={`dash__nav-item ${m.to === '/progress' ? 'is-on' : ''}`} to={m.to}>
-                {m.icon}
-                <span>{m.label}</span>
-              </Link>
+              {m.to ? (
+                <Link className={`dash__nav-item ${m.to === '/progress' ? 'is-on' : ''}`} to={m.to}>
+                  {m.icon}
+                  <span>{m.label}</span>
+                </Link>
+              ) : (
+                <button className="dash__nav-item" type="button" onClick={() => goFlow()}>
+                  {m.icon}
+                  <span>{m.label}</span>
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -292,9 +310,12 @@ export default function Progress() {
           <p className="dash__paid">Доступ до {formatDate(paid)}</p>
         ) : (
           <div className="dash__promo">
-            <p className="dash__promo-title">Больше движений — больше возможностей!</p>
+            <p className="dash__promo-title">
+              {opensAll ? 'Шагайте без ограничений' : 'Больше движений — больше возможностей!'}
+              {trialNote && <span className="dash__promo-note">{trialNote}</span>}
+            </p>
             <Link className="dash__promo-btn" to="/tariffs">
-              Открыть все движения
+              {opensAll ? 'Выбрать тариф' : 'Открыть все движения'}
             </Link>
           </div>
         )}

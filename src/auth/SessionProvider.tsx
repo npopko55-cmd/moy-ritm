@@ -23,12 +23,17 @@
  * Регистрация сама передаёт токен воронки, если человек пришёл по ссылке
  * /go/<токен> или открыл мини-ап ссылкой с ?startapp=<токен>
  * (src/lib/funnel.ts): экраны об этом не знают.
+ *
+ * Вернулся в приложение (src/lib/appReturn.ts) — профиль перечитывается,
+ * не чаще раза в полминуты: пока человека не было, он мог оплатить доступ в
+ * браузере, и мини-ап должен это увидеть без перезапуска.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { api, type RegisterBody } from '../api/client'
 import { ApiError, type Access, type Me, type RegisterResponse } from '../api/types'
+import { onAppReturn } from '../lib/appReturn'
 import { flushBeforeSignOut } from '../lib/chunks'
 import { forgetFunnelToken, launchFunnel, readFunnelToken, saveFunnelToken } from '../lib/funnel'
 import { saveMoveInterval } from '../lib/settings'
@@ -164,7 +169,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const launch = launchFunnel()
     // Токен нужен только будущей регистрации: запоминаем его, если к ответу
     // визита человек так и не вошёл. Уже вошёл — ничего не меняем. Экраны
-    // ждут визит не дольше пары секунд; сбой визита — молча дальше.
+    // ждут визит не дольше пары секунд. Сбой визита токен не теряет —
+    // launchFunnel отдаёт его, и проверит его уже регистрация.
     const rememberLaunchFunnel = () =>
       Promise.race([
         launch.then((token) => {
@@ -236,6 +242,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       off()
     }
   }, [])
+
+  // Вернулся в приложение — перечитываем профиль, а с ним и доступ. Гостю
+  // перечитывать нечего; сбой сети reload переживает сам.
+  useEffect(
+    () =>
+      onAppReturn(() => {
+        if (meRef.current) void reload()
+      }),
+    [reload],
+  )
 
   /**
    * Привязать Telegram после регистрации или входа, если мини-ап ответил

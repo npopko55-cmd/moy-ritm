@@ -8,9 +8,10 @@
  *     подставляется при сборке, ветка с демо в боевой сборке мёртвая, и
  *     сборщик выбрасывает её вместе с демо-кодом.
  *
- * В интерфейсе перечислены ВСЕ пользовательские ручки, включая те, что нужны
- * экранам статистики, профиля и помощи. Так эти экраны пишутся без правок
- * клиента: метод уже есть в обеих реализациях.
+ * В интерфейсе перечислены все пользовательские ручки, которыми пользуются
+ * экраны. Ручку обращений в поддержку (POST /support/requests) фронтенд не
+ * зовёт: формы обращения нет — писем с неё никто не получает, связь только
+ * через Telegram.
  */
 
 import { createHttpApi } from './http'
@@ -29,8 +30,6 @@ import type {
   Settings,
   StatsProgress,
   StatsSummary,
-  SupportCreated,
-  SupportTopic,
   Tariff,
   TelegramAuthResponse,
   TokenResponse,
@@ -93,9 +92,6 @@ export interface Api {
   statsSummary(): Promise<StatsSummary>
   /** month в формате YYYY-MM; без него — текущий месяц человека. */
   statsProgress(month?: string): Promise<StatsProgress>
-
-  /* ——— Поддержка ——— */
-  supportRequest(topic: SupportTopic, message: string): Promise<SupportCreated>
 
   /* ——— Воронки ——— */
   /**

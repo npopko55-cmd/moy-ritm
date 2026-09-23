@@ -65,11 +65,6 @@ const BACKOFF = [5, 15, 60]
  */
 const MIN_GAP_MS = 20_000
 
-export const uuid = (): string =>
-  typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`
-
 function load(key: string): Chunk[] {
   try {
     const raw = localStorage.getItem(key)
@@ -185,6 +180,11 @@ export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: 
     try {
       const res = await api.sendChunks(batch)
       attempt = 0
+      // Забракованные куски не вернутся: повтор с тем же телом получит тот же
+      // отказ. Человеку тут сказать нечего, а при разработке причина нужна.
+      if (import.meta.env.DEV && res.rejected?.length) {
+        console.warn('[chunks] сервер забраковал куски', res.rejected)
+      }
       drop(batch)
       onSummary(res.summary)
     } catch (e) {

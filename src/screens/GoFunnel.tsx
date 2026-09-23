@@ -8,7 +8,10 @@
  *
  *   • воронка есть, не вошёл → регистрация;
  *   • воронка есть, вошёл → главная (метку ставит только регистрация);
- *   • незнакомый токен или сбой → главная.
+ *   • сервер ответил 404 FUNNEL_NOT_FOUND → главная;
+ *   • сбой визита (сеть, таймаут, 429, 5xx) — как «воронка есть»: токен
+ *     запоминаем, при регистрации его проверит сам сервер. Иначе моргнувшая
+ *     сеть стоила бы метки, а человек зарегистрировался бы без воронки.
  *
  * Пока идёт запрос — пустой фон, без «Секунду…»: обычно это доли секунды.
  * Экран в основном бандле, а не отдельным куском: это первая страница
@@ -21,7 +24,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider'
-import { forgetFunnelToken, saveFunnelToken, visitFunnel } from '../lib/funnel'
+import { forgetFunnelToken, isFunnelToken, saveFunnelToken, visitFunnel } from '../lib/funnel'
 import { OFFLINE_WAITING, Waiting } from './Account'
 
 export default function GoFunnel() {
@@ -31,8 +34,9 @@ export default function GoFunnel() {
 
   useEffect(() => {
     let alive = true
-    void visitFunnel(token).then((ok) => {
-      if (alive) setFound(ok)
+    void visitFunnel(token).then((result) => {
+      // Сбой — не «ссылки нет»: токен правильного вида ведём дальше.
+      if (alive) setFound(result === 'ok' || (result === 'error' && isFunnelToken(token)))
     })
     return () => {
       alive = false

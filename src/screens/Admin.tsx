@@ -7,10 +7,13 @@
  * (src/api/admin.ts). Истёк — снова форма входа.
  *
  * Что на странице:
- *   • период сводки: всё время, 7 дней, 30 дней или свои даты;
- *   • две воронки рядом — «3 дня» и «20 тренировок»: шаги от визита по
- *     ссылке до оплаты, под каждой цифрой — процент от предыдущего шага, и
- *     ссылка входа с кнопкой «Скопировать»;
+ *   • период сводки: всё время, 7 дней, 30 дней или свои даты. Старты бота
+ *     и визиты считаются по дате события, остальные шаги — люди,
+ *     зарегистрированные в период, в их состоянии на сегодня;
+ *   • две воронки рядом — «3 дня» и «20 тренировок»: шаги от старта бота до
+ *     оплаты, под каждой цифрой — процент от предыдущего шага, и ссылки с
+ *     кнопкой «Скопировать»: главная — для канала, через бота, под ней —
+ *     прямая на сайт (/go/<токен>). Бот не настроен — одна прямая;
  *   • таблица людей выбранной воронки с сортировкой и страницами, и она же —
  *     CSV-файлом.
  */
@@ -290,6 +293,10 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
             </label>
           </div>
         )}
+        <p className="admin__period-note">
+          Старты бота и визиты — по дате события. Остальное — люди, зарегистрированные в этот
+          период, и их состояние на сегодня.
+        </p>
         {summaryError && <p className="page__note is-bad">{summaryError}</p>}
       </Card>
 
@@ -315,9 +322,11 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
 type ColumnProps = { funnel: Funnel; title: string; data: FunnelSummary | null; loading: boolean }
 
 function FunnelColumn({ funnel, title, data, loading }: ColumnProps) {
+  // Человек приходит из канала в бота, а бот ведёт на сайт: старты бота —
+  // первый шаг, визиты — второй.
   const steps: { label: string; value: number | null }[] = [
-    { label: 'Визиты по ссылке', value: data?.visitors ?? null },
     { label: 'Старты бота', value: data?.bot_starts ?? null },
+    { label: 'Визиты по ссылке', value: data?.visitors ?? null },
     { label: 'Регистрации', value: data?.registered ?? null },
     { label: 'Подтвердили почту', value: data?.email_verified ?? null },
     { label: 'Начали шагать', value: data?.started ?? null },
@@ -338,7 +347,14 @@ function FunnelColumn({ funnel, title, data, loading }: ColumnProps) {
   return (
     <section className="page__card admin__funnel">
       <h2 className="page__card-title">{title}</h2>
-      <EntryLink token={data?.token} />
+      {data?.bot_link ? (
+        <>
+          <EntryLink label="Ссылка для канала (через бота)" url={data.bot_link} />
+          <EntryLink label="Прямая ссылка на сайт" url={siteLink(data.token)} />
+        </>
+      ) : (
+        <EntryLink url={siteLink(data?.token)} />
+      )}
 
       <ol className="admin__steps">
         {steps.map((s) => {
@@ -376,8 +392,11 @@ function FunnelColumn({ funnel, title, data, loading }: ColumnProps) {
   )
 }
 
-function EntryLink({ token }: { token?: string }) {
-  const url = token ? `${SITE}/go/${token}` : ''
+/** Прямая ссылка входа на сайт. Токена ещё нет — пусто. */
+const siteLink = (token?: string | null) => (token ? `${SITE}/go/${token}` : '')
+
+/** Ссылка в поле только для чтения и кнопка «Скопировать». Подпись — над ней. */
+function EntryLink({ url, label }: { url: string; label?: string }) {
   const [copied, setCopied] = useState(false)
   const field = useRef<HTMLInputElement>(null)
 
@@ -397,7 +416,7 @@ function EntryLink({ token }: { token?: string }) {
     }
   }
 
-  return (
+  const input = (
     <div className="admin__link">
       <input
         ref={field}
@@ -405,12 +424,19 @@ function EntryLink({ token }: { token?: string }) {
         readOnly
         value={url}
         placeholder="…"
-        aria-label="Ссылка входа"
+        aria-label={label ?? 'Ссылка входа'}
         onFocus={(e) => e.target.select()}
       />
       <button className="page__btn" type="button" onClick={() => void copy()} disabled={!url}>
         {copied ? 'Скопировано' : 'Скопировать'}
       </button>
+    </div>
+  )
+  if (!label) return input
+  return (
+    <div className="admin__link-block">
+      <p className="admin__link-label">{label}</p>
+      {input}
     </div>
   )
 }
@@ -520,7 +546,7 @@ function People({ token, fail }: { token: string; fail: Fail }) {
               <th className="is-num">Дней шагал</th>
               <th className="is-num">Всего в движении</th>
               <th className="is-num">Шагов</th>
-              <th className="is-num">Тренировок</th>
+              <th className="is-num">Засчитано тренировок (от 3 мин)</th>
               <th>Последний заход</th>
               <th>Оплата</th>
             </tr>

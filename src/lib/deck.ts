@@ -29,13 +29,25 @@ export type DeckOptions<T> = {
    * последняя показанная фраза у них общая.
    */
   lastShown?: () => T | undefined
+  /**
+   * Что уже выдано до этой колоды, по порядку, — продолжение прерванной
+   * выдачи. Так плеер возвращается в начатый заход: колода создаётся заново,
+   * но круг не начинает с начала.
+   *
+   * Круги идут подряд по длине источника, поэтому незаконченный круг — это
+   * хвост списка после последней полной длины. Первый круг новой колоды
+   * довыдаёт то, чего в этом хвосте ещё не было; последним показанным
+   * считается последний элемент списка — повтора на стыке не будет.
+   */
+  dealt?: readonly T[]
 }
 
 export function createDeck<T>(source: readonly T[], options: DeckOptions<T> = {}): Deck<T> {
   const random = options.random ?? Math.random
   let cards: T[] = []
   let cursor = 0
-  let own: T | undefined
+  const dealt = options.dealt ?? []
+  let own: T | undefined = dealt[dealt.length - 1]
 
   // Фишер–Йейтс на переданном random.
   const shuffle = (): T[] => {
@@ -49,8 +61,8 @@ export function createDeck<T>(source: readonly T[], options: DeckOptions<T> = {}
     return deck
   }
 
-  const refill = (): void => {
-    cards = shuffle()
+  const refill = (skip?: ReadonlySet<T>): void => {
+    cards = skip ? shuffle().filter((card) => !skip.has(card)) : shuffle()
     const previous = options.lastShown ? options.lastShown() : own
     if (cards.length > 1 && cards[0] === previous) {
       const tmp = cards[0]
@@ -58,6 +70,11 @@ export function createDeck<T>(source: readonly T[], options: DeckOptions<T> = {}
       cards[1] = tmp
     }
     cursor = 0
+  }
+
+  // Незаконченный круг прерванной выдачи: довыдаём его остаток.
+  if (source.length > 0 && dealt.length % source.length > 0) {
+    refill(new Set(dealt.slice(dealt.length - (dealt.length % source.length))))
   }
 
   return {

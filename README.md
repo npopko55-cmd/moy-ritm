@@ -222,7 +222,7 @@ bash scripts/cut-photo.sh /путь/к/новому-фото.png
   (`src/lib/settings.ts`). На сервере он уже есть: `PATCH /me/settings`.
 
 Методы для всего этого в клиенте есть (`sendChunks`, `statsSummary`,
-`statsProgress`, `getSettings`, `patchSettings`, `supportRequest`) и работают
+`statsProgress`, `getSettings`, `patchSettings`) и работают
 в обоих режимах — остаётся написать экраны.
 
 ## Структура

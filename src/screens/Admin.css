@@ -44,6 +44,24 @@
   margin-top: 14px;
 }
 
+/* Две ссылки — через бота и прямая: подпись над каждой. */
+.admin__link-block { margin-top: 14px; }
+.admin__link-block .admin__link { margin-top: 6px; }
+
+.admin__link-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+/* Как считается период — мелкой строкой под выбором. */
+.admin__period-note {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gray-500);
+}
+
 .admin__link-url {
   flex: 1;
   min-width: 0;

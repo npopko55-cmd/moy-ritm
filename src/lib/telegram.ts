@@ -34,6 +34,7 @@ type WebApp = {
   setHeaderColor?(color: string): void
   setBackgroundColor?(color: string): void
   disableVerticalSwipes?(): void
+  onEvent?(event: string, handler: () => void): void
   BackButton?: BackButton
 }
 
@@ -256,6 +257,18 @@ export function startTelegram(): void {
     safely('setHeaderColor', () => app.setHeaderColor?.(SITE_BG))
     safely('setBackgroundColor', () => app.setBackgroundColor?.(SITE_BG))
     safely('disableVerticalSwipes', () => app.disableVerticalSwipes?.())
+  })
+}
+
+/**
+ * Событие Telegram: activated — мини-ап снова развернули после того, как его
+ * свернули или ушли в другое приложение. Старый клиент такого события не
+ * знает — подписка просто молчит. Вне мини-апа ничего не делает.
+ */
+export function onTelegramEvent(event: 'activated', handler: () => void): void {
+  if (!IN_TELEGRAM) return
+  void loadTelegram().then((app) => {
+    if (app) safely(`onEvent ${event}`, () => app.onEvent?.(event, handler))
   })
 }
 

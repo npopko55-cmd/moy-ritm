@@ -28,8 +28,6 @@ import {
   type Settings,
   type StatsProgress,
   type StatsSummary,
-  type SupportCreated,
-  type SupportTopic,
   type Tariff,
   type TelegramAuthResponse,
   type TokenResponse,
@@ -327,11 +325,6 @@ export function createHttpApi(rawBase: string): Api {
         'GET',
         month ? `/stats/progress?month=${encodeURIComponent(month)}` : '/stats/progress',
       ),
-
-    /* ——— Поддержка ——— */
-
-    supportRequest: (topic: SupportTopic, message: string) =>
-      request<SupportCreated>('POST', '/support/requests', { body: { topic, message } }),
 
     /* ——— Воронки ——— */
 

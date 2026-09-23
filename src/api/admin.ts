@@ -20,6 +20,12 @@ export type FunnelSummary = {
   funnel: Funnel
   /** Токен ссылки входа: https://ritmritm.ru/go/<token>. */
   token: string
+  /**
+   * Ссылка для канала — через бота: https://t.me/ritmritm_bot?start=<token>.
+   * null или нет поля — бот не настроен (или бэкенд старый), тогда в
+   * админке, как раньше, одна прямая ссылка на сайт.
+   */
+  bot_link?: string | null
   visitors: number
   bot_starts: number
   registered: number
