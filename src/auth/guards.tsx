@@ -22,9 +22,13 @@ export const nextParam = (pathname: string, search = '') =>
 /**
  * Параметр next, если ему можно верить: только путь внутри сайта. Ссылку
  * «/login?next=https://чужой.сайт» или «//чужой.сайт» пропускать нельзя.
+ * Обратная косая и управляющие символы — тоже: браузер читает «/\чужой.сайт»
+ * как «//чужой.сайт», а табуляцию и перевод строки из адреса выбрасывает, и
+ * «/<Tab>/чужой.сайт» превращается в тот же «//чужой.сайт».
  */
 export function safeNext(raw: string | null | undefined): string | null {
-  if (!raw || !raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return null
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return null
+  if (/[\\\x00-\x1f\x7f]/.test(raw)) return null
   return raw
 }
 

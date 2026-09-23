@@ -58,7 +58,7 @@ export default function Offer() {
       back={{ label: '← На главную', go: () => navigate('/') }}
       wide
     >
-      <TariffPlans from="/offer" />
+      <TariffPlans />
 
       <div className="trial__foot">
         {/* Вместо отсчёта сюда — значит, и дальше в отсчёт, а не назад сюда. */}

@@ -18,6 +18,7 @@ import {
   legal,
   login,
   offer,
+  pay,
   paymentSuccess,
   player,
   profile,
@@ -43,6 +44,7 @@ const DeleteAccount = deleteAccount.Screen
 const ForgotPassword = forgotPassword.Screen
 const ResetPassword = resetPassword.Screen
 const PaymentSuccess = paymentSuccess.Screen
+const Pay = pay.Screen
 const Profile = profile.Screen
 const Progress = progress.Screen
 const Help = help.Screen
@@ -89,6 +91,16 @@ export default function App() {
           <Route path="/consent" element={<Legal />} />
 
           <Route path="/tariffs" element={<Tariffs />} />
+          {/* Оплата выбранного тарифа: карточка и встроенная форма GetCourse.
+              Гость уходит на вход и возвращается сюда же (next). */}
+          <Route
+            path="/pay/:code"
+            element={
+              <RequireAuth>
+                <Pay />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/payment/success"
             element={

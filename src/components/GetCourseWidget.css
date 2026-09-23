@@ -1,0 +1,44 @@
+/* ——— Виджет оплаты GetCourse ———
+   Контейнер скрипта — без своих размеров: высоту и overflow ему ставит сам
+   виджет, когда форма пришлёт свою высоту. */
+.gcw__host { width: 100%; }
+
+.gcw__host iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+}
+
+/* Скелет формы: по размеру примерно как сама форма — три поля, строка
+   согласия и кнопка, — чтобы страница не прыгала, когда форма придёт. */
+.gcw__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 330px;
+}
+
+.gcw__sk {
+  display: block;
+  border-radius: 12px;
+  background: var(--gray-100);
+}
+
+.gcw__sk--field { height: 50px; }
+.gcw__sk--line { width: 72%; height: 14px; margin: 6px 0 4px; border-radius: 6px; }
+.gcw__sk--button { height: 52px; border-radius: var(--r-pill); background: var(--pink-100); }
+
+.gcw__loading {
+  margin-top: 4px;
+  font-size: 13.5px;
+  color: var(--gray-400);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gcw__sk { animation: gcw-pulse 1.3s ease-in-out infinite; }
+}
+
+@keyframes gcw-pulse {
+  50% { opacity: .55; }
+}

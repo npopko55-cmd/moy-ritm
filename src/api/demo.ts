@@ -24,6 +24,7 @@ import {
   hasAccess,
   type Access,
   type Achievement,
+  type Checkout,
   type Chunk,
   type ChunksResponse,
   type DayStats,
@@ -307,6 +308,24 @@ const demoTariffs = (): Tariff[] =>
     per_month: t.per_month,
     savings: t.savings ?? null,
   }))
+
+function demoTariff(code: string): Tariff {
+  const tariff = demoTariffs().find((t) => t.code === code)
+  if (!tariff) throw new ApiError(404, 'TARIFF_NOT_FOUND', 'Такого тарифа нет')
+  return tariff
+}
+
+/**
+ * «Оплата» в демо: запоминаем тариф, а через несколько секунд проверка
+ * выдаст по нему доступ. Возврат — на тот же экран, что и у настоящего
+ * GetCourse.
+ */
+function demoPayment(user: DemoUser, tariff: Tariff): string {
+  write(`pending.${user.email}`, { code: tariff.code, at: Date.now() })
+  const url = new URL(`${import.meta.env.BASE_URL}payment/success`, window.location.origin)
+  url.searchParams.set('demo', '1')
+  return url.toString()
+}
 
 export function createDemoApi(): Api {
   const listeners = new Set<() => void>()
@@ -858,13 +877,35 @@ export function createDemoApi(): Api {
 
     async paymentLink(tariffCode) {
       const user = requireUser()
-      const tariff = demoTariffs().find((t) => t.code === tariffCode)
-      if (!tariff) throw new ApiError(404, 'TARIFF_NOT_FOUND', 'Такого тарифа нет')
-      write(`pending.${user.email}`, { code: tariff.code, at: Date.now() })
-      // Возврат с «оплаты» — на тот же экран, что и у настоящего GetCourse.
-      const url = new URL(`${import.meta.env.BASE_URL}payment/success`, window.location.origin)
-      url.searchParams.set('demo', '1')
-      return { url: url.toString() } satisfies PaymentLink
+      return { url: demoPayment(user, demoTariff(tariffCode)) } satisfies PaymentLink
+    },
+
+    // Виджета GetCourse в демо нет: страница оплаты сразу ведёт на page_url —
+    // ту же «оплату», что и ссылка. Почту, как и сервер, просит подтвердить.
+    async paymentCheckout(tariffCode) {
+      const user = requireUser()
+      const tariff = demoTariff(tariffCode)
+      if (user.verified === false) {
+        throw new ApiError(
+          403,
+          'EMAIL_NOT_VERIFIED',
+          'Сначала подтвердите почту: иначе чек и доступ уедут на адрес, которым вы не владеете',
+        )
+      }
+      const prefill = { 'sv[email]': user.email, utm_source: 'site', utm_term: `mr-${user.id}` }
+      return {
+        tariff: {
+          code: tariff.code,
+          name: tariff.name,
+          price: tariff.price,
+          currency: tariff.currency,
+          duration_days: tariff.duration_days,
+          per_month: tariff.per_month,
+        },
+        page_url: demoPayment(user, tariff),
+        widget: null,
+        prefill,
+      } satisfies Checkout
     },
 
     async paymentCheck() {

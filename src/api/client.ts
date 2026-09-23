@@ -17,6 +17,7 @@
 import { createHttpApi } from './http'
 import type {
   Access,
+  Checkout,
   Chunk,
   ChunksResponse,
   FunnelVisit,
@@ -89,6 +90,8 @@ export interface Api {
   /* ——— Тарифы и оплата ——— */
   getTariffs(): Promise<Tariff[]>
   paymentLink(tariffCode: string): Promise<PaymentLink>
+  /** Всё для страницы оплаты: карточка тарифа, виджет GetCourse, запасная ссылка. */
+  paymentCheckout(tariffCode: string): Promise<Checkout>
   paymentCheck(): Promise<PaymentCheck>
 
   /* ——— Плеер и статистика ——— */

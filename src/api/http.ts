@@ -15,6 +15,7 @@
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
 import {
   ApiError,
+  type Checkout,
   type Chunk,
   type ChunksResponse,
   type FunnelVisit,
@@ -308,6 +309,9 @@ export function createHttpApi(rawBase: string): Api {
 
     paymentLink: (tariffCode) =>
       request<PaymentLink>('POST', '/payments/link', { body: { tariff_code: tariffCode } }),
+
+    paymentCheckout: (tariffCode) =>
+      request<Checkout>('POST', '/payments/checkout', { body: { tariff_code: tariffCode } }),
 
     paymentCheck: () => request<PaymentCheck>('POST', '/payments/check'),
 

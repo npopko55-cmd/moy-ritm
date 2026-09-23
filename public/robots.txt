@@ -16,6 +16,7 @@ Disallow: /forgot-password
 Disallow: /reset-password
 Disallow: /delete-account
 Disallow: /payment/
+Disallow: /pay/
 Disallow: /start/
 Disallow: /player/
 Disallow: /settings

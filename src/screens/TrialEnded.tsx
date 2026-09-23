@@ -49,7 +49,7 @@ export default function TrialEnded() {
       back={{ label: '← На главную', go: () => navigate('/') }}
       wide
     >
-      <TariffPlans from="/trial-ended" />
+      <TariffPlans />
 
       <div className="trial__foot">
         <Link className="trial__help" to="/help">

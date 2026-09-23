@@ -142,6 +142,32 @@ export type Tariff = {
 
 export type PaymentLink = { url: string }
 
+/** Карточка выбранного тарифа над формой оплаты. */
+export type CheckoutTariff = Pick<
+  Tariff,
+  'code' | 'name' | 'price' | 'currency' | 'duration_days' | 'per_month'
+>
+
+/**
+ * Виджет оплаты GetCourse: адрес скрипта и id тега <script>. Скрипт находит
+ * себя на странице по id — тег создаётся через DOM ровно с этими атрибутами.
+ */
+export type CheckoutWidget = { src: string; element_id: string }
+
+/**
+ * Страница оплаты /pay/<тариф> — POST /payments/checkout.
+ *
+ * widget пустой — виджета у оффера нет, платят по page_url. page_url нужен
+ * и при виджете: на него ведёт запасная кнопка, если виджет не загрузился.
+ * prefill — почта и метки: виджет берёт их из адреса родительской страницы.
+ */
+export type Checkout = {
+  tariff: CheckoutTariff
+  page_url: string
+  widget: CheckoutWidget | null
+  prefill: Record<string, string>
+}
+
 export type PaymentCheck = {
   access: Access
   checked_at: string

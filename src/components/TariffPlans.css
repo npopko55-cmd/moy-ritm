@@ -185,7 +185,8 @@
 }
 
 /* ——— Сообщение под тарифами ———
-   Подтверждение почты, «оплата не настроена», ошибки загрузки. */
+   Тарифы не загрузились. Подтверждение почты и прочее про оплату — на
+   странице оплаты /pay. */
 .tariffs__msg {
   margin-top: clamp(14px, 1.8vw, 22px);
   padding: clamp(12px, 1.4vw, 18px) clamp(14px, 1.6vw, 20px);
@@ -198,29 +199,6 @@
 }
 
 .tariffs__msg.is-bad { background: #fff1ee; color: var(--red-500); }
-
-.tariffs__msg-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  margin-top: 10px;
-  padding: 10px 22px;
-  border: 1px solid currentColor;
-  border-radius: var(--r-pill);
-  background: var(--white);
-  color: inherit;
-  font-size: 14.5px;
-  font-weight: 600;
-}
-
-.tariffs__msg-btn:disabled { opacity: .6; cursor: default; }
-
-/* Цифры отсчёта «Повторно через 0:59» одной ширины — кнопка не дёргается. */
-button.tariffs__msg-btn { font-variant-numeric: tabular-nums; }
-
-.tariffs__msg-ok { margin-top: 8px; color: var(--green-600); font-weight: 600; }
-.tariffs__msg-bad { margin-top: 8px; color: var(--red-500); font-weight: 600; }
 
 /* ——— Скелетон карточки ———
    Разметка та же, что у настоящей: полоски стоят внутри реальных

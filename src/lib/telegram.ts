@@ -11,7 +11,8 @@
  * бандл его код не попадает.
  *
  * Оплаты внутри мини-апа нет — так требуют правила Telegram. Кнопки оплаты
- * там открывают тарифы сайта во внешнем браузере (openTariffsOnSite).
+ * там открывают сайт во внешнем браузере: тарифы (openTariffsOnSite) или
+ * сразу страницу оплаты выбранного тарифа (openPayOnSite).
  *
  * Ссылка t.me/<бот>/<app>?startapp=<значение> открывает мини-ап с параметром
  * запуска (telegramStartParam): им приходит токен воронки, как в /go/<токен>.
@@ -49,8 +50,14 @@ const SCRIPT_URL = 'https://telegram.org/js/telegram-web-app.js'
 /** Параметры запуска на эту вкладку: перезагрузка внутри мини-апа их не теряет. */
 const SESSION_KEY = 'moy-ritm.tg'
 
+/** Сайт, куда мини-ап уводит платить: во внешнем браузере. */
+const SITE_URL = 'https://ritmritm.ru'
+
 /** Куда ведут кнопки оплаты в мини-апе: тарифы на сайте, во внешнем браузере. */
-export const SITE_TARIFFS_URL = 'https://ritmritm.ru/tariffs'
+export const SITE_TARIFFS_URL = `${SITE_URL}/tariffs`
+
+/** Страница оплаты выбранного тарифа на сайте: /pay/<код>. */
+export const sitePayUrl = (code: string): string => `${SITE_URL}/pay/${encodeURIComponent(code)}`
 
 /** Цвет шапки и фона Telegram — фон сайта (--bg в tokens.css). */
 const SITE_BG = '#ffffff'
@@ -273,14 +280,27 @@ export function onTelegramEvent(event: 'activated', handler: () => void): void {
 }
 
 /**
- * Тарифы сайта во внешнем браузере — вместо оплаты внутри мини-апа.
+ * Адрес сайта во внешнем браузере — вместо оплаты внутри мини-апа.
  * Скрипт не загрузился — обычная ссылка в новой вкладке.
  */
-export function openTariffsOnSite(): void {
+function openOnSite(url: string): void {
   void loadTelegram().then((app) => {
-    if (app) safely('openLink', () => app.openLink(SITE_TARIFFS_URL))
-    else window.open(SITE_TARIFFS_URL, '_blank', 'noopener')
+    if (app) safely('openLink', () => app.openLink(url))
+    else window.open(url, '_blank', 'noopener')
   })
+}
+
+/** Тарифы сайта во внешнем браузере. */
+export function openTariffsOnSite(): void {
+  openOnSite(SITE_TARIFFS_URL)
+}
+
+/**
+ * Страница оплаты выбранного тарифа во внешнем браузере: после входа на
+ * сайте человек попадает сразу к нему, а не выбирает заново.
+ */
+export function openPayOnSite(code: string): void {
+  openOnSite(sitePayUrl(code))
 }
 
 /**

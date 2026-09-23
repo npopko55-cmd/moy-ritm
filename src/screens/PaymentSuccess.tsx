@@ -8,7 +8,12 @@
  *
  * «Доступ есть» ещё не значит «оплата пришла»: при продлении он был и до
  * оплаты. Поэтому сравниваем со сроком, запомненным перед уходом на
- * GetCourse (src/lib/payment.ts), и ждём, пока дата вырастет.
+ * GetCourse (src/lib/payment.ts), и ждём, пока дата вырастет. Запоминает его
+ * страница оплаты /pay, откуда бы человек на неё ни пришёл.
+ *
+ * Платят виджетом GetCourse, встроенным в /pay. Если после оплаты GetCourse
+ * вернёт человека сюда внутри рамки виджета, а не во всё окно, экран сам
+ * выходит из рамки на всё окно (inOwnFrame).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -32,9 +37,23 @@ const LEAVE_MS = 2000
 
 type Stage = 'checking' | 'paid' | 'timeout'
 
+/**
+ * Экран открылся внутри нашей же страницы — в рамке виджета оплаты на /pay.
+ * Чужую рамку (веб-версия Telegram открывает мини-ап в своём iframe) не
+ * трогаем: её адрес прочитать нельзя, и тогда это не наш случай.
+ */
+function inOwnFrame(): boolean {
+  try {
+    return window.top !== window.self && window.top?.location.origin === window.location.origin
+  } catch {
+    return false
+  }
+}
+
 export default function PaymentSuccess() {
   const navigate = useNavigate()
   const { access: sessionAccess, reload } = useSession()
+  const [framed] = useState(inOwnFrame)
 
   // Срок доступа до ухода на оплату — читаем один раз, при открытии экрана.
   const [before] = useState(readAccessBefore)
@@ -94,6 +113,12 @@ export default function PaymentSuccess() {
 
   useEffect(() => {
     alive.current = true
+    // В рамке виджета не проверяем: этот же экран сейчас откроется во всё
+    // окно и проверит сам.
+    if (framed) {
+      window.top?.location.replace(window.location.href)
+      return
+    }
     // Оплата уже видна — проверять нечего: вебхук успел раньше возврата.
     if (!arrived(sessionAccess)) void poll()
     return () => {
@@ -106,7 +131,7 @@ export default function PaymentSuccess() {
 
   // Оплата прошла — показали и ушли в поток. Запомненный срок больше не нужен.
   useEffect(() => {
-    if (stage !== 'paid') return
+    if (stage !== 'paid' || framed) return
     forgetAccessBefore()
     const id = window.setTimeout(() => navigate(`/start/${DEFAULT_STREAM.id}`), LEAVE_MS)
     return () => window.clearTimeout(id)
@@ -120,6 +145,7 @@ export default function PaymentSuccess() {
     void poll()
   }
 
+  if (framed) return null
 
   if (stage === 'paid') {
     return (

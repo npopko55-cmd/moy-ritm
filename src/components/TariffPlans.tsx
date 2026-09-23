@@ -3,11 +3,15 @@
  *
  * Живут на трёх страницах: тарифы, предложение после 10-й тренировки
  * (/offer) и «Бесплатный доступ истёк» (/trial-ended). Разметка, стили и
- * логика оплаты — одни на всех, чтобы страницы не разошлись.
+ * логика выбора — одни на всех, чтобы страницы не разошлись.
+ *
+ * «Выбрать» ведёт на страницу оплаты /pay/<тариф>: там карточка тарифа и
+ * встроенная форма GetCourse. Гостя она сама отправит на вход и вернёт
+ * обратно, неподтверждённую почту попросит подтвердить.
  *
  * В Telegram Mini App оплаты нет (правила Telegram): кнопка карточки
- * подписана «Оформить на сайте» и открывает тарифы сайта во внешнем
- * браузере. Цены при этом показываются как обычно.
+ * подписана «Оформить на сайте» и открывает страницу оплаты этого тарифа на
+ * сайте во внешнем браузере. Цены при этом показываются как обычно.
  *
  * Акцепт оферты — оплата, поэтому прямо под карточками мелкая строка со
  * ссылкой на публичную оферту: на всех трёх страницах одна и та же.
@@ -15,49 +19,23 @@
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../api/client'
-import { ApiError, hasAccess, type Tariff } from '../api/types'
+import { hasAccess, type Tariff } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { nextParam } from '../auth/guards'
 import { rub } from '../data/tariffs'
-import { rememberAccessBefore } from '../lib/payment'
 import { cachedTariffs, loadTariffs } from '../lib/tariffs'
-import { openTariffsOnSite, useInTelegram } from '../lib/telegram'
-import { useResendConfirmation } from '../lib/useResendConfirmation'
+import { openPayOnSite, useInTelegram } from '../lib/telegram'
 import { errorText } from '../screens/Account'
 import { Crown } from './Icons'
 import './TariffPlans.css'
 
-/** Что показать под кнопками. `verify` рисует ещё и кнопку повторного письма. */
-type Note = { kind: 'error' | 'verify'; text: string } | null
-
-type Props = {
-  /** Куда вернуть гостя после входа, если он нажал «Выбрать». */
-  from?: string
-}
-
-export default function TariffPlans({ from = '/tariffs' }: Props) {
+export default function TariffPlans() {
   const navigate = useNavigate()
-  const { me, access } = useSession()
+  const { access } = useSession()
   const inTelegram = useInTelegram()
 
   // null — ещё грузим: в это время в карточках стоит скелетон.
   const [tariffs, setTariffs] = useState<Tariff[] | null>(cachedTariffs)
   const [loadError, setLoadError] = useState('')
-  const [busyCode, setBusyCode] = useState<string | null>(null)
-  const [note, setNote] = useState<Note>(null)
-  const resend = useResendConfirmation()
-
-  // Вернулись с GetCourse кнопкой «Назад»: браузер (особенно Safari) достаёт
-  // страницу из bfcache ровно такой, какой её оставили, — с «Открываем
-  // оплату…» и заблокированными кнопками. Размораживаем их.
-  useEffect(() => {
-    const onShow = (e: PageTransitionEvent) => {
-      if (e.persisted) setBusyCode(null)
-    }
-    window.addEventListener('pageshow', onShow)
-    return () => window.removeEventListener('pageshow', onShow)
-  }, [])
 
   useEffect(() => {
     let alive = true
@@ -77,50 +55,10 @@ export default function TariffPlans({ from = '/tariffs' }: Props) {
     }
   }, [])
 
-  /**
-   * Оплата: ссылка на оффер GetCourse выдаётся персонально, с подставленной
-   * почтой и меткой человека, поэтому её нельзя зашить в разметку.
-   */
-  const choose = async (code: string) => {
-    // В мини-апе платить нельзя — тарифы сайта во внешнем браузере.
-    if (inTelegram) {
-      openTariffsOnSite()
-      return
-    }
-    if (!me) {
-      navigate(`/login${nextParam(from)}`)
-      return
-    }
-    if (!me.user.email_verified) {
-      setNote({
-        kind: 'verify',
-        text: 'Сначала подтвердите почту — иначе оплата уедет на несуществующий адрес.',
-      })
-      return
-    }
-
-    setNote(null)
-    setBusyCode(code)
-    try {
-      const { url } = await api.paymentLink(code)
-      // Экран «Проверяем оплату» сравнит с этим сроком: при продлении доступ
-      // уже есть, и пришедшей оплату покажет только выросшая дата.
-      rememberAccessBefore(access)
-      // Обычный переход на сторону GetCourse, без всплывающих окон.
-      window.location.assign(url)
-    } catch (e) {
-      if (e instanceof ApiError && e.code === 'EMAIL_NOT_VERIFIED') {
-        setNote({
-          kind: 'verify',
-          text: 'Сначала подтвердите почту — иначе оплата уедет на несуществующий адрес.',
-        })
-      } else if (e instanceof ApiError && e.code === 'OFFER_NOT_CONFIGURED') {
-        setNote({ kind: 'error', text: 'Оплата пока недоступна, напишите в поддержку.' })
-      } else {
-        setNote({ kind: 'error', text: errorText(e) })
-      }
-      setBusyCode(null)
-    }
+  const choose = (code: string) => {
+    // В мини-апе платить нельзя — страница оплаты сайта во внешнем браузере.
+    if (inTelegram) openPayOnSite(code)
+    else navigate(`/pay/${code}`)
   }
 
   const ctaLabel = inTelegram ? 'Оформить на сайте' : hasAccess(access) ? 'Продлить' : 'Выбрать'
@@ -152,13 +90,8 @@ export default function TariffPlans({ from = '/tariffs' }: Props) {
 
                 <p className="plan__note">{t.note}</p>
 
-                <button
-                  className="plan__cta"
-                  data-tariff={t.code}
-                  onClick={() => void choose(t.code)}
-                  disabled={busyCode !== null}
-                >
-                  {busyCode === t.code ? 'Открываем оплату…' : ctaLabel}
+                <button className="plan__cta" data-tariff={t.code} onClick={() => choose(t.code)}>
+                  {ctaLabel}
                 </button>
               </li>
             ))}
@@ -168,32 +101,10 @@ export default function TariffPlans({ from = '/tariffs' }: Props) {
         Оплачивая доступ, вы принимаете <Link to="/oferta">условия публичной оферты</Link>
       </p>
 
-      {/* Всё, что нужно сказать про оплату, говорим здесь строкой —
-          всплывающих панелей на сайте нет. */}
-      {(note || loadError) && (
-        <div className={`tariffs__msg ${note?.kind === 'error' || loadError ? 'is-bad' : ''}`}>
-          <p>{loadError || note?.text}</p>
-
-          {note?.kind === 'verify' && (
-            <>
-              <button
-                className="tariffs__msg-btn"
-                type="button"
-                onClick={() => void resend.send()}
-                disabled={resend.disabled}
-              >
-                {resend.label('Отправить письмо ещё раз')}
-              </button>
-              {resend.ok && <p className="tariffs__msg-ok">{resend.ok}</p>}
-              {resend.error && <p className="tariffs__msg-bad">{resend.error}</p>}
-            </>
-          )}
-
-          {note?.kind === 'error' && (
-            <Link className="tariffs__msg-btn" to="/help">
-              Написать в поддержку
-            </Link>
-          )}
+      {/* Всплывающих панелей на сайте нет: сбой загрузки — строкой здесь. */}
+      {loadError && (
+        <div className="tariffs__msg is-bad">
+          <p>{loadError}</p>
         </div>
       )}
     </>
