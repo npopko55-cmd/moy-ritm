@@ -39,7 +39,14 @@ import { lastBootstrap, loadBootstrap, markTrialStale } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { uuid } from '../lib/uuid'
 import { unlockMedia } from '../media/unlock'
-import { isNotAllowed, pauseVideo, playVideo, setVideoSource, videoPool } from '../media/videoPool'
+import {
+  isNotAllowed,
+  pauseVideo,
+  playVideo,
+  setVideoSource,
+  videoPool,
+  watchVideo,
+} from '../media/videoPool'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
 import './Player.css'
@@ -618,7 +625,8 @@ export default function Player() {
    * Ролик и постер каждому из двух элементов: на виду — текущее движение,
    * под ним — следующее. Со сменой движения они меняются ролями, и src
    * получает только тот, что ушёл вниз: верхний уже докачан. До эффектов
-   * ниже — чтобы пуск шёл уже с новым роликом.
+   * ниже — чтобы пуск шёл уже с новым роликом и новый ролик к пуску был уже
+   * на виду.
    */
   const firstId = (active === 0 ? loop : nextLoop)?.id
   const secondId = (active === 0 ? nextLoop : loop)?.id
@@ -635,9 +643,14 @@ export default function Player() {
    * Круг забирает элементы пула к себе, а уходя — возвращает: вынимает из
    * DOM и останавливает, но не уничтожает. Под экраном паузы круг лишь
    * спрятан, и ролики остаются на месте.
+   *
+   * Сам круг запоминаем: сторож ролика возвращает в него элемент, если тот
+   * вдруг оказался вне круга.
    */
+  const discRef = useRef<HTMLDivElement | null>(null)
   const mountVideos = useCallback(
     (disc: HTMLDivElement | null) => {
+      discRef.current = disc
       for (const video of buffers) {
         if (disc) {
           disc.appendChild(video)
@@ -650,37 +663,82 @@ export default function Player() {
     [buffers],
   )
 
-  // Новое движение начинается с начала цикла — как раньше, когда элемент
-  // пересоздавался заново.
-  useEffect(() => {
-    buffers[active].currentTime = 0
-  }, [buffers, active, loopId])
-
   /*
-   * Пауза останавливает ролик, чтобы персонаж замирал вместе с таймером.
-   * Скрытый элемент всегда на паузе: он в это время докачивает следующее.
+   * Пуск ролика на виду. Пауза останавливает ролик, чтобы персонаж замирал
+   * вместе с таймером. Скрытый элемент всегда на паузе: он в это время
+   * докачивает следующее.
+   *
+   * Новое движение начинается с начала цикла — как раньше, когда элемент
+   * пересоздавался заново. Перемотка и пуск — в одном эффекте и именно в
+   * таком порядке: сначала currentTime, потом play() в следующем кадре, когда
+   * новый ролик уже на виду (класс is-on ставит эффект раскладки выше).
+   * Раньше это были два эффекта с разными зависимостями, и пуск мог
+   * разойтись с перемоткой. Перематываем только при смене движения:
+   * «Продолжить» возвращает ролик с той же секунды.
    *
    * Вьюха отказала в пуске без касания (NotAllowedError) — тренировка встаёт
    * на паузу и ждёт «Нажмите, чтобы начать». Иначе таймер, куски и шаги шли
    * бы, пока персонаж стоит на первом кадре: их ведёт playing, а не ролик.
+   * Прочие отказы (AbortError и другие) пул запоминает, и разбирается с ними
+   * сторож ниже: он увидит стоящий ролик и перезапустит его.
    */
+  const rewoundFor = useRef('')
   useEffect(() => {
     const on = buffers[active]
     pauseVideo(buffers[1 - active])
+    const move = `${active}:${loopId ?? ''}`
+    if (rewoundFor.current !== move) {
+      rewoundFor.current = move
+      // Уже в начале — не трогаем: лишняя перемотка перед пуском ни к чему.
+      if (on.currentTime > 0) on.currentTime = 0
+    }
     if (!playing || empty) {
       pauseVideo(on)
       return
     }
     let alive = true
-    playVideo(on).catch((error: unknown) => {
-      if (!alive || !isNotAllowed(error)) return
-      setPlaying(false)
-      setNeedTap(true)
+    const frame = requestAnimationFrame(() => {
+      playVideo(on).catch((error: unknown) => {
+        if (!alive || !isNotAllowed(error)) return
+        setPlaying(false)
+        setNeedTap(true)
+      })
     })
     return () => {
       alive = false
+      cancelAnimationFrame(frame)
     }
   }, [buffers, playing, empty, active, loopId])
+
+  /**
+   * Сторож ролика (watchVideo в src/media/videoPool.ts). Кольцо, таймер и
+   * «Пауза» идут по playing, а не по ролику, поэтому ролик, не пошедший
+   * после смены движения, стоял на кадре, пока тренировка будто шла.
+   *
+   * Пока тренировка идёт и вкладка на виду, сторож следит, что ролик на виду
+   * действительно играет, и перезапускает застрявший. Не пошёл и после
+   * перезагрузки (или браузер требует касания) — тренировка встаёт на паузу,
+   * а в круге кнопка «Нажмите, чтобы начать»: касание разблокирует оба
+   * элемента и запустит ролик.
+   */
+  useEffect(() => {
+    if (!playing || empty || !visible) return
+    return watchVideo(buffers[active], {
+      // Видимость, если вдруг потерялась: is-on — только у ролика на виду, и
+      // оба элемента — в круге.
+      show: () => {
+        const disc = discRef.current
+        buffers.forEach((video, i) => {
+          video.classList.toggle('is-on', i === active)
+          if (disc && video.parentNode !== disc) disc.appendChild(video)
+        })
+      },
+      giveUp: () => {
+        setPlaying(false)
+        setNeedTap(true)
+      },
+    })
+  }, [buffers, playing, empty, visible, active, loopId])
 
   // Пауза тренировки останавливает и музыку. Без движений играть нечему.
   useEffect(() => {
