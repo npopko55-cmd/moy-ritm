@@ -11,6 +11,13 @@
  * GetCourse (src/lib/payment.ts), и ждём, пока дата вырастет. Запоминает его
  * страница оплаты /pay, откуда бы человек на неё ни пришёл.
  *
+ * Почта не подтверждена — опрашивать бессмысленно: оплату, пришедшую до
+ * подтверждения (заплатил раньше, чем зарегистрировался), сервер выдаёт
+ * только после него. Поэтому сразу просим подтвердить почту и даём
+ * отправить письмо ещё раз. Профиль перечитывает SessionProvider при
+ * возврате в приложение (src/lib/appReturn.ts) — подтвердили почту, и экран
+ * сам переходит к обычной проверке оплаты.
+ *
  * Платят виджетом GetCourse, встроенным в /pay. Если после оплаты GetCourse
  * вернёт человека сюда внутри рамки виджета, а не во всё окно, экран сам
  * выходит из рамки на всё окно (inOwnFrame).
@@ -24,8 +31,9 @@ import { useSession } from '../auth/SessionProvider'
 import { DEFAULT_STREAM } from '../data/streams'
 import { formatDate } from '../lib/date'
 import { forgetAccessBefore, paymentArrived, readAccessBefore } from '../lib/payment'
+import { useResendConfirmation } from '../lib/useResendConfirmation'
 import { unlockMedia } from '../media/unlock'
-import { AccountShell, FormError, errorText } from './Account'
+import { AccountShell, FormError, FormOk, errorText } from './Account'
 import './PaymentSuccess.css'
 
 /** Сколько всего ждём, прежде чем сказать «доступ откроется сам». */
@@ -35,7 +43,7 @@ const STEP_MS = 5000
 /** Пауза перед уходом в поток: человек должен успеть прочитать «Оплата прошла». */
 const LEAVE_MS = 2000
 
-type Stage = 'checking' | 'paid' | 'timeout'
+type Stage = 'verify' | 'checking' | 'paid' | 'timeout'
 
 /**
  * Экран открылся внутри нашей же страницы — в рамке виджета оплаты на /pay.
@@ -52,14 +60,21 @@ function inOwnFrame(): boolean {
 
 export default function PaymentSuccess() {
   const navigate = useNavigate()
-  const { access: sessionAccess, reload } = useSession()
+  const { me, access: sessionAccess, reload } = useSession()
   const [framed] = useState(inOwnFrame)
+  // RequireAuth пускает сюда только вошедших, так что профиль есть.
+  const verified = me?.user.email_verified !== false
+  const resend = useResendConfirmation()
+  const [rechecking, setRechecking] = useState(false)
+  const [notYet, setNotYet] = useState('')
 
   // Срок доступа до ухода на оплату — читаем один раз, при открытии экрана.
   const [before] = useState(readAccessBefore)
   const arrived = (a: Access | null | undefined) => paymentArrived(a, before)
 
-  const [stage, setStage] = useState<Stage>(() => (arrived(sessionAccess) ? 'paid' : 'checking'))
+  const [stage, setStage] = useState<Stage>(() =>
+    arrived(sessionAccess) ? 'paid' : verified ? 'checking' : 'verify',
+  )
   const [access, setAccess] = useState<Access | null>(sessionAccess)
   const [error, setError] = useState('')
 
@@ -120,7 +135,8 @@ export default function PaymentSuccess() {
       return
     }
     // Оплата уже видна — проверять нечего: вебхук успел раньше возврата.
-    if (!arrived(sessionAccess)) void poll()
+    // Почта не подтверждена — тоже: оплату сервер выдаст только после неё.
+    if (!arrived(sessionAccess) && verified) void poll()
     return () => {
       alive.current = false
       stop()
@@ -137,15 +153,75 @@ export default function PaymentSuccess() {
     return () => window.clearTimeout(id)
   }, [stage, navigate])
 
-  const again = () => {
+  const again = useCallback(() => {
     stop()
     setStage('checking')
     setError('')
     until.current = Date.now() + TOTAL_WAIT_MS
     void poll()
+  }, [poll])
+
+  // Почту подтвердили — дальше обычная проверка оплаты. Профиль перечитывает
+  // SessionProvider при возврате в приложение или кнопка «Почта
+  // подтверждена» ниже.
+  useEffect(() => {
+    if (!framed && verified && stage === 'verify') again()
+  }, [framed, verified, stage, again])
+
+  /** «Почта подтверждена — продолжить»: сами перечитываем профиль. */
+  const recheck = async () => {
+    setRechecking(true)
+    setNotYet('')
+    const fresh = await reload()
+    if (!alive.current) return
+    setRechecking(false)
+    if (fresh && !fresh.user.email_verified) {
+      setNotYet('Подтверждения пока не видим. Откройте ссылку из последнего письма.')
+    }
   }
 
   if (framed) return null
+
+  if (stage === 'verify') {
+    return (
+      <AccountShell title="Подтвердите почту" lead="Сразу после этого доступ откроется сам.">
+        <div className="pay">
+          <p className="pay__hint">
+            Письмо со ссылкой мы отправили на {me?.user.email}. Если его нет во «Входящих», загляните
+            в «Спам».
+          </p>
+        </div>
+
+        <div className="form__actions">
+          <button
+            className="form__submit"
+            type="button"
+            onClick={() => void resend.send()}
+            disabled={resend.disabled}
+          >
+            {resend.label('Отправить письмо ещё раз')}
+          </button>
+          <FormOk>{resend.ok}</FormOk>
+          <FormError>{resend.error}</FormError>
+
+          <button
+            className="form__second"
+            type="button"
+            onClick={() => void recheck()}
+            disabled={rechecking}
+          >
+            {rechecking ? 'Проверяем…' : 'Почта подтверждена — продолжить'}
+          </button>
+          <FormError>{notYet}</FormError>
+        </div>
+
+        <nav className="account__links">
+          <Link to="/help">Написать в поддержку</Link>
+          <Link to="/">На главную</Link>
+        </nav>
+      </AccountShell>
+    )
+  }
 
   if (stage === 'paid') {
     return (
