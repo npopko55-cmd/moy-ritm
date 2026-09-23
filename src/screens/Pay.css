@@ -113,6 +113,25 @@
   color: var(--gray-500);
 }
 
+/* Запасной путь под загруженной формой — мелко, чтобы не спорить с ней. */
+.checkout__backup {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gray-400);
+  text-align: center;
+}
+
+.checkout__backup a {
+  color: var(--gray-500);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .checkout__backup a:hover { color: var(--pink-600); }
+}
+
 /* Подтверждение почты и ошибки — спокойной плашкой, как на тарифах. */
 .checkout__msg {
   padding: clamp(14px, 2vh, 20px) clamp(14px, 2vh, 20px);

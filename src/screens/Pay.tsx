@@ -158,6 +158,14 @@ export default function Pay() {
             note="Форма оплаты не загрузилась. Оплатить можно на странице GetCourse — почта там уже подставлена."
           />
         }
+        backup={
+          <p className="checkout__backup">
+            Форма не отвечает?{' '}
+            <a href={page_url} onClick={() => rememberAccessBefore(access)}>
+              Оплатить на странице GetCourse
+            </a>
+          </p>
+        }
       />
     ) : (
       <PayLink

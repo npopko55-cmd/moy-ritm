@@ -19,6 +19,10 @@
  * Отсюда и разметка: скрипту — свой пустой div, его высоту и overflow виджет
  * меняет сам; скелет и запасная кнопка стоят рядом, а не внутри.
  *
+ * После «Перейти к оплате» форма GetCourse уводит на страницу оплаты всё
+ * окно (`window.top.location.href`, скрипт формы прочитан 23.09.2026), и
+ * после оплаты человек возвращается на /payment/success в этой же вкладке.
+ *
  * Тег <script> создаётся через DOM с двумя атрибутами из ответа сервера, а
  * не вставкой HTML: сервер хранит только адрес и id, проверенные при вводе.
  */
@@ -41,9 +45,14 @@ type Props = {
   prefill: Record<string, string>
   /** Что показать, если форма не появилась: переход на страницу оплаты. */
   fallback: ReactNode
+  /**
+   * Тихая строка под загруженной формой — тот же переход. Форма живёт в
+   * чужом iframe, и её сбоев при отправке отсюда не видно.
+   */
+  backup?: ReactNode
 }
 
-export default function GetCourseWidget({ widget, prefill, fallback }: Props) {
+export default function GetCourseWidget({ widget, prefill, fallback, backup }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const [stage, setStage] = useState<Stage>('loading')
   const { src, element_id: id } = widget
@@ -127,6 +136,7 @@ export default function GetCourseWidget({ widget, prefill, fallback }: Props) {
       <div ref={host} className="gcw__host" />
 
       {stage === 'loading' && <WidgetSkeleton />}
+      {stage === 'ready' && backup}
       {stage === 'failed' && fallback}
     </div>
   )
