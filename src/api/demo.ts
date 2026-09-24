@@ -20,6 +20,8 @@ import { CAPTION_LIMIT, TEXT_LIMIT, visibleLength } from '../lib/posts'
 import { uuid } from '../lib/uuid'
 import type {
   AdminApi,
+  BehaviorColumn,
+  BehaviorGroup,
   ChannelPost,
   FunnelSummary,
   FunnelUser,
@@ -1330,6 +1332,48 @@ export function createDemoAdminApi(): AdminApi {
         )
       // BOM — чтобы Excel сразу открыл кириллицу правильно.
       return new Blob(['\ufeff' + [head.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' })
+    },
+
+    async behavior(token, period) {
+      check(token)
+      // Выдуманные, но правдоподобные цифры: регистрации — из людей демо за
+      // период, остальное — доли от них. «Без воронки» в демо пуста, чтобы
+      // было видно, как выглядит «нет данных».
+      const column = (funnel: BehaviorGroup, pace: number): BehaviorColumn => {
+        const registered =
+          funnel === 'none' ? 0 : people.filter((p) => p.funnel === funnel && inPeriod(p, period)).length
+        const part = (x: number) => Math.round(registered * x)
+        const share = (returned: number, users: number) => (users ? Math.round((returned / users) * 1e4) / 1e4 : null)
+        const retention = [1, 3, 7, 14, 21].map((day, i) => {
+          const users = part(1 - i * 0.12)
+          const returned = Math.round(users * pace * (0.62 - i * 0.1))
+          return { day, users, returned, share: share(returned, users) }
+        })
+        const empty = registered === 0
+        const week2Users = part(0.6)
+        const week2Returned = Math.round(week2Users * pace * 0.4)
+        return {
+          funnel,
+          registered,
+          active_days_7: { window: 7, users: part(0.8), mean: empty ? null : 2.6 * pace, median: empty ? null : 2 },
+          active_days_21: { window: 21, users: part(0.4), mean: empty ? null : 6.1 * pace, median: empty ? null : 5 },
+          retention,
+          returned_week2: { users: week2Users, returned: week2Returned, share: share(week2Returned, week2Users) },
+          active_days: part(4 * pace),
+          sessions_per_active_day: empty ? null : 1.3,
+          session_minutes: empty ? null : Math.round(14 * pace * 100) / 100,
+          minutes_per_active_day: empty ? null : Math.round(18.2 * pace * 100) / 100,
+          steps_per_active_day: empty ? null : Math.round(1650 * pace),
+        }
+      }
+      return {
+        date_from: period.from ?? null,
+        date_to: period.to ?? null,
+        active_day_min_seconds: 180,
+        session_gap_seconds: 1800,
+        window_days: 21,
+        funnels: [column('trial3d', 0.8), column('trial20', 1.1), column('none', 1)],
+      }
     },
 
     async postChannels(token) {

@@ -70,6 +70,43 @@ export type Period = { from?: string; to?: string }
 
 export type UsersQuery = { funnel: Funnel; page: number; per_page: number; sort: UsersSort }
 
+/* ——— Поведение по воронкам (раздел 10 docs/STATS.md бэкенда) ——— */
+
+/** Колонка сравнения поведения: воронка или «без воронки». */
+export type BehaviorGroup = Funnel | 'none'
+
+/** Активные дни за первые `window` дней — только у тех, чьё окно прошло (`users`). */
+export type BehaviorActiveDays = { window: number; users: number; mean: number | null; median: number | null }
+
+/** Удержание дня `day`: база `users` — у кого этот день уже закончился. */
+export type BehaviorRetention = { day: number; users: number; returned: number; share: number | null }
+
+export type BehaviorColumn = {
+  funnel: BehaviorGroup
+  registered: number
+  active_days_7: BehaviorActiveDays
+  active_days_21: BehaviorActiveDays
+  retention: BehaviorRetention[]
+  returned_week2: { users: number; returned: number; share: number | null }
+  /** Активных дней в днях 0…20 у всей группы — база средних «в активный день». */
+  active_days: number
+  sessions_per_active_day: number | null
+  session_minutes: number | null
+  minutes_per_active_day: number | null
+  steps_per_active_day: number | null
+}
+
+export type BehaviorReport = {
+  date_from: string | null
+  date_to: string | null
+  /** Порог активного дня, секунды. */
+  active_day_min_seconds: number
+  /** Перерыв, после которого начинается новая сессия, секунды. */
+  session_gap_seconds: number
+  window_days: number
+  funnels: BehaviorColumn[]
+}
+
 /* ——— Посты в Telegram-каналы (docs/POSTS.md бэкенда) ——— */
 
 /** Канал постов: f1 — «Мой ритм! 1» (3 дня), f2 — «Мой ритм! 2» (челлендж 21 день). */
@@ -134,6 +171,8 @@ export interface AdminApi {
   summary(token: string, period: Period): Promise<FunnelSummary[]>
   users(token: string, query: UsersQuery): Promise<FunnelUsersPage>
   usersCsv(token: string, funnel: Funnel): Promise<Blob>
+  /** Поведение по воронкам; период — даты регистрации. */
+  behavior(token: string, period: Period): Promise<BehaviorReport>
 
   postChannels(token: string): Promise<PostChannels>
   posts(token: string, channel: PostChannelKey): Promise<ChannelPost[]>
@@ -279,6 +318,11 @@ function createHttpAdminApi(rawBase: string): AdminApi {
       return res.blob()
     },
 
+    behavior: (token, period) =>
+      json<BehaviorReport>(
+        send('GET', `/admin/behavior${query({ date_from: period.from, date_to: period.to })}`, token),
+      ),
+
     postChannels: (token) => json<PostChannels>(send('GET', '/admin/posts/channels', token)),
 
     async posts(token, channel) {
@@ -327,6 +371,7 @@ function lazyDemoAdminApi(): AdminApi {
     summary: (token, period) => impl().then((a) => a.summary(token, period)),
     users: (token, q) => impl().then((a) => a.users(token, q)),
     usersCsv: (token, funnel) => impl().then((a) => a.usersCsv(token, funnel)),
+    behavior: (token, period) => impl().then((a) => a.behavior(token, period)),
     postChannels: (token) => impl().then((a) => a.postChannels(token)),
     posts: (token, channel) => impl().then((a) => a.posts(token, channel)),
     createPost: (token, input) => impl().then((a) => a.createPost(token, input)),
