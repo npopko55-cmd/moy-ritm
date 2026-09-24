@@ -6,8 +6,9 @@
  * поток» на главной, в «Моём прогрессе», в меню, возврат в поток, отсчёт и
  * плеер по прямой ссылке.
  *
- * Заголовок — текст владельца по воронке, дословно; первое предложение —
- * заголовком, второе — строкой под ним. Под ними те же карточки, что на
+ * Кончается только пробный доступ trial3d: у челленджа trial20 срока нет, и
+ * сюда он не попадает. Заголовок — текст владельца, дословно; первое
+ * предложение — заголовком, второе — строкой под ним. Под ними те же карточки, что на
  * странице тарифов. Оплата пришла (в том числе с сайта, пока мини-ап ждал в
  * Telegram) — страница уводит на главную сама.
  */
@@ -19,13 +20,7 @@ import { trialBlocks, useRecheckOnReturn, useTrialPage } from '../lib/trial'
 import PageShell from './Page'
 import './Trial.css'
 
-const TEXT = {
-  trial3d: { title: 'Бесплатный доступ истёк', lead: 'Чтобы продолжить шагать, выберите удобный тариф' },
-  trial20: {
-    title: 'Бесплатные тренировки закончились',
-    lead: 'Чтобы продолжить шагать, выберите удобный тариф',
-  },
-} as const
+const TEXT = { title: 'Бесплатный доступ истёк', lead: 'Чтобы продолжить шагать, выберите удобный тариф' }
 
 export default function TrialEnded() {
   const navigate = useNavigate()
@@ -39,12 +34,10 @@ export default function TrialEnded() {
   // Оплатили или пробного периода нет — здесь делать нечего.
   if (known && !trialBlocks(trial, access)) return <Navigate to="/" replace />
 
-  const text = TEXT[trial?.funnel ?? 'trial3d']
-
   return (
     <PageShell
-      title={text.title}
-      lead={text.lead}
+      title={TEXT.title}
+      lead={TEXT.lead}
       // «Главная» вошедшего — тренировка, а она закрыта: ведём на лендинг.
       back={{ label: '← На главную', go: () => navigate('/') }}
       wide
