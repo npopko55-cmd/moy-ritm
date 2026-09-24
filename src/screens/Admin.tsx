@@ -17,8 +17,9 @@
  *   • таблица людей выбранной воронки с сортировкой и страницами, и она же —
  *     CSV-файлом.
  *
- * Второй раздел — /admin/posts, посты в Telegram-каналы воронок
- * (AdminPosts.tsx). Разделы переключаются чипами вверху страницы; вход общий.
+ * Второй раздел — /admin/posts, посты в Telegram-каналы воронок и рассылки
+ * ботом (AdminPosts.tsx), третий — /admin/survey, ответы на опрос в боте
+ * (AdminSurvey.tsx). Разделы переключаются чипами вверху страницы; вход общий.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -41,6 +42,7 @@ import type { Funnel } from '../api/types'
 import { rub } from '../data/tariffs'
 import { AccountShell, Field, Form, FormError, errorText, isEmail } from './Account'
 import AdminPosts from './AdminPosts'
+import AdminSurvey from './AdminSurvey'
 import PageShell, { Card } from './Page'
 import './Admin.css'
 
@@ -137,7 +139,7 @@ function useNoindex(): void {
 
 /* ——— Страница ——— */
 
-type Section = 'funnels' | 'posts'
+type Section = 'funnels' | 'posts' | 'survey'
 
 const SECTIONS: { section: Section; path: string; label: string; title: string; lead: string }[] = [
   {
@@ -151,14 +153,22 @@ const SECTIONS: { section: Section; path: string; label: string; title: string; 
     section: 'posts',
     path: '/admin/posts',
     label: 'Посты',
-    title: 'Посты в каналы',
-    lead: 'Посты в Telegram-каналы воронок по расписанию. Время — московское.',
+    title: 'Посты и рассылки',
+    lead: 'Рассылки ботом людям воронки и посты в Telegram-каналы по расписанию. Время — московское.',
+  },
+  {
+    section: 'survey',
+    path: '/admin/survey',
+    label: 'Опрос',
+    title: 'Опрос в боте',
+    lead: 'Ответы на опрос через 3, 7 и 21 день после регистрации: NPS по воронкам и что пишут люди.',
   },
 ]
 
 function useSection(): Section {
   const { pathname } = useLocation()
-  return pathname.replace(/\/+$/, '') === '/admin/posts' ? 'posts' : 'funnels'
+  const path = pathname.replace(/\/+$/, '')
+  return path === '/admin/posts' ? 'posts' : path === '/admin/survey' ? 'survey' : 'funnels'
 }
 
 export default function Admin() {
@@ -283,7 +293,13 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
           </button>
         ))}
       </nav>
-      {section === 'posts' ? <AdminPosts token={token} fail={fail} /> : <Funnels token={token} fail={fail} />}
+      {section === 'posts' ? (
+        <AdminPosts token={token} fail={fail} />
+      ) : section === 'survey' ? (
+        <AdminSurvey token={token} fail={fail} />
+      ) : (
+        <Funnels token={token} fail={fail} />
+      )}
     </PageShell>
   )
 }

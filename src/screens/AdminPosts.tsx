@@ -1,9 +1,13 @@
 /**
- * Админка → «Посты»: посты в Telegram-каналы воронок по расписанию.
+ * Админка → «Посты»: посты в Telegram-каналы воронок и рассылки ботом.
  *
- * Два канала — «Мой ритм! 1» (3 дня) и «Мой ритм! 2» (20 тренировок). Пост
- * пишется здесь, ставится на время по Москве, а в канал его отправляет бот
- * задачей на сервере (docs/POSTS.md бэкенда). Что есть на странице:
+ * Два канала — «Мой ритм! 1» (3 дня) и «Мой ритм! 2» (20 тренировок) — и две
+ * аудитории бота: личные сообщения людям воронки 1 и 2 (главный канал с
+ * запуска 28.09). Пост пишется здесь, ставится на время по Москве, а
+ * отправляет его бот задачей на сервере (docs/POSTS.md бэкенда). У рассылки
+ * ботом ещё есть расписание «день N в ЧЧ:ММ» (от дня регистрации человека),
+ * сегмент аудитории, флаг «продающее», кнопка «открыть приложение» и
+ * счётчики доставки. Что есть на странице:
  *   • переключатель канала и предупреждение, если канал не подключён;
  *   • список постов канала по времени публикации, со статусом и ошибкой;
  *   • редактор поста — отдельным блоком на месте списка: время, текст с
@@ -18,10 +22,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   adminApi,
+  isBotAudience,
   type ChannelPost,
+  type PostButtonType,
   type PostChannelKey,
   type PostChannels,
+  type PostDeliveries,
   type PostInput,
+  type PostSegment,
   type PostStatus,
 } from '../api/admin'
 import {
@@ -35,13 +43,43 @@ import {
   visibleText,
 } from '../lib/posts'
 import { Card } from './Page'
+import './AdminBot.css'
 
 type Fail = (e: unknown, show: (text: string) => void) => void
 
 const CHANNELS: { key: PostChannelKey; title: string; note: string }[] = [
-  { key: 'f1', title: 'Мой ритм! 1', note: 'воронка 1 — 3 дня' },
-  { key: 'f2', title: 'Мой ритм! 2', note: 'воронка 2 — 20 тренировок' },
+  { key: 'bot_f1', title: 'Бот: воронка 1', note: '3 дня — личные сообщения' },
+  { key: 'bot_f2', title: 'Бот: воронка 2', note: 'челлендж — личные сообщения' },
+  { key: 'f1', title: 'Мой ритм! 1', note: 'канал воронки 1 — 3 дня' },
+  { key: 'f2', title: 'Мой ритм! 2', note: 'канал воронки 2 — 20 тренировок' },
 ]
+
+const SEGMENTS: { key: PostSegment; label: string }[] = [
+  { key: 'all', label: 'Все в воронке' },
+  { key: 'registered_idle', label: 'Зарегистрировались, но ещё не тренировались' },
+  { key: 'active_yesterday', label: 'Тренировались вчера' },
+  { key: 'inactive_yesterday', label: 'Не тренировались вчера (из зарегистрированных)' },
+  { key: 'unpaid', label: 'Не оплатили' },
+]
+
+const BUTTON_TYPES: { key: PostButtonType; label: string; bot: boolean }[] = [
+  { key: 'none', label: 'Без кнопки', bot: false },
+  { key: 'url', label: 'Ссылка', bot: false },
+  { key: 'web_app', label: 'Открыть приложение', bot: true },
+]
+
+/** «День 2, 10:00 МСК» — расписание шаблона. */
+const dayLabel = (p: ChannelPost) => `День ${p.schedule_day}, ${p.schedule_time} МСК`
+
+const isTemplate = (p: ChannelPost | null) => !!p?.schedule_day
+
+function deliveriesText(d: PostDeliveries | null | undefined): string {
+  if (!d || !d.recipients) return ''
+  const parts = [`получателей ${d.recipients}`, `доставлено ${d.delivered}`]
+  if (d.failed) parts.push(`ошибок ${d.failed}${d.blocked ? ` (заблокировали бота ${d.blocked})` : ''}`)
+  if (d.pending) parts.push(`в очереди ${d.pending}`)
+  return parts.join(' · ')
+}
 
 const STATUS_LABEL: Record<PostStatus, string> = {
   draft: 'Черновик',
@@ -62,7 +100,7 @@ const MB = 1024 * 1024
 const isLocked = (p: ChannelPost | null) => p !== null && (p.status === 'published' || p.status === 'sending')
 
 export default function AdminPosts({ token, fail }: { token: string; fail: Fail }) {
-  const [channel, setChannel] = useState<PostChannelKey>('f1')
+  const [channel, setChannel] = useState<PostChannelKey>('bot_f1')
   const [channels, setChannels] = useState<PostChannels | null>(null)
   const [posts, setPosts] = useState<ChannelPost[] | null>(null)
   const [error, setError] = useState('')
@@ -103,11 +141,12 @@ export default function AdminPosts({ token, fail }: { token: string; fail: Fail 
   useEffect(() => reload(), [reload])
 
   const info = channels?.channels.find((c) => c.key === channel)
-  const title = CHANNELS.find((c) => c.key === channel)?.title ?? channel
+  const title = info?.title ?? CHANNELS.find((c) => c.key === channel)?.title ?? channel
+  const bot = isBotAudience(channel)
 
   return (
     <>
-      <Card title="Канал">
+      <Card title="Куда">
         <div className="chips">
           {CHANNELS.map((c) => (
             <button
@@ -128,7 +167,13 @@ export default function AdminPosts({ token, fail }: { token: string; fail: Fail 
         {channels && !channels.bot_configured && (
           <p className="page__note is-bad">Бот не настроен: на сервере пуст TELEGRAM_BOT_TOKEN — посты не уйдут.</p>
         )}
-        {info && !info.configured && (
+        {bot && (
+          <p className="admin__period-note">
+            Рассылка ботом: пост уходит личным сообщением каждому, кто нажал «Старт» по ссылке этой воронки, и
+            аккаунтам воронки с привязанным Telegram. Отписавшимся (/stop) и заблокировавшим бота — нет.
+          </p>
+        )}
+        {!bot && info && !info.configured && (
           <p className="page__note is-bad">
             Канал «{title}» не подключён: на сервере не задан POST_CHANNEL_{channel.toUpperCase()}_ID. Писать
             черновики можно, публиковать — нет. Как подключить — docs/POSTS.md.
@@ -149,6 +194,7 @@ export default function AdminPosts({ token, fail }: { token: string; fail: Fail 
           fail={fail}
           channel={channel}
           channelTitle={title}
+          bot={bot}
           initial={open === 'new' ? null : open}
           onClose={() => {
             setOpen(null)
@@ -156,7 +202,7 @@ export default function AdminPosts({ token, fail }: { token: string; fail: Fail 
           }}
         />
       ) : (
-        <PostList posts={posts} channelTitle={title} onOpen={setOpen} />
+        <PostList posts={posts} channelTitle={title} bot={bot} onOpen={setOpen} />
       )}
     </>
   )
@@ -167,14 +213,23 @@ export default function AdminPosts({ token, fail }: { token: string; fail: Fail 
 function PostList({
   posts,
   channelTitle,
+  bot,
   onOpen,
 }: {
   posts: ChannelPost[] | null
   channelTitle: string
+  bot: boolean
   onOpen(post: ChannelPost | 'new'): void
 }) {
   return (
-    <Card title={`Посты «${channelTitle}»`} text="По времени публикации, московское время. Черновики без времени — в конце.">
+    <Card
+      title={`Посты «${channelTitle}»`}
+      text={
+        bot
+          ? 'Сначала — по времени публикации, потом шаблоны «день N» по дню, московское время. Черновики без времени — в конце.'
+          : 'По времени публикации, московское время. Черновики без времени — в конце.'
+      }
+    >
       <div className="admin__tools">
         <button className="page__btn page__btn--pink" type="button" onClick={() => onOpen('new')}>
           Новый пост
@@ -182,17 +237,29 @@ function PostList({
       </div>
 
       {posts === null && <p className="admin__period-note">Загружаем…</p>}
-      {posts?.length === 0 && <p className="admin__period-note">В этом канале постов пока нет.</p>}
+      {posts?.length === 0 && (
+        <p className="admin__period-note">{bot ? 'Рассылок этой воронке пока нет.' : 'В этом канале постов пока нет.'}</p>
+      )}
 
       <ul className="posts__list">
         {posts?.map((p) => (
           <li key={p.id} className="posts__item">
             <button type="button" className="posts__row" onClick={() => onOpen(p)}>
-              <span className="posts__when">{p.publish_at ? formatMoscow(p.publish_at) : 'Без времени'}</span>
-              <span className={`posts__status is-${p.status}`}>{STATUS_LABEL[p.status]}</span>
+              <span className="posts__when">
+                {isTemplate(p) ? dayLabel(p) : p.publish_at ? formatMoscow(p.publish_at) : 'Без времени'}
+              </span>
+              <span className={`posts__status is-${p.status}`}>
+                {isTemplate(p) && p.status === 'scheduled' ? 'Шаблон включён' : STATUS_LABEL[p.status]}
+              </span>
               <span className="posts__preview">{excerpt(p.text) || '(без текста)'}</span>
               <span className="posts__meta">
-                {[MEDIA_LABEL[p.media_type], p.button_text ? `кнопка «${p.button_text}»` : '']
+                {[
+                  MEDIA_LABEL[p.media_type],
+                  p.button_text ? `кнопка «${p.button_text}»${p.button_type === 'web_app' ? ' (приложение)' : ''}` : '',
+                  p.segment && p.segment !== 'all' ? SEGMENTS.find((x) => x.key === p.segment)?.label : '',
+                  p.selling ? 'продающий' : '',
+                  deliveriesText(p.deliveries),
+                ]
                   .filter(Boolean)
                   .join(' · ')}
               </span>
@@ -212,17 +279,36 @@ function excerpt(html: string): string {
 
 /* ——— Редактор ——— */
 
-type Form = { publishAt: string; text: string; buttonText: string; buttonUrl: string }
+type When = 'time' | 'day'
+
+type Form = {
+  when: When
+  publishAt: string
+  day: string
+  time: string
+  text: string
+  buttonType: PostButtonType
+  buttonText: string
+  buttonUrl: string
+  segment: PostSegment
+  selling: boolean
+}
 
 const formOf = (p: ChannelPost | null): Form => ({
+  when: p?.schedule_day ? 'day' : 'time',
   publishAt: toMoscowInput(p?.publish_at ?? null),
+  day: p?.schedule_day ? String(p.schedule_day) : '1',
+  time: p?.schedule_time ?? '10:00',
   text: p?.text ?? '',
+  // Старый бэкенд типа не шлёт: есть надпись — это ссылка.
+  buttonType: p?.button_type ?? (p?.button_text ? 'url' : 'none'),
   buttonText: p?.button_text ?? '',
   buttonUrl: p?.button_url ?? '',
+  segment: p?.segment ?? 'all',
+  selling: p?.selling ?? false,
 })
 
-const sameForm = (a: Form, b: Form) =>
-  a.publishAt === b.publishAt && a.text === b.text && a.buttonText === b.buttonText && a.buttonUrl === b.buttonUrl
+const sameForm = (a: Form, b: Form) => (Object.keys(a) as (keyof Form)[]).every((key) => a[key] === b[key])
 
 type Confirm = 'publish' | 'delete' | null
 
@@ -231,11 +317,12 @@ type EditorProps = {
   fail: Fail
   channel: PostChannelKey
   channelTitle: string
+  bot: boolean
   initial: ChannelPost | null
   onClose(): void
 }
 
-function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: EditorProps) {
+function PostEditor({ token, fail, channel, channelTitle, bot, initial, onClose }: EditorProps) {
   const [post, setPost] = useState<ChannelPost | null>(initial)
   const [form, setForm] = useState<Form>(() => formOf(initial))
   const [busy, setBusy] = useState('')
@@ -254,13 +341,28 @@ function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: Ed
     setOk('')
   }
 
-  const input = (): PostInput => ({
-    channel,
-    publish_at: fromMoscowInput(form.publishAt),
-    text: form.text,
-    button_text: form.buttonText.trim() || null,
-    button_url: form.buttonUrl.trim() || null,
-  })
+  const template = bot && form.when === 'day'
+  const audience = useAudience(token, bot ? channel : null, form.segment, form.selling)
+
+  const input = (): PostInput => {
+    const base: PostInput = {
+      channel,
+      publish_at: template ? null : fromMoscowInput(form.publishAt),
+      text: form.text,
+      button_type: form.buttonType,
+      button_text: form.buttonType === 'none' ? null : form.buttonText.trim() || null,
+      button_url: form.buttonType === 'none' ? null : form.buttonUrl.trim() || null,
+    }
+    if (!bot) return base
+    const day = Number.parseInt(form.day, 10)
+    return {
+      ...base,
+      schedule_day: template && day > 0 ? day : null,
+      schedule_time: template ? form.time || null : null,
+      segment: form.segment,
+      selling: form.selling,
+    }
+  }
 
   /** Несохранённые правки — сначала сохранить: действия идут с тем, что на сервере. */
   const saved = async (): Promise<ChannelPost> => {
@@ -301,6 +403,7 @@ function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: Ed
     const current = await saved()
     const next = await adminApi.schedulePost(token, current.id)
     setPost(next)
+    if (isTemplate(next)) return `Шаблон включён: каждому — в его ${dayLabel(next).toLowerCase()}`
     return `Запланирован на ${formatMoscow(next.publish_at)}`
   })
 
@@ -315,6 +418,7 @@ function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: Ed
     const next = await adminApi.publishPostNow(token, current.id)
     setPost(next)
     setForm(formOf(next))
+    if (bot && next.status === 'scheduled') return 'Рассылка начнётся в течение минуты — счётчики обновятся в списке'
     if (next.status === 'published') return `Опубликован в «${channelTitle}»`
     // Итог «не ушёл» или «неизвестен» — в самом посте, показываем его ошибкой.
     setError(next.error || 'Пост не опубликован')
@@ -346,6 +450,7 @@ function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: Ed
   const status = post?.status ?? 'draft'
   const canSchedule = !locked && status !== 'scheduled'
   const canDelete = post !== null && (status === 'draft' || status === 'cancelled')
+  const counts = deliveriesText(post?.deliveries)
 
   return (
     <Card title={post ? `Пост №${post.id} · ${channelTitle}` : `Новый пост · ${channelTitle}`}>
@@ -358,27 +463,127 @@ function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: Ed
 
       {post?.status === 'published' && (
         <p className="page__note">
-          Опубликован {formatMoscow(post.published_at)}
+          {bot ? 'Разослан' : 'Опубликован'} {formatMoscow(post.published_at)}
           {post.telegram_message_id ? `, сообщение №${post.telegram_message_id}` : ''}. Изменить его уже нельзя.
         </p>
       )}
+      {bot && counts && <p className="page__note botposts__counts">{counts}</p>}
       {post?.error && post.status !== 'published' && <p className="page__note is-bad">{post.error}</p>}
       {post?.source_ref && <p className="admin__period-note">Из импорта: {post.source_ref}</p>}
 
       <div className="posts__form">
-        <div className="field">
-          <label className="field__label" htmlFor="post-when">
-            Дата и время публикации (МСК)
-          </label>
-          <input
-            id="post-when"
-            className="field__input"
-            type="datetime-local"
-            value={form.publishAt}
-            onChange={(e) => set({ publishAt: e.target.value })}
-            disabled={locked || !!busy}
-          />
-        </div>
+        {bot && (
+          <div className="field">
+            <span className="field__label">Когда</span>
+            <div className="chips botposts__when">
+              <button
+                type="button"
+                className={`chip ${form.when === 'time' ? 'is-on' : ''}`}
+                disabled={locked || !!busy}
+                onClick={() => set({ when: 'time' })}
+              >
+                В дату и время
+              </button>
+              <button
+                type="button"
+                className={`chip ${form.when === 'day' ? 'is-on' : ''}`}
+                disabled={locked || !!busy}
+                onClick={() => set({ when: 'day' })}
+              >
+                День N от регистрации
+              </button>
+            </div>
+          </div>
+        )}
+
+        {template ? (
+          <div className="botposts__day">
+            <div className="field">
+              <label className="field__label" htmlFor="post-day">
+                День
+              </label>
+              <input
+                id="post-day"
+                className="field__input"
+                type="number"
+                min={1}
+                max={366}
+                value={form.day}
+                onChange={(e) => set({ day: e.target.value })}
+                disabled={locked || !!busy}
+              />
+            </div>
+            <div className="field">
+              <label className="field__label" htmlFor="post-time">
+                Время (МСК)
+              </label>
+              <input
+                id="post-time"
+                className="field__input"
+                type="time"
+                value={form.time}
+                onChange={(e) => set({ time: e.target.value })}
+                disabled={locked || !!busy}
+              />
+            </div>
+            <p className="field__note botposts__wide">
+              День 1 — день регистрации по Москве; у тех, кто нажал «Старт», но не зарегистрировался, — день первого
+              «Старт». Пока шаблон включён, каждый получит его один раз — в свой день и час (если сервер лежал, догонит
+              в течение 3 часов).
+            </p>
+          </div>
+        ) : (
+          <div className="field">
+            <label className="field__label" htmlFor="post-when">
+              Дата и время публикации (МСК)
+            </label>
+            <input
+              id="post-when"
+              className="field__input"
+              type="datetime-local"
+              value={form.publishAt}
+              onChange={(e) => set({ publishAt: e.target.value })}
+              disabled={locked || !!busy}
+            />
+          </div>
+        )}
+
+        {bot && (
+          <div className="field">
+            <label className="field__label" htmlFor="post-segment">
+              Кому
+            </label>
+            <select
+              id="post-segment"
+              className="field__input"
+              value={form.segment}
+              onChange={(e) => set({ segment: e.target.value as PostSegment })}
+              disabled={locked || !!busy}
+            >
+              {SEGMENTS.map((x) => (
+                <option key={x.key} value={x.key}>
+                  {x.label}
+                </option>
+              ))}
+            </select>
+            <label className="botposts__check">
+              <input
+                type="checkbox"
+                checked={form.selling}
+                onChange={(e) => set({ selling: e.target.checked })}
+                disabled={locked || !!busy}
+              />
+              Продающее — тем, кто уже оплатил, не присылать
+            </label>
+            <p className="field__note">
+              {audience === null
+                ? 'Считаем аудиторию…'
+                : template
+                  ? `Сейчас в аудитории ${audience} чел. — шаблон дойдёт до каждого в его день.`
+                  : `Сейчас получили бы ${audience} чел.`}
+            </p>
+          </div>
+        )}
 
         <div className={`field ${length > limit ? 'is-bad' : ''}`}>
           <label className="field__label" htmlFor="post-text">
@@ -441,37 +646,64 @@ function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: Ed
           <p className="field__note">JPEG, PNG, WEBP — до 10 МБ; MP4 и GIF — до 50 МБ. С файлом текст — подпись до 1024 символов.</p>
         </div>
 
-        <div className="posts__button-fields">
-          <div className="field">
-            <label className="field__label" htmlFor="post-btn-text">
-              Кнопка под постом — надпись
-            </label>
-            <input
-              id="post-btn-text"
-              className="field__input"
-              value={form.buttonText}
-              maxLength={64}
-              placeholder="Например: Начать"
-              onChange={(e) => set({ buttonText: e.target.value })}
-              disabled={locked || !!busy}
-            />
-          </div>
-          <div className="field">
-            <label className="field__label" htmlFor="post-btn-url">
-              Ссылка кнопки
-            </label>
-            <input
-              id="post-btn-url"
-              className="field__input"
-              type="url"
-              value={form.buttonUrl}
-              placeholder="https://t.me/ritmritm_bot?start=…"
-              onChange={(e) => set({ buttonUrl: e.target.value })}
-              disabled={locked || !!busy}
-            />
+        <div className="field">
+          <span className="field__label">Кнопка под постом</span>
+          <div className="chips botposts__when">
+            {BUTTON_TYPES.filter((b) => bot || !b.bot).map((b) => (
+              <button
+                key={b.key}
+                type="button"
+                className={`chip ${form.buttonType === b.key ? 'is-on' : ''}`}
+                disabled={locked || !!busy}
+                onClick={() => set({ buttonType: b.key })}
+              >
+                {b.label}
+              </button>
+            ))}
           </div>
         </div>
-        <p className="field__note">Необязательно. Нужны оба поля — или ни одного.</p>
+
+        {form.buttonType !== 'none' && (
+          <div className="posts__button-fields">
+            <div className="field">
+              <label className="field__label" htmlFor="post-btn-text">
+                Надпись
+              </label>
+              <input
+                id="post-btn-text"
+                className="field__input"
+                value={form.buttonText}
+                maxLength={64}
+                placeholder={form.buttonType === 'web_app' ? 'Зайти в мой ритм' : 'Например: Начать'}
+                onChange={(e) => set({ buttonText: e.target.value })}
+                disabled={locked || !!busy}
+              />
+            </div>
+            <div className="field">
+              <label className="field__label" htmlFor="post-btn-url">
+                {form.buttonType === 'web_app' ? 'Адрес приложения (необязательно)' : 'Ссылка кнопки'}
+              </label>
+              <input
+                id="post-btn-url"
+                className="field__input"
+                type="url"
+                value={form.buttonUrl}
+                placeholder={
+                  form.buttonType === 'web_app' ? 'По умолчанию — ссылка входа воронки' : 'https://t.me/ritmritm_bot?start=…'
+                }
+                onChange={(e) => set({ buttonUrl: e.target.value })}
+                disabled={locked || !!busy}
+              />
+            </div>
+          </div>
+        )}
+        <p className="field__note">
+          {form.buttonType === 'web_app'
+            ? 'Открывает «Мой ритм» прямо в Telegram, как кнопки бота. Без надписи — «Зайти в мой ритм».'
+            : form.buttonType === 'url'
+              ? 'Нужны и надпись, и ссылка.'
+              : 'Пост уйдёт без кнопки.'}
+        </p>
       </div>
 
       {!locked && (
@@ -492,9 +724,11 @@ function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: Ed
               {busy === 'cancel' ? 'Отменяем…' : 'Отменить'}
             </button>
           )}
-          <button className="page__btn" type="button" disabled={!!busy} onClick={() => setConfirm('publish')}>
-            {busy === 'publish' ? 'Публикуем…' : 'Опубликовать сейчас'}
-          </button>
+          {!template && (
+            <button className="page__btn" type="button" disabled={!!busy} onClick={() => setConfirm('publish')}>
+              {busy === 'publish' ? 'Публикуем…' : bot ? 'Разослать сейчас' : 'Опубликовать сейчас'}
+            </button>
+          )}
           {canDelete && (
             <button
               className="page__btn page__btn--danger"
@@ -511,12 +745,14 @@ function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: Ed
       {confirm === 'publish' && (
         <div className="posts__confirm" role="group" aria-label="Подтверждение публикации">
           <p>
-            Опубликовать в «{channelTitle}» прямо сейчас? Пост сразу увидят подписчики канала, отменить это нельзя.
+            {bot
+              ? `Разослать всем из аудитории «${channelTitle}» прямо сейчас${audience !== null ? ` (${audience} чел.)` : ''}? Отменить рассылку нельзя.`
+              : `Опубликовать в «${channelTitle}» прямо сейчас? Пост сразу увидят подписчики канала, отменить это нельзя.`}
             {dirty ? ' Несохранённые правки сначала сохранятся.' : ''}
           </p>
           <div className="posts__confirm-buttons">
             <button className="page__btn page__btn--pink" type="button" onClick={() => void publishNow()}>
-              Да, опубликовать
+              {bot ? 'Да, разослать' : 'Да, опубликовать'}
             </button>
             <button className="page__btn" type="button" onClick={() => setConfirm(null)}>
               Не надо
@@ -546,4 +782,26 @@ function PostEditor({ token, fail, channel, channelTitle, initial, onClose }: Ed
       {ok && <p className="page__note">{ok}</p>}
     </Card>
   )
+}
+
+/** Сколько человек сейчас в аудитории рассылки. null — считаем (или это канал). */
+function useAudience(token: string, channel: PostChannelKey | null, segment: PostSegment, selling: boolean) {
+  const [count, setCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (!channel) return
+    let alive = true
+    setCount(null)
+    adminApi.postAudience(token, channel, segment, selling).then(
+      (n) => {
+        if (alive) setCount(n)
+      },
+      () => {
+        /* подсказка, а не главное: не посчиталось — просто не показываем число */
+      },
+    )
+    return () => {
+      alive = false
+    }
+  }, [token, channel, segment, selling])
+  return count
 }

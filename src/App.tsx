@@ -185,6 +185,7 @@ export default function App() {
               свой, администраторский (src/api/admin.ts). */}
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/posts" element={<Admin />} />
+          <Route path="/admin/survey" element={<Admin />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

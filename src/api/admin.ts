@@ -1,5 +1,6 @@
 /**
- * Админские ручки аналитики воронок — только для страницы /admin.
+ * Админские ручки: аналитика воронок, посты и рассылки, опрос — только для
+ * страницы /admin.
  *
  * Отдельно от client.ts намеренно: у администратора свой токен и своя
  * жизнь. Токен лежит в sessionStorage (закрыл вкладку — вышел) и никогда не
@@ -69,10 +70,31 @@ export type Period = { from?: string; to?: string }
 
 export type UsersQuery = { funnel: Funnel; page: number; per_page: number; sort: UsersSort }
 
-/* ——— Посты в Telegram-каналы (docs/POSTS.md бэкенда) ——— */
+/* ——— Посты в Telegram-каналы и рассылки ботом (docs/POSTS.md бэкенда) ——— */
 
-/** Канал постов: f1 — «Мой ритм! 1» (3 дня), f2 — «Мой ритм! 2» (20 тренировок). */
-export type PostChannelKey = 'f1' | 'f2'
+/**
+ * Куда пост: f1, f2 — каналы «Мой ритм! 1» и «Мой ритм! 2»; bot_f1, bot_f2 —
+ * рассылка личными сообщениями ботом людям воронки 1 (3 дня) и 2 (челлендж).
+ */
+export type PostChannelKey = 'f1' | 'f2' | 'bot_f1' | 'bot_f2'
+
+export const isBotAudience = (key: PostChannelKey): boolean => key === 'bot_f1' || key === 'bot_f2'
+
+/** Кнопка под постом: без кнопки, ссылка или «открыть приложение» (только бот). */
+export type PostButtonType = 'none' | 'url' | 'web_app'
+
+/** Кому из воронки уходит рассылка ботом. */
+export type PostSegment = 'all' | 'registered_idle' | 'active_yesterday' | 'inactive_yesterday' | 'unpaid'
+
+/** Счётчики рассылки ботом. */
+export type PostDeliveries = {
+  recipients: number
+  delivered: number
+  /** Ошибки, в том числе blocked — заблокировали бота. */
+  failed: number
+  blocked: number
+  pending: number
+}
 
 export type PostStatus = 'draft' | 'scheduled' | 'sending' | 'published' | 'failed' | 'cancelled'
 
@@ -82,8 +104,16 @@ export type ChannelPost = {
   id: number
   channel: PostChannelKey
   channel_title: string
-  /** ISO с поясом; null — черновик без времени. */
+  /** Рассылка ботом, а не канал. Старый бэкенд поля не шлёт. */
+  is_bot?: boolean
+  /** ISO с поясом; null — черновик без времени или шаблон «день N». */
   publish_at: string | null
+  /** Шаблон «день N в ЧЧ:ММ по Москве» — только у рассылки ботом. */
+  schedule_day?: number | null
+  schedule_time?: string | null
+  segment?: PostSegment
+  /** Продающий: оплатившим не уходит. */
+  selling?: boolean
   /** Telegram HTML. */
   text: string
   /** Видимая длина (без тегов, как считает Telegram) и лимит: 4096 или 1024 с медиа. */
@@ -91,6 +121,7 @@ export type ChannelPost = {
   text_limit: number
   media_type: PostMediaType
   has_media: boolean
+  button_type?: PostButtonType
   button_text: string | null
   button_url: string | null
   status: PostStatus
@@ -100,13 +131,16 @@ export type ChannelPost = {
   created_at: string
   updated_at: string
   published_at: string | null
+  /** Только у рассылки ботом. */
+  deliveries?: PostDeliveries | null
 }
 
 export type PostChannelInfo = {
   key: PostChannelKey
+  kind?: 'channel' | 'bot'
   title: string
   note: string
-  /** false — id канала не задан в .env сервера, публиковать туда нельзя. */
+  /** false — id канала не задан в .env сервера (у бота — токен), публиковать туда нельзя. */
   configured: boolean
   chat_id: number | null
 }
@@ -122,9 +156,48 @@ export type PostInput = {
   channel: PostChannelKey
   publish_at: string | null
   text: string
+  button_type: PostButtonType
   button_text: string | null
   button_url: string | null
+  /** Только у рассылки ботом; у каналов не отправляются. */
+  schedule_day?: number | null
+  schedule_time?: string | null
+  segment?: PostSegment
+  selling?: boolean
 }
+
+/* ——— Опрос в боте (docs/BOT.md бэкенда) ——— */
+
+export type SurveyFunnel = 'trial3d' | 'trial20' | 'organic'
+
+export type SurveyStats = {
+  /** null — без воронки. */
+  funnel?: string | null
+  responses: number
+  scores: number
+  avg_score: number | null
+  nps: number | null
+}
+
+export type SurveyRow = {
+  tg_user_id: number
+  user_id: string | null
+  email: string | null
+  funnel: string | null
+  point: number
+  score: number | null
+  answers: Record<string, string | null>
+  answered_at: string
+}
+
+export type SurveyData = {
+  questions: { key: string; text: string }[]
+  summary: SurveyStats[]
+  total: SurveyStats
+  items: SurveyRow[]
+}
+
+export type SurveyQuery = { funnel?: SurveyFunnel; point?: number }
 
 export interface AdminApi {
   readonly isDemo: boolean
@@ -146,6 +219,11 @@ export interface AdminApi {
   /** Итог — в самом посте: published или failed с причиной. */
   publishPostNow(token: string, id: number): Promise<ChannelPost>
   previewPost(token: string, id: number): Promise<void>
+  /** Сколько человек сейчас получили бы рассылку ботом. */
+  postAudience(token: string, channel: PostChannelKey, segment: PostSegment, selling: boolean): Promise<number>
+
+  survey(token: string, q: SurveyQuery): Promise<SurveyData>
+  surveyCsv(token: string, q: SurveyQuery): Promise<Blob>
 }
 
 const TIMEOUT_MS = 20_000
@@ -311,6 +389,21 @@ function createHttpAdminApi(rawBase: string): AdminApi {
     async previewPost(token, id) {
       await send('POST', `/admin/posts/${id}/preview`, token, undefined, LONG_TIMEOUT_MS)
     },
+
+    async postAudience(token, channel, segment, selling) {
+      const data = await json<{ count: number }>(
+        send('GET', `/admin/posts/audience${query({ channel, segment, selling: String(selling) })}`, token),
+      )
+      return data.count
+    },
+
+    survey: (token, q) =>
+      json<SurveyData>(send('GET', `/admin/survey${query({ funnel: q.funnel, point: q.point })}`, token)),
+
+    async surveyCsv(token, q) {
+      const res = await send('GET', `/admin/survey/export.csv${query({ funnel: q.funnel, point: q.point })}`, token)
+      return res.blob()
+    },
   }
 }
 
@@ -337,6 +430,10 @@ function lazyDemoAdminApi(): AdminApi {
     cancelPost: (token, id) => impl().then((a) => a.cancelPost(token, id)),
     publishPostNow: (token, id) => impl().then((a) => a.publishPostNow(token, id)),
     previewPost: (token, id) => impl().then((a) => a.previewPost(token, id)),
+    postAudience: (token, channel, segment, selling) =>
+      impl().then((a) => a.postAudience(token, channel, segment, selling)),
+    survey: (token, q) => impl().then((a) => a.survey(token, q)),
+    surveyCsv: (token, q) => impl().then((a) => a.surveyCsv(token, q)),
   }
 }
 
