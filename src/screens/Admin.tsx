@@ -18,7 +18,8 @@
  *     CSV-файлом.
  *
  * Второй раздел — /admin/posts, посты в Telegram-каналы воронок
- * (AdminPosts.tsx). Разделы переключаются чипами вверху страницы; вход общий.
+ * (AdminPosts.tsx), третий — /admin/behavior, поведение людей по воронкам
+ * (AdminBehavior.tsx). Разделы переключаются чипами вверху страницы; вход общий.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -40,6 +41,7 @@ import { IS_DEMO } from '../api/client'
 import type { Funnel } from '../api/types'
 import { rub } from '../data/tariffs'
 import { AccountShell, Field, Form, FormError, errorText, isEmail } from './Account'
+import AdminBehavior from './AdminBehavior'
 import AdminPosts from './AdminPosts'
 import PageShell, { Card } from './Page'
 import './Admin.css'
@@ -137,7 +139,7 @@ function useNoindex(): void {
 
 /* ——— Страница ——— */
 
-type Section = 'funnels' | 'posts'
+type Section = 'funnels' | 'posts' | 'behavior'
 
 const SECTIONS: { section: Section; path: string; label: string; title: string; lead: string }[] = [
   {
@@ -146,6 +148,13 @@ const SECTIONS: { section: Section; path: string; label: string; title: string; 
     label: 'Аналитика воронок',
     title: 'Аналитика воронок',
     lead: 'Две тестовые группы запуска через Telegram: кто пришёл по ссылке, дошёл до тренировки и оплатил.',
+  },
+  {
+    section: 'behavior',
+    path: '/admin/behavior',
+    label: 'Поведение',
+    title: 'Поведение по воронкам',
+    lead: 'Как двигаются люди из разных воронок в первые три недели: сколько дней занимаются, возвращаются ли и сколько длится заход.',
   },
   {
     section: 'posts',
@@ -158,7 +167,8 @@ const SECTIONS: { section: Section; path: string; label: string; title: string; 
 
 function useSection(): Section {
   const { pathname } = useLocation()
-  return pathname.replace(/\/+$/, '') === '/admin/posts' ? 'posts' : 'funnels'
+  const path = pathname.replace(/\/+$/, '')
+  return SECTIONS.find((s) => s.path === path)?.section ?? 'funnels'
 }
 
 export default function Admin() {
@@ -283,7 +293,13 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
           </button>
         ))}
       </nav>
-      {section === 'posts' ? <AdminPosts token={token} fail={fail} /> : <Funnels token={token} fail={fail} />}
+      {section === 'posts' ? (
+        <AdminPosts token={token} fail={fail} />
+      ) : section === 'behavior' ? (
+        <AdminBehavior token={token} fail={fail} />
+      ) : (
+        <Funnels token={token} fail={fail} />
+      )}
     </PageShell>
   )
 }

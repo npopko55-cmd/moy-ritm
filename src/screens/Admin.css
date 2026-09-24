@@ -209,7 +209,47 @@
   color: var(--gray-500);
 }
 
-/* ——— Разделы админки: воронки и посты ——— */
+/* ——— Поведение по воронкам (AdminBehavior.tsx) ———
+   Та же таблица, что у людей, но строки — метрики, а под подписью мелкая
+   подсказка, как считается. Длинная подсказка переносится, цифры — нет. */
+.behavior__table { min-width: 720px; }
+.behavior__table th:first-child,
+.behavior__table td.behavior__label { width: 44%; }
+
+.behavior__table td.behavior__label { white-space: normal; font-weight: 600; color: var(--ink-900); }
+
+.behavior__hint,
+.behavior__sub,
+.behavior__col-note {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--gray-500);
+}
+
+.behavior__table td.is-num { vertical-align: top; }
+
+.behavior__value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.behavior__none { color: var(--gray-300); }
+
+.behavior__section th {
+  padding-top: 16px;
+  background: var(--white);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pink-600);
+}
+
+/* ——— Разделы админки: воронки, поведение и посты ——— */
 .admin__sections { margin-top: 18px; }
 .admin__sections .chip { flex: 0 1 auto; }
 
