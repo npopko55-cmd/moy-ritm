@@ -20,6 +20,10 @@
  * регистрируется или входит как обычно, а сразу после этого мы один раз и
  * молча привязываем Telegram к аккаунту.
  *
+ * Вне Telegram связь с ботом даёт ссылка «Открыть в браузере» с токеном
+ * ?tglink=… (src/lib/tgLink.ts): вошёл по cookie, зарегистрировался или
+ * вошёл паролем — один раз и молча привязываем Telegram по этому токену.
+ *
  * Регистрация сама передаёт токен воронки, если человек пришёл по ссылке
  * /go/<токен> или открыл мини-ап ссылкой с ?startapp=<токен>
  * (src/lib/funnel.ts): экраны об этом не знают.
@@ -37,6 +41,7 @@ import { onAppReturn } from '../lib/appReturn'
 import { flushBeforeSignOut } from '../lib/chunks'
 import { forgetFunnelToken, launchFunnel, readFunnelToken, saveFunnelToken } from '../lib/funnel'
 import { saveMoveInterval } from '../lib/settings'
+import { linkTelegramFromBot } from '../lib/tgLink'
 import { IN_TELEGRAM, telegramInitData, telegramLog } from '../lib/telegram'
 
 /** Паузы между попытками узнать, вошёл ли человек, пока сервер не отвечает; дальше — по последней. */
@@ -148,6 +153,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  /**
+   * Привязать Telegram по токену из ссылки бота (браузер, не мини-ап). Молча:
+   * не вышло — человек всё равно вошёл. Токена нет — ничего не делает.
+   */
+  const linkFromBot = useCallback(() => {
+    void linkTelegramFromBot().then((next) => {
+      if (next && alive.current) setMe(next)
+    })
+  }, [])
+
   useEffect(() => {
     alive.current = true
     // Своя отметка у каждого запуска эффекта: в StrictMode первый запуск
@@ -205,7 +220,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           refreshed = true
         }
         const next = await api.getMe()
-        if (!cancelled) settle(next)
+        if (!cancelled) {
+          settle(next)
+          linkFromBot()
+        }
       } catch (e) {
         if (cancelled) return
         if (!isTemporary(e)) {
@@ -241,7 +259,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', retryNow)
       off()
     }
-  }, [])
+  }, [linkFromBot])
 
   // Вернулся в приложение — перечитываем профиль, а с ним и доступ. Гостю
   // перечитывать нечего; сбой сети reload переживает сам.
@@ -259,6 +277,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
    * всё равно вошёл, а ошибку видно только в консоли при разработке.
    */
   const linkTelegram = useCallback(() => {
+    linkFromBot()
     const initData = telegramToLink
     if (!initData) return
     telegramToLink = null
@@ -268,7 +287,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       (e) => telegramLog('привязка Telegram не прошла', e),
     )
-  }, [])
+  }, [linkFromBot])
 
   const signUp = useCallback(
     async (body: RegisterBody) => {

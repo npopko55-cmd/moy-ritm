@@ -355,6 +355,8 @@ export function createHttpApi(rawBase: string): Api {
 
     linkTelegram: (initData) => request<Me>('POST', '/me/telegram', { body: { init_data: initData } }),
 
+    linkTelegramToken: (token) => request<Me>('POST', '/me/telegram/token', { body: { token } }),
+
     /* ——— Служебное ——— */
 
     clearSession,

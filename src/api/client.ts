@@ -119,6 +119,12 @@ export interface Api {
   telegramAuth(initData: string): Promise<TelegramAuthResponse>
   /** Привязать Telegram к вошедшему. 409 TELEGRAM_ALREADY_LINKED. */
   linkTelegram(initData: string): Promise<Me>
+  /**
+   * Привязать Telegram по токену из ссылки бота «Открыть в браузере»
+   * (?tglink=…). 400 TELEGRAM_LINK_INVALID, 410 TELEGRAM_LINK_EXPIRED,
+   * 409 TELEGRAM_ALREADY_LINKED / TELEGRAM_OTHER_LINKED.
+   */
+  linkTelegramToken(token: string): Promise<Me>
 
   /* ——— Служебное для контекста сессии ——— */
   /** Забыть access-токен: выход и потерянная сессия. */
