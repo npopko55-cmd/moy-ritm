@@ -28,6 +28,8 @@ import type {
   Period,
   PostChannelKey,
   PostInput,
+  SurveyData,
+  SurveyRow,
   UsersQuery,
 } from './admin'
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
@@ -1049,6 +1051,10 @@ export function createDemoApi(): Api {
       throw new ApiError(503, 'TELEGRAM_DISABLED', 'Вход через Telegram выключен')
     },
 
+    async linkTelegramToken() {
+      throw new ApiError(503, 'TELEGRAM_DISABLED', 'Вход через Telegram выключен')
+    },
+
     /* ——— Служебное ——— */
 
     clearSession() {
@@ -1133,7 +1139,13 @@ function demoFunnelPeople(): FunnelUser[] {
 
 /* ——— Посты в каналы: несколько выдуманных, живут в памяти вкладки ——— */
 
-const DEMO_CHANNEL_TITLES: Record<PostChannelKey, string> = { f1: 'Мой ритм! 1', f2: 'Мой ритм! 2' }
+const DEMO_CHANNEL_TITLES: Record<PostChannelKey, string> = {
+  f1: 'Мой ритм! 1',
+  f2: 'Мой ритм! 2',
+  bot_f1: 'Бот: воронка 1 (3 дня)',
+  bot_f2: 'Бот: воронка 2 (челлендж)',
+}
+const isBot = (key: PostChannelKey) => key === 'bot_f1' || key === 'bot_f2'
 
 function demoPost(id: number, fields: Partial<ChannelPost> & Pick<ChannelPost, 'channel' | 'text'>): ChannelPost {
   const now = new Date().toISOString()
@@ -1145,8 +1157,13 @@ function demoPost(id: number, fields: Partial<ChannelPost> & Pick<ChannelPost, '
     text_limit: TEXT_LIMIT,
     media_type: 'none',
     has_media: false,
+    button_type: 'none',
     button_text: null,
     button_url: null,
+    schedule_day: null,
+    schedule_time: null,
+    segment: 'all',
+    selling: false,
     status: 'draft',
     telegram_message_id: null,
     error: null,
@@ -1160,8 +1177,11 @@ function demoPost(id: number, fields: Partial<ChannelPost> & Pick<ChannelPost, '
 }
 
 function withLengths(post: ChannelPost): ChannelPost {
+  const bot = isBot(post.channel)
   return {
     ...post,
+    is_bot: bot,
+    deliveries: bot ? (post.deliveries ?? { recipients: 0, delivered: 0, failed: 0, blocked: 0, pending: 0 }) : null,
     channel_title: DEMO_CHANNEL_TITLES[post.channel],
     has_media: post.media_type !== 'none',
     text_length: visibleLength(post.text),
@@ -1179,6 +1199,7 @@ function demoPosts(): ChannelPost[] {
       status: 'published',
       published_at: at(-26),
       telegram_message_id: 12,
+      button_type: 'url',
       button_text: 'Начать',
       button_url: 'https://t.me/ritmritm_bot?start=hx4q7m2p',
     }),
@@ -1197,6 +1218,41 @@ function demoPosts(): ChannelPost[] {
       status: 'failed',
       error: 'Канал «Мой ритм! 2» не подключён: задайте POST_CHANNEL_F2_ID в .env сервера (docs/POSTS.md)',
     }),
+    demoPost(5, {
+      channel: 'bot_f1',
+      text: '<b>День 2.</b> Пять минут под музыку — и день засчитан 💪',
+      schedule_day: 2,
+      schedule_time: '10:00',
+      segment: 'inactive_yesterday',
+      status: 'scheduled',
+      button_type: 'web_app',
+      button_text: 'Зайти в мой ритм',
+      deliveries: { recipients: 41, delivered: 39, failed: 2, blocked: 2, pending: 0 },
+    }),
+    demoPost(6, {
+      channel: 'bot_f1',
+      text: 'Скидка на первый месяц — до пятницы.',
+      publish_at: at(-50),
+      status: 'published',
+      published_at: at(-50),
+      selling: true,
+      button_type: 'url',
+      button_text: 'Тарифы',
+      button_url: 'https://ritmritm.ru/tariffs',
+      deliveries: { recipients: 128, delivered: 125, failed: 3, blocked: 3, pending: 0 },
+    }),
+  ]
+}
+
+function demoSurvey(): SurveyRow[] {
+  const at = (days: number) => new Date(Date.now() - days * DAY_MS).toISOString()
+  return [
+    { tg_user_id: 5550101, user_id: 'd1', email: 'anna@example.com', funnel: 'trial3d', point: 3, score: 9,
+      answers: { nps: '9', often: 'Каждый день', improve: 'Больше музыки 80-х' }, answered_at: at(1) },
+    { tg_user_id: 5550102, user_id: 'd2', email: 'olga@example.com', funnel: 'trial20', point: 3, score: 6,
+      answers: { nps: '6', often: 'Раз в неделю и реже', improve: null }, answered_at: at(2) },
+    { tg_user_id: 5550103, user_id: 'd3', email: 'irina@example.com', funnel: 'trial20', point: 7, score: 10,
+      answers: { nps: '10', often: 'Несколько раз в неделю', improve: 'Всё нравится!' }, answered_at: at(3) },
   ]
 }
 
@@ -1231,10 +1287,30 @@ export function createDemoAdminApi(): AdminApi {
     const length = visibleLength(input.text)
     if (media === 'none' && !input.text.trim()) throw new ApiError(422, 'POST_INVALID', 'Пустой пост: нужен текст или картинка/ролик')
     if (length > limit) throw new ApiError(422, 'POST_INVALID', `Длина текста — ${length} символов, Telegram принимает до ${limit}`)
-    if (!input.button_text !== !input.button_url) {
+    if (input.button_type === 'web_app' && !isBot(input.channel)) {
+      throw new ApiError(422, 'POST_INVALID', 'Кнопка «открыть приложение» работает только в личных сообщениях бота')
+    }
+    if (input.button_type === 'url' && !input.button_text !== !input.button_url) {
       throw new ApiError(422, 'POST_INVALID', 'У кнопки нужны и надпись, и ссылка — или ни того, ни другого')
     }
   }
+  /** Поля ввода → поля поста, как их сохранил бы бэкенд. */
+  const normalize = (input: PostInput): Partial<ChannelPost> => {
+    const bot = isBot(input.channel)
+    const template = bot && input.schedule_day ? input.schedule_day : null
+    return {
+      ...input,
+      publish_at: template ? null : input.publish_at,
+      schedule_day: template,
+      schedule_time: template ? (input.schedule_time ?? null) : null,
+      segment: bot ? (input.segment ?? 'all') : 'all',
+      selling: bot ? !!input.selling : false,
+      button_text:
+        input.button_type === 'none' ? null : input.button_type === 'web_app' ? input.button_text || 'Зайти в мой ритм' : input.button_text,
+      button_url: input.button_type === 'none' ? null : input.button_url,
+    }
+  }
+  const survey = demoSurvey()
   const channelReady = (channel: PostChannelKey) => {
     if (channel === 'f2') {
       throw new ApiError(409, 'POST_CONFLICT', 'Канал «Мой ритм! 2» не подключён: задайте POST_CHANNEL_F2_ID в .env сервера (docs/POSTS.md)')
@@ -1380,9 +1456,11 @@ export function createDemoAdminApi(): AdminApi {
       check(token)
       return {
         channels: [
-          { key: 'f1', title: 'Мой ритм! 1', note: 'воронка 1 — 3 дня', configured: true, chat_id: -1001000000001 },
+          { key: 'f1', kind: 'channel', title: 'Мой ритм! 1', note: 'воронка 1 — 3 дня', configured: true, chat_id: -1001000000001 },
           // Второй канал в демо «не подключён» — чтобы было видно, как это выглядит.
-          { key: 'f2', title: 'Мой ритм! 2', note: 'воронка 2 — 20 тренировок', configured: false, chat_id: null },
+          { key: 'f2', kind: 'channel', title: 'Мой ритм! 2', note: 'воронка 2 — челлендж 21 день', configured: false, chat_id: null },
+          { key: 'bot_f1', kind: 'bot', title: DEMO_CHANNEL_TITLES.bot_f1, note: 'личные сообщения людям воронки 1', configured: true, chat_id: null },
+          { key: 'bot_f2', kind: 'bot', title: DEMO_CHANNEL_TITLES.bot_f2, note: 'личные сообщения людям воронки 2', configured: true, chat_id: null },
         ],
         preview_configured: true,
         bot_configured: true,
@@ -1399,7 +1477,7 @@ export function createDemoAdminApi(): AdminApi {
     async createPost(token, input) {
       check(token)
       checkInput(input, 'none')
-      const post = demoPost(nextPostId++, { ...input })
+      const post = demoPost(nextPostId++, { ...normalize(input), channel: input.channel, text: input.text })
       posts.push(post)
       return post
     },
@@ -1408,7 +1486,7 @@ export function createDemoAdminApi(): AdminApi {
       check(token)
       const post = editable(id)
       checkInput(input, post.media_type)
-      return save({ ...post, ...input, updated_at: new Date().toISOString() })
+      return save({ ...post, ...normalize(input), updated_at: new Date().toISOString() })
     },
 
     async deletePost(token, id) {
@@ -1438,6 +1516,7 @@ export function createDemoAdminApi(): AdminApi {
     async schedulePost(token, id) {
       check(token)
       const post = editable(id)
+      if (post.schedule_day) return save({ ...post, status: 'scheduled', error: null })
       if (!post.publish_at) throw new ApiError(422, 'POST_INVALID', 'Не задано время публикации')
       if (Date.parse(post.publish_at) < Date.now() - 60_000) {
         throw new ApiError(422, 'POST_INVALID', 'Время публикации уже прошло: поставьте новое или нажмите «Опубликовать сейчас»')
@@ -1458,12 +1537,70 @@ export function createDemoAdminApi(): AdminApi {
       const post = editable(id)
       channelReady(post.channel)
       const now = new Date().toISOString()
+      if (isBot(post.channel)) {
+        if (post.schedule_day) {
+          throw new ApiError(409, 'POST_CONFLICT', 'Пост «день N» уходит каждому в его день — сразу его не отправить')
+        }
+        return save({ ...post, status: 'scheduled', publish_at: now, error: null })
+      }
       return save({ ...post, status: 'published', published_at: now, telegram_message_id: 100 + post.id, error: null })
     },
 
     async previewPost(token, id) {
       check(token)
       findPost(id)
+    },
+
+    async postAudience(token, channel, segment, selling) {
+      check(token)
+      const base = channel === 'bot_f1' ? 140 : 95
+      const share = { all: 1, registered_idle: 0.2, active_yesterday: 0.35, inactive_yesterday: 0.45, unpaid: 0.8 }[segment]
+      return Math.round(base * share * (selling ? 0.85 : 1))
+    },
+
+    async survey(token, q) {
+      check(token)
+      const items = survey.filter(
+        (r) =>
+          (!q.funnel || (q.funnel === 'organic' ? r.funnel === null : r.funnel === q.funnel)) &&
+          (!q.point || r.point === q.point),
+      )
+      const stats = (rows: SurveyRow[]) => {
+        const scores = rows.map((r) => r.score).filter((s): s is number => s !== null)
+        const nps = scores.length
+          ? Math.round(((scores.filter((s) => s >= 9).length - scores.filter((s) => s <= 6).length) * 1000) / scores.length) / 10
+          : null
+        return {
+          responses: rows.length,
+          scores: scores.length,
+          avg_score: scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100 : null,
+          nps,
+        }
+      }
+      const funnels = [...new Set(items.map((r) => r.funnel))]
+      const data: SurveyData = {
+        questions: [
+          { key: 'nps', text: 'Насколько вероятно, что вы порекомендуете «Мой ритм» друзьям?' },
+          { key: 'often', text: 'Как часто вы тренируетесь с «Моим ритмом»?' },
+          { key: 'improve', text: 'Что нам улучшить в первую очередь?' },
+        ],
+        summary: funnels.map((funnel) => ({ funnel, ...stats(items.filter((r) => r.funnel === funnel)) })),
+        total: stats(items),
+        items,
+      }
+      return data
+    },
+
+    async surveyCsv(token, q) {
+      const data = await this.survey(token, q)
+      const keys = data.questions.map((x) => x.key)
+      const rows = data.items.map((r) =>
+        [r.answered_at, r.email, r.tg_user_id, r.funnel ?? 'органический', r.point, ...keys.map((k) => r.answers[k])]
+          .map(csvCell)
+          .join(';'),
+      )
+      const head = ['Дата', 'Почта', 'Telegram id', 'Воронка', 'День опроса', ...keys].join(';')
+      return new Blob(['\ufeff' + [head, ...rows].join('\n')], { type: 'text/csv;charset=utf-8' })
     },
   }
 }

@@ -1,0 +1,63 @@
+/* ═══════ Бот как канал общения: рассылки в «Постах» и страница «Опрос» ═══════
+   Отдельным файлом, а не в Admin.css: общие стили админки не трогаем. */
+
+/* ——— Рассылка ботом (/admin/posts) ——— */
+.botposts__when .chip { flex: 0 1 auto; }
+
+.botposts__day {
+  display: grid;
+  grid-template-columns: minmax(0, 140px) minmax(0, 180px);
+  gap: 0 16px;
+  margin-top: 16px;
+}
+
+.botposts__day .field + .field { margin-top: 0; }
+.botposts__wide { grid-column: 1 / -1; }
+
+.botposts__check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 15px;
+  color: var(--ink-800);
+}
+
+.botposts__check input { width: 18px; height: 18px; accent-color: var(--pink-600); }
+
+.botposts__counts { font-variant-numeric: tabular-nums; }
+
+/* ——— Опрос (/admin/survey) ——— */
+.survey__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.survey__stat {
+  padding: 14px 16px;
+  border: 1px solid var(--gray-100);
+  border-radius: var(--r-md);
+  background: var(--white);
+}
+
+.survey__stat-title { font-size: 14px; color: var(--gray-500); }
+
+.survey__stat-nps {
+  margin-top: 4px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink-800);
+  font-variant-numeric: tabular-nums;
+}
+
+.survey__stat-note { margin-top: 2px; font-size: 13.5px; color: var(--gray-500); }
+
+.survey__points { margin-top: 12px; }
+
+.survey__answer { max-width: 360px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+@media (max-width: 599.98px) {
+  .botposts__day { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}

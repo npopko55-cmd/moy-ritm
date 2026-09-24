@@ -17,9 +17,10 @@
  *   • таблица людей выбранной воронки с сортировкой и страницами, и она же —
  *     CSV-файлом.
  *
- * Второй раздел — /admin/posts, посты в Telegram-каналы воронок
- * (AdminPosts.tsx), третий — /admin/behavior, поведение людей по воронкам
- * (AdminBehavior.tsx). Разделы переключаются чипами вверху страницы; вход общий.
+ * Второй раздел — /admin/posts, посты в Telegram-каналы воронок и рассылки
+ * ботом (AdminPosts.tsx), третий — /admin/behavior, поведение людей по
+ * воронкам (AdminBehavior.tsx), четвёртый — /admin/survey, ответы на опрос в
+ * боте (AdminSurvey.tsx). Разделы переключаются чипами вверху страницы; вход общий.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -43,6 +44,7 @@ import { rub } from '../data/tariffs'
 import { AccountShell, Field, Form, FormError, errorText, isEmail } from './Account'
 import AdminBehavior from './AdminBehavior'
 import AdminPosts from './AdminPosts'
+import AdminSurvey from './AdminSurvey'
 import PageShell, { Card } from './Page'
 import './Admin.css'
 
@@ -139,7 +141,7 @@ function useNoindex(): void {
 
 /* ——— Страница ——— */
 
-type Section = 'funnels' | 'posts' | 'behavior'
+type Section = 'funnels' | 'posts' | 'behavior' | 'survey'
 
 const SECTIONS: { section: Section; path: string; label: string; title: string; lead: string }[] = [
   {
@@ -150,6 +152,13 @@ const SECTIONS: { section: Section; path: string; label: string; title: string; 
     lead: 'Две тестовые группы запуска через Telegram: кто пришёл по ссылке, дошёл до тренировки и оплатил.',
   },
   {
+    section: 'posts',
+    path: '/admin/posts',
+    label: 'Посты',
+    title: 'Посты и рассылки',
+    lead: 'Рассылки ботом людям воронки и посты в Telegram-каналы по расписанию. Время — московское.',
+  },
+  {
     section: 'behavior',
     path: '/admin/behavior',
     label: 'Поведение',
@@ -157,11 +166,11 @@ const SECTIONS: { section: Section; path: string; label: string; title: string; 
     lead: 'Как двигаются люди из разных воронок в первые три недели: сколько дней занимаются, возвращаются ли и сколько длится заход.',
   },
   {
-    section: 'posts',
-    path: '/admin/posts',
-    label: 'Посты',
-    title: 'Посты в каналы',
-    lead: 'Посты в Telegram-каналы воронок по расписанию. Время — московское.',
+    section: 'survey',
+    path: '/admin/survey',
+    label: 'Опрос',
+    title: 'Опрос в боте',
+    lead: 'Ответы на опрос через 3, 7 и 21 день после регистрации: NPS по воронкам и что пишут люди.',
   },
 ]
 
@@ -297,6 +306,8 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
         <AdminPosts token={token} fail={fail} />
       ) : section === 'behavior' ? (
         <AdminBehavior token={token} fail={fail} />
+      ) : section === 'survey' ? (
+        <AdminSurvey token={token} fail={fail} />
       ) : (
         <Funnels token={token} fail={fail} />
       )}
