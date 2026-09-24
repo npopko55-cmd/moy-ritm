@@ -13,7 +13,8 @@
  */
 
 import { loopSrc } from '../data/loops'
-import { DEFAULT_FREE_TIER, EXTRA_MOVES_LABEL, STREAMS } from '../data/streams'
+import { DEFAULT_FREE_TIER, STREAMS } from '../data/streams'
+import { EXTRA_MOVES_LABEL } from '../lib/trial'
 import { PLACEHOLDER_EMAIL, TELEGRAM_URL } from '../data/support'
 import { TARIFFS } from '../data/tariffs'
 import { CAPTION_LIMIT, TEXT_LIMIT, visibleLength } from '../lib/posts'

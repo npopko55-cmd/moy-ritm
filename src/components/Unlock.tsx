@@ -22,12 +22,11 @@
 
 import { Link } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider'
-import { ALL_MOVES } from '../data/streams'
 import { TARIFFS, rub } from '../data/tariffs'
 import { plural } from '../lib/date'
 import { useFromPrice } from '../lib/tariffs'
 import { openTariffsOnSite, useInTelegram } from '../lib/telegram'
-import { trialHint, trialOpensAll, useTrial } from '../lib/trial'
+import { CATALOG_MOVES_TEXT, trialHint, trialOpensAll, useTrial } from '../lib/trial'
 import './Unlock.css'
 
 /**
@@ -51,13 +50,13 @@ export default function Unlock({ compact = false }: Props) {
   return (
     <div className={`unlock ${compact ? 'unlock--compact' : ''}`}>
       <span className="unlock__text">
-        {/* Склонение по числу: после скрытых роликов их 39 — «все 39 движений». */}
+        {/* Число — обещание владельца (CATALOG_MOVES_TEXT = 40), а не длина каталога. */}
         <span className="unlock__title">
           {trialOpensAll(trial, access)
             ? 'Шагайте без ограничений'
             : hint
               ? 'Откройте все движения'
-              : `Откройте все ${plural(ALL_MOVES.length, 'движение', 'движения', 'движений')}`}
+              : `Откройте все ${plural(CATALOG_MOVES_TEXT, 'движение', 'движения', 'движений')}`}
         </span>
         <span className="unlock__price">{hint ?? `от ${rub(fromPrice)} в месяц`}</span>
       </span>

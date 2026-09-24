@@ -8,7 +8,6 @@
 
 import type { FreeTier } from '../api/types'
 import { asset } from '../lib/asset'
-import { plural } from '../lib/date'
 import { LOOPS, type Loop } from './loops'
 
 export type Stream = {
@@ -195,19 +194,6 @@ export const STREAMS: Stream[] = [
  * остальные нет своего контента, см. hidden в типе Stream.
  */
 export const VISIBLE_STREAMS: Stream[] = STREAMS.filter((s) => !s.hidden)
-
-/**
- * «+9 движений» — сколько движений оплата добавит к бесплатным. Первый пункт
- * того, что входит в подписку, на странице тарифов и в демо-ответе
- * GET /tariffs. Число не пишется руками: появятся новые ролики в каталоге —
- * вырастет само.
- */
-export const EXTRA_MOVES_LABEL = `+${plural(
-  ALL_MOVES.length - DEFAULT_FREE_TIER.exercise_limit,
-  'движение',
-  'движения',
-  'движений',
-)}`
 
 /**
  * Поток по умолчанию. С него начинается тренировка, в него же молча уводят

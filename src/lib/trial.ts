@@ -22,7 +22,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { api } from '../api/client'
 import { hasAccess, type Access, type PlayerBootstrap, type Trial } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { ALL_MOVES } from '../data/streams'
+import { ALL_MOVES, DEFAULT_FREE_TIER } from '../data/streams'
 import { onAppReturn } from './appReturn'
 import { plural } from './date'
 
@@ -37,6 +37,19 @@ const REUSE_MS = 10_000
  * ролики скрывают и возвращают, а обещание в текстах — нет.
  */
 export const CATALOG_MOVES_TEXT = 40
+
+/**
+ * «+35 движений» — сколько движений оплата добавит к бесплатным: первый
+ * пункт того, что входит в подписку, на странице тарифов и в демо-ответе
+ * GET /tariffs. Считается от CATALOG_MOVES_TEXT, а не от длины каталога — по
+ * той же причине: в текстах везде 40, сколько бы роликов ни было скрыто.
+ */
+export const EXTRA_MOVES_LABEL = `+${plural(
+  CATALOG_MOVES_TEXT - DEFAULT_FREE_TIER.exercise_limit,
+  'движение',
+  'движения',
+  'движений',
+)}`
 
 /** Бесплатных движений челленджа, если сервер не прислал free_tier. */
 const CHALLENGE_MOVES = 10

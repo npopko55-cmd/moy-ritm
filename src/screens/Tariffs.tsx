@@ -20,7 +20,7 @@ import { hasAccess } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { asset } from '../lib/asset'
 import { formatDate } from '../lib/date'
-import { EXTRA_MOVES_LABEL } from '../data/streams'
+import { EXTRA_MOVES_LABEL } from '../lib/trial'
 import '../components/Logo.css'
 import './Tariffs.css'
 
