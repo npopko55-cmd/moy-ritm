@@ -258,10 +258,11 @@ export default function Progress() {
   const avgTime = duration(data?.averages.per_active_day_seconds ?? 0)
   const recordTime = duration(data?.records.best_day?.seconds ?? 0)
   const paid = access?.status === 'none' || access?.status === 'expired' ? null : access?.paid_until
-  // У trial20 все движения уже открыты — промо зовёт к тарифу, а не к «всем движениям».
+  // У trial3d все движения уже открыты — промо зовёт к тарифу, а не к «всем
+  // движениям». Строка о пробном периоде — у обеих воронок.
   const trial = useTrial()
   const opensAll = trialOpensAll(trial, access)
-  const trialNote = opensAll ? trialHint(trial, access) : null
+  const trialNote = trialHint(trial, access)
 
   return (
     <div className="dash">

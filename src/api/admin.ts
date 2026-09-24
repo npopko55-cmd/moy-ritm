@@ -33,7 +33,8 @@ export type FunnelSummary = {
   started: number
   /** Дошли до предложения тарифов — есть только у trial20. */
   reached_offer: number | null
-  expired: number
+  /** Пробный период кончился без оплаты — только trial3d; у челленджа trial20 null. */
+  expired: number | null
   paid_users: number
   revenue: number
   currency: string
@@ -71,7 +72,7 @@ export type UsersQuery = { funnel: Funnel; page: number; per_page: number; sort:
 
 /* ——— Посты в Telegram-каналы (docs/POSTS.md бэкенда) ——— */
 
-/** Канал постов: f1 — «Мой ритм! 1» (3 дня), f2 — «Мой ритм! 2» (20 тренировок). */
+/** Канал постов: f1 — «Мой ритм! 1» (3 дня), f2 — «Мой ритм! 2» (челлендж 21 день). */
 export type PostChannelKey = 'f1' | 'f2'
 
 export type PostStatus = 'draft' | 'scheduled' | 'sending' | 'published' | 'failed' | 'cancelled'

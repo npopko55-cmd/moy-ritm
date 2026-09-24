@@ -100,7 +100,7 @@ button.dash__nav-item { width: 100%; }
   color: var(--pink-700);
 }
 
-/* trial20: сколько бесплатных тренировок осталось — строкой под заголовком. */
+/* Пробный период воронки (дни trial3d, челлендж trial20) — строкой под заголовком. */
 .dash__promo-note {
   display: block;
   margin-top: 4px;

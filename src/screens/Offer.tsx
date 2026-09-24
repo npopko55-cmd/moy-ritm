@@ -1,11 +1,13 @@
 /**
- * Предложение тарифов после 10-й бесплатной тренировки (воронка trial20).
+ * Предложение тарифов в челлендже «21 день» (воронка trial20): через три дня
+ * после регистрации (TRIAL20_OFFER_AFTER_DAYS на бэкенде).
  *
- * Показывается один раз: охранник тренировки (RequireTrial) уводит сюда
- * вместо отсчёта, когда в bootstrap пришло offer_due. При открытии сообщаем
- * бэкенду, что предложение показано (POST /funnel/offer-seen), — и больше
- * оно не появится. «Продолжить бесплатную тренировку» ведёт в обычный
- * отсчёт.
+ * Страница, а не окно (окон на сайте нет). Показывается один раз: охранник
+ * тренировки (RequireTrial) уводит сюда вместо отсчёта, когда в bootstrap
+ * пришло offer_due. При открытии сообщаем бэкенду, что предложение показано
+ * (POST /funnel/offer-seen), — и больше оно не появится. «Продолжить
+ * бесплатную тренировку» ведёт в обычный отсчёт: бесплатные движения
+ * челленджа остаются без срока.
  */
 
 import { useEffect, useRef } from 'react'
@@ -16,7 +18,7 @@ import { FIRST_STREAM, useFlowStart } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
 import TariffPlans from '../components/TariffPlans'
 import { plural } from '../lib/date'
-import { markOfferSeen, trialExpired, useRecheckOnReturn, useTrialPage, workoutsLeft } from '../lib/trial'
+import { CATALOG_MOVES_TEXT, challengeMoves, markOfferSeen, trialExpired, useRecheckOnReturn, useTrialPage } from '../lib/trial'
 import PageShell from './Page'
 import './Trial.css'
 
@@ -41,20 +43,19 @@ export default function Offer() {
   }, [trial?.offer_due])
 
   // Сервер не ответил — предложение показать не из чего: пускаем в
-  // тренировку, как и охранник (без цифр «0 тренировок, осталось 0»).
+  // тренировку, как и охранник.
   if (!known) return failed ? <Navigate to={FIRST_STREAM} replace /> : null
   if (trialExpired(trial) && !hasAccess(access)) return <Navigate to="/trial-ended" replace />
   if (hasAccess(access) || trial?.funnel !== 'trial20' || trial.state !== 'active') {
     return <Navigate to="/" replace />
   }
 
-  const passed = trial?.offer_after ?? trial?.workouts_done ?? 0
-  const left = workoutsLeft(trial)
+  const free = plural(challengeMoves(), 'движение', 'движения', 'движений')
 
   return (
     <PageShell
-      title={`Вы прошли ${plural(passed, 'тренировку', 'тренировки', 'тренировок')} — отличный темп!`}
-      lead="Закрепите результат: выберите тариф и шагайте без ограничений"
+      title={`Откройте все ${CATALOG_MOVES_TEXT} движений`}
+      lead={`В челлендже бесплатно ${free} — они остаются с вами. Полный доступ открывает все ${CATALOG_MOVES_TEXT}`}
       back={{ label: '← На главную', go: () => navigate('/') }}
       wide
     >
@@ -67,7 +68,7 @@ export default function Offer() {
           type="button"
           onClick={() => goFlow(FIRST_STREAM, { replace: true })}
         >
-          Продолжить бесплатную тренировку (осталось {left})
+          Продолжить бесплатную тренировку
         </button>
       </div>
     </PageShell>

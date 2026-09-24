@@ -22,6 +22,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { api } from '../api/client'
 import { hasAccess, type Access, type PlayerBootstrap, type Trial } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
+import { ALL_MOVES } from '../data/streams'
 import { onAppReturn } from './appReturn'
 import { plural } from './date'
 
@@ -30,11 +31,21 @@ const DAY_MS = 86_400_000
 /** Ответ моложе этого плеер берёт без нового запроса. */
 const REUSE_MS = 10_000
 
+/**
+ * Сколько движений называем в текстах челленджа trial20 — число заказчика
+ * («Все 40 — в полном доступе»), а не длина каталога: каталог меняется, когда
+ * ролики скрывают и возвращают, а обещание в текстах — нет.
+ */
+export const CATALOG_MOVES_TEXT = 40
+
+/** Бесплатных движений челленджа, если сервер не прислал free_tier. */
+const CHALLENGE_MOVES = 10
+
 type Snapshot = {
   userId: string
   boot: PlayerBootstrap
   at: number
-  /** После тренировки счёт тренировок trial20 мог сдвинуться — нужен свежий ответ. */
+  /** Вернулись в приложение или закрыли плеер — ответ мог устареть, нужен свежий. */
   stale: boolean
 }
 
@@ -90,8 +101,9 @@ export function warmTrial(userId: string | undefined): void {
 }
 
 /**
- * Плеер закрылся — тренировки trial20 могли прибавиться. Следующий вход в
- * тренировку спросит сервер заново. То же — при возвращении в приложение.
+ * Плеер закрылся — у trial20 мог подойти срок предложения тарифов, доступ
+ * мог появиться. Следующий вход в тренировку спросит сервер заново. То же —
+ * при возвращении в приложение.
  *
  * Подписчики узнают об этом сразу: охранник тренировки и страницы пробного
  * периода перечитают ответ в фоне, не убирая того, что уже на экране.
@@ -108,14 +120,15 @@ onAppReturn(markTrialStale)
 /**
  * Хватает ли того, что знаем, чтобы решить про пробный период. У trial3d
  * срок идёт по часам и считается из ends_at, у кого воронки нет — ничего не
- * меняется. Свежий ответ нужен только trial20 после тренировки.
+ * меняется. Свежий ответ нужен только trial20: положено ли предложение
+ * тарифов (offer_due), знает сервер.
  */
 function knownFor(s: Snapshot | null, userId: string | undefined): boolean {
   if (!s || !userId || s.userId !== userId) return false
   return !s.stale || s.boot.trial?.funnel !== 'trial20'
 }
 
-/** Предложение после 10-й тренировки показано: второй раз не зовём. */
+/** Предложение челленджа показано: второй раз не зовём. */
 export function markOfferSeen(): void {
   const trial = snap?.boot.trial
   if (!snap || !trial) return
@@ -165,12 +178,22 @@ export const offerDue = (trial: Trial | null | undefined, access: Access | null)
   trial.state === 'active' &&
   trial.offer_due === true
 
+/** Действующий лимит движений из последнего ответа — как его прислал сервер. */
+function freeLimit(): number | null {
+  return snap?.boot.free_tier?.exercise_limit ?? null
+}
+
 /**
- * trial20 идёт: открыто всё, ограничено только число тренировок. Блоку
- * разблокировки обещать «все движения» тут нечего — они уже открыты.
+ * trial3d идёт и открыты все движения. Блоку разблокировки обещать «все
+ * движения» тут нечего — они уже открыты. Лимит сверяем с каталогом: если
+ * сервер настроен на часть движений (TRIAL3D_EXERCISES), это уже не «все».
  */
 export const trialOpensAll = (trial: Trial | null | undefined, access: Access | null): boolean =>
-  !hasAccess(access) && trial?.funnel === 'trial20' && trial.state === 'active' && !trialExpired(trial)
+  !hasAccess(access) &&
+  trial?.funnel === 'trial3d' &&
+  trial.state === 'active' &&
+  !trialExpired(trial) &&
+  (freeLimit() ?? 0) >= ALL_MOVES.length
 
 /** trial3d: дней осталось — по ends_at, если он есть, иначе как прислал сервер. */
 function daysLeft(trial: Trial): number {
@@ -178,23 +201,26 @@ function daysLeft(trial: Trial): number {
   return Math.max(0, trial.days_left ?? 0)
 }
 
-/** trial20: сколько бесплатных тренировок осталось. */
-export function workoutsLeft(trial: Trial | null | undefined): number {
-  if (!trial || trial.workouts_limit == null) return 0
-  return Math.max(0, trial.workouts_limit - (trial.workouts_done ?? 0))
+/** trial20: сколько движений бесплатно — как прислал сервер. */
+export function challengeMoves(): number {
+  return freeLimit() ?? CHALLENGE_MOVES
 }
 
 /**
- * Подсказка о пробном периоде для блока разблокировки и экрана паузы.
- * Нет пробного, он кончился или доступ оплачен — null, и там всё как было.
+ * Подсказка о пробном периоде для блока разблокировки, экрана паузы и
+ * «Моего прогресса». Нет пробного, он кончился или доступ оплачен — null, и
+ * там всё как было.
+ *   • trial3d: «Пробный доступ: ещё 2 дня, открыты все движения»;
+ *   • trial20: «Челлендж: 10 движений бесплатно. Все 40 — в полном доступе».
  */
 export function trialHint(trial: Trial | null | undefined, access: Access | null): string | null {
   if (!trial?.funnel || trial.state !== 'active' || hasAccess(access) || trialExpired(trial)) return null
   if (trial.funnel === 'trial3d') {
-    return `Пробный доступ: ещё ${plural(daysLeft(trial), 'день', 'дня', 'дней')}`
+    const days = `Пробный доступ: ещё ${plural(daysLeft(trial), 'день', 'дня', 'дней')}`
+    return trialOpensAll(trial, access) ? `${days}, открыты все движения` : days
   }
-  if (trial.workouts_limit == null) return null
-  return `Бесплатных тренировок: осталось ${workoutsLeft(trial)} из ${trial.workouts_limit}`
+  const free = plural(challengeMoves(), 'движение', 'движения', 'движений')
+  return `Челлендж: ${free} бесплатно. Все ${CATALOG_MOVES_TEXT} — в полном доступе`
 }
 
 /**

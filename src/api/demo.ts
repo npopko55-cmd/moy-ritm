@@ -108,7 +108,7 @@ type DemoUser = {
   verified?: boolean
   /** Воронка, по ссылке которой человек зарегистрировался. */
   funnel?: Funnel | null
-  /** trial20: предложение тарифов после 10-й тренировки уже показано. */
+  /** trial20: предложение тарифов (через три дня после регистрации) уже показано. */
   offer_seen?: boolean
 }
 
@@ -135,11 +135,6 @@ type DemoStats = {
   seen: string[]
   longest_workout_seconds: number
   current_workout_seconds: number
-  /**
-   * Засчитанные тренировки для trial20: заходы, набравшие от трёх минут
-   * движения. В старых записях поля нет — это ноль.
-   */
-  counted?: number
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -164,7 +159,6 @@ const emptyStats = (): DemoStats => ({
   seen: [],
   longest_workout_seconds: 0,
   current_workout_seconds: 0,
-  counted: 0,
 })
 
 /**
@@ -213,23 +207,20 @@ const FREE_TIER: FreeTier = DEFAULT_FREE_TIER
  */
 const DEMO_FUNNELS: Record<string, Funnel> = { hx4q7m2p: 'trial3d', tz9w3k6r: 'trial20' }
 
-/** trial3d: столько дней открыт пробный доступ и столько в нём движений. */
+/** trial3d: столько дней открыты все движения. */
 const TRIAL_DAYS = 3
-const TRIAL_MOVES = 20
-/** trial20: бесплатных тренировок, после скольких — предложение тарифов. */
-const TRIAL_WORKOUTS = 20
-const TRIAL_OFFER_AFTER = 10
-/** Тренировка засчитывается в trial20 от трёх минут движения — как на бэкенде. */
-const TRIAL_WORKOUT_SECONDS = 180
+/** «Все движения» — как ALL_EXERCISES_LIMIT бэкенда: плеер обрезает длиной списка. */
+const ALL_MOVES_LIMIT = 1000
+/** trial20, челлендж «21 день»: бесплатных движений и через сколько дней — тарифы. */
+const CHALLENGE_MOVES = 10
+const CHALLENGE_OFFER_DAYS = 3
 
 const NO_TRIAL: Trial = {
   funnel: null,
   state: 'none',
   ends_at: null,
   days_left: null,
-  workouts_done: null,
-  workouts_limit: null,
-  offer_after: null,
+  offer_at: null,
   offer_due: false,
 }
 
@@ -237,7 +228,7 @@ const NO_TRIAL: Trial = {
 function freeTierOf(trial: Trial): FreeTier {
   if (trial.state === 'expired') return { ...FREE_TIER, exercise_limit: 0 }
   if (trial.state === 'active') {
-    return { ...FREE_TIER, exercise_limit: trial.funnel === 'trial3d' ? TRIAL_MOVES : 1000 }
+    return { ...FREE_TIER, exercise_limit: trial.funnel === 'trial3d' ? ALL_MOVES_LIMIT : CHALLENGE_MOVES }
   }
   return FREE_TIER
 }
@@ -623,9 +614,9 @@ export function createDemoApi(): Api {
   /* ——— Пробный период воронки ——— */
 
   /**
-   * trial3d кончается через три дня после регистрации, trial20 — на 20-й
-   * засчитанной тренировке. Считается на лету из того, что уже лежит в
-   * демо: даты регистрации и накопленных кусков.
+   * trial3d кончается через три дня после регистрации; у челленджа trial20
+   * конца нет, через три дня — один раз предложение тарифов. Считается на
+   * лету от даты регистрации в демо.
    */
   function trialOf(user: DemoUser): Trial {
     if (user.funnel === 'trial3d') {
@@ -640,16 +631,13 @@ export function createDemoApi(): Api {
       }
     }
     if (user.funnel === 'trial20') {
-      const done = statsOf(user.email).counted ?? 0
-      const expired = done >= TRIAL_WORKOUTS
+      const offerAt = Date.parse(user.created_at) + CHALLENGE_OFFER_DAYS * DAY_MS
       return {
         ...NO_TRIAL,
         funnel: 'trial20',
-        state: expired ? 'expired' : 'active',
-        workouts_done: done,
-        workouts_limit: TRIAL_WORKOUTS,
-        offer_after: TRIAL_OFFER_AFTER,
-        offer_due: !expired && done >= TRIAL_OFFER_AFTER && !user.offer_seen,
+        state: 'active',
+        offer_at: new Date(offerAt).toISOString(),
+        offer_due: Date.now() >= offerAt && !user.offer_seen,
       }
     }
     return NO_TRIAL
@@ -991,12 +979,7 @@ export function createDemoApi(): Api {
         day.last_end = ends
         stats.days[key] = day
 
-        // trial20 засчитывает тренировку, когда в ней набралось три минуты.
-        const before = stats.current_workout_seconds
         stats.current_workout_seconds += duration
-        if (before < TRIAL_WORKOUT_SECONDS && stats.current_workout_seconds >= TRIAL_WORKOUT_SECONDS) {
-          stats.counted = (stats.counted ?? 0) + 1
-        }
         stats.longest_workout_seconds = Math.max(
           stats.longest_workout_seconds,
           stats.current_workout_seconds,
@@ -1300,11 +1283,20 @@ export function createDemoAdminApi(): AdminApi {
           registered: mine.length,
           email_verified: mine.filter((p) => p.email_verified).length,
           started: mine.filter((p) => p.active_days > 0).length,
-          reached_offer: f.funnel === 'trial20' ? mine.filter((p) => p.workouts >= TRIAL_OFFER_AFTER).length : null,
+          // Предложение челленджа — через три дня; увидели его те, кто после
+          // этого заходил. У челленджа нет конца — expired null, как у бэкенда.
+          reached_offer:
+            f.funnel === 'trial20'
+              ? mine.filter(
+                  (p) =>
+                    Date.now() - Date.parse(p.registered_at) > CHALLENGE_OFFER_DAYS * DAY_MS &&
+                    p.active_days > 2,
+                ).length
+              : null,
           expired:
             f.funnel === 'trial3d'
               ? mine.filter((p) => Date.now() - Date.parse(p.registered_at) > TRIAL_DAYS * DAY_MS).length
-              : mine.filter((p) => p.workouts >= TRIAL_WORKOUTS).length,
+              : null,
           paid_users: paid.length,
           revenue: paid.reduce((sum, p) => sum + (p.paid_amount ?? 0), 0),
           currency: 'RUB',
