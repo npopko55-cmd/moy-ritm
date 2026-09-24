@@ -57,6 +57,16 @@ export const DEFAULT_FREE_TIER: FreeTier = { stream_code: 'cardio', exercise_lim
  * коленом» — см. HIDDEN_MOVES ниже. Файлы и записи в loops.ts остались:
  * перегенерируете — верните id в список на прежнее место. Бесплатные первые
  * движения и прогрев считаются по этому списку, поэтому они сдвинулись сами.
+ *
+ * Ещё два скрыты 24.09.2026 по замеру стыка готовых файлов: «Махи по
+ * диагонали» и «Махи руками с хлопком». Средняя разница яркости между
+ * последним и первым кадром у них больше любого шага между соседними
+ * кадрами внутри ролика (3,0 против 2,85 и 3,2 против 2,7), то есть на стыке
+ * виден рывок. «Махи по диагонали» стояли пятыми, в бесплатных, — скорее
+ * всего, это его заказчик видел «не зацикленным». Бесплатная пятёрка теперь
+ * собрана из роликов с чистым стыком, «Удары руками» (стык на грани) —
+ * шестыми.
+ *
  * Внутри самого вызова pick() не оставляйте ни закрывающих скобок, ни
  * id в кавычках под комментарием: scripts/build-sw.mjs читает список
  * регулярным выражением и принял бы их за движения.
@@ -65,10 +75,9 @@ export const ALL_MOVES: Loop[] = pick(
   'walk-in-place',
   'arms-up',
   'knee-lifts',
-  'punches',
-  'diagonal-swings',
-  'step-out-arms',
   'punches-up',
+  'step-out-arms',
+  'punches',
   'side-step-reach',
   'knee-to-elbow',
   'arm-crosses',
@@ -96,7 +105,6 @@ export const ALL_MOVES: Loop[] = pick(
   'arms-to-shoulders',
   'step-out-bent-arms',
   'light-jog',
-  'arm-swings-clap',
   'side-lunges',
   'low-crosses',
   'steps-arm-swings',
@@ -109,7 +117,14 @@ export const ALL_MOVES: Loop[] = pick(
  * Скрыты до перегенерации: рваный стык петли (см. комментарий к ALL_MOVES).
  * Нигде не используются — список нужен, чтобы не потерять, что вернуть.
  */
-export const HIDDEN_MOVES = ['side-steps', 'run-in-place', 'arm-scissors', 'twist-knee'] as const
+export const HIDDEN_MOVES = [
+  'side-steps',
+  'run-in-place',
+  'arm-scissors',
+  'twist-knee',
+  'diagonal-swings',
+  'arm-swings-clap',
+] as const
 
 /**
  * Сколько первых движений каталога прогревается заранее: их постеры качают

@@ -23,6 +23,8 @@ import {
   Play,
   Question,
   Sparkle,
+  SpeakerOff,
+  SpeakerOn,
   User,
 } from '../components/Icons'
 import Unlock from '../components/Unlock'
@@ -31,7 +33,7 @@ import { loopPoster, loopSrc, stepRate, stepsFor, type Loop } from '../data/loop
 import PlayerPause from './PlayerPause'
 import { FLOW_RESUME_MINUTES, useFlow, type FlowSession } from '../flow/FlowSession'
 import { createChunkQueue, type ChunkQueue } from '../lib/chunks'
-import { createDeck, type Deck } from '../lib/deck'
+import { createRotation, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { onAppReturn } from '../lib/appReturn'
 import { loadMoveInterval } from '../lib/settings'
@@ -168,6 +170,10 @@ export default function Player() {
   // Счётчик смен движения. Не заворачивается по кругу нарочно: по его
   // чётности выбирается, какой из двух <video> сейчас на виду.
   const [step, setStep] = useState(() => resume?.moveIndex ?? 0)
+  // Ref — для обработчика ухода со страницы и пересборки порядка движений:
+  // они не должны пересоздаваться на каждой смене движения.
+  const stepRef = useRef(step)
+  stepRef.current = step
   const [inMove, setInMove] = useState(() => resume?.moveSeconds ?? 0)
   // Отсчёт мог закончиться в спрятанной вкладке, а ОС — поднять выгруженную
   // вкладку в фоне. Тогда тренировка не должна пойти сама: ждём «Играть».
@@ -226,7 +232,15 @@ export default function Player() {
     setMotivation(picker.next(sessionRef.current))
   }, [picker])
 
-  const { track, blocked: soundBlocked, setPlaying: setMusicPlaying, next: nextTrack } = useMusic()
+  const {
+    track,
+    blocked: soundBlocked,
+    soundOn,
+    toggleSound,
+    resumeNow: resumeMusic,
+    setPlaying: setMusicPlaying,
+    next: nextTrack,
+  } = useMusic()
 
   /* ─────────────  Порядок движений  ───────────── */
 
@@ -240,16 +254,17 @@ export default function Player() {
   )
 
   /**
-   * Колода движений.
+   * Порядок движений — круг (createRotation в src/lib/deck.ts).
    *
-   * Список потока тасуется, движения выдаются по одному без повторов; когда
-   * выйдут все — колода тасуется заново, и первое движение новой колоды не
-   * повторяет последнее показанное. Раньше движения шли строго по списку и
-   * при четырёх роликах бросались в глаза.
+   * Сначала все открытые движения по разу в случайном порядке, дальше —
+   * тем же порядком по кругу: любое движение возвращается только после всех
+   * остальных. Раньше каждый круг тасовался заново, и на стыке недавнее
+   * движение приходило снова через одно-два — при пяти бесплатных казалось,
+   * что крутятся три одних и тех же.
    *
    * Уже выданные движения остаются в `list`: двойная буферизация видео
    * смотрит на шаг вперёд и через один, и эти взгляды не должны сдвигать
-   * колоду — иначе «следующее» менялось бы на каждом рендере.
+   * порядок — иначе «следующее» менялось бы на каждом рендере.
    */
   const orderRef = useRef<{ deck: Deck<Loop>; list: Loop[] } | null>(null)
   if (!orderRef.current) {
@@ -257,15 +272,14 @@ export default function Player() {
     // сохранённому порядку, чтобы человек увидел ровно то, на чём ушёл.
     // Незнакомый идентификатор обрывает восстановление — дальше колода
     // сдаёт сама (набор движений мог измениться вместе с доступом).
-    // Колода продолжает начатый круг: уже показанные в нём движения до
-    // конца круга не повторятся.
+    // Круг продолжается с того же места: он помнит, что уже показывали.
     const list: Loop[] = []
     for (const id of resume?.deck ?? []) {
       const found = moves.find((m) => m.id === id)
       if (!found) break
       list.push(found)
     }
-    orderRef.current = { deck: createDeck(moves, { dealt: list }), list }
+    orderRef.current = { deck: createRotation(moves, { dealt: list }), list }
   }
 
   const moveAt = (n: number): Loop => {
@@ -284,15 +298,32 @@ export default function Player() {
   const nextLoop: Loop | null = empty ? null : moveAt(step + 1)
   const afterNext: Loop | null = empty ? null : moveAt(step + 2)
 
-  // Сменили поток (или набор движений — бесплатный уровень) — новая колода
-  // и счёт с нуля. На первом рендере колода уже собрана выше, поэтому здесь
-  // сравниваем ключ: иначе ролик успевал бы моргнуть при открытии плеера.
-  const deckKey = `${stream.id}:${moves.length}`
+  // Сменили поток или набор движений (бесплатный уровень пришёл с сервера,
+  // открылся доступ, кончился пробный период). На первом рендере порядок
+  // уже собран выше, поэтому здесь сравниваем ключ: иначе ролик успевал бы
+  // моргнуть при открытии плеера.
+  //
+  // Если движение на экране и всё показанное до него есть в новом наборе,
+  // заход продолжается: текущее движение не меняется, круг помнит
+  // показанное, и новые движения идут раньше повторов. Заглядывание вперёд
+  // (step + 1, step + 2) отбрасываем — его пересчитают из нового набора.
+  // Иначе (набор сузился и текущего движения в нём нет) — с нуля.
+  const [, setReorder] = useState(0)
+  const deckKey = `${stream.id}:${moves.map((m) => m.id).join(',')}`
   const builtFor = useRef(deckKey)
   useEffect(() => {
     if (builtFor.current === deckKey) return
     builtFor.current = deckKey
-    orderRef.current = { deck: createDeck(moves), list: [] }
+    const shown = orderRef.current?.list.slice(0, stepRef.current + 1) ?? []
+    const ids = new Set(moves.map((m) => m.id))
+    if (shown.length > 0 && shown.every((m) => ids.has(m.id))) {
+      orderRef.current = { deck: createRotation(moves, { dealt: shown }), list: shown }
+      // Порядок живёт в ref: перерисовка нужна, чтобы следующий ролик во
+      // втором <video> взялся уже из нового набора.
+      setReorder((n) => n + 1)
+      return
+    }
+    orderRef.current = { deck: createRotation(moves), list: [] }
     setStep(0)
     setInMove(0)
   }, [deckKey, moves])
@@ -779,10 +810,9 @@ export default function Player() {
 
   /* ─────────────  Сохранение тренировки  ───────────── */
 
-  // Шаг и секунды внутри движения — в ref: их читает обработчик ухода со
-  // страницы, а он не должен пересоздаваться каждую секунду.
-  const stepRef = useRef(step)
-  stepRef.current = step
+  // Секунды внутри движения — в ref (шаг — выше, рядом с его состоянием):
+  // их читает обработчик ухода со страницы, а он не должен пересоздаваться
+  // каждую секунду.
   const inMoveRef = useRef(inMove)
   inMoveRef.current = inMove
 
@@ -885,9 +915,25 @@ export default function Player() {
     unlockMedia()
     setNeedTap(false)
     void playVideo(buffers[activeRef.current]).catch(() => undefined)
+    // Музыку — тоже в касании, а не эффектом после перерисовки: после
+    // сворачивания вьюхи iPhone пуск без жеста мог и не пустить.
+    resumeMusic()
     setShowPause(false)
     setPlaying(true)
-  }, [buffers])
+  }, [buffers, resumeMusic])
+
+  /**
+   * Кнопка звука. Всё — в самом касании: включение запускает трек сразу
+   * (play() прямо в обработчике — иначе iPhone и вьюха Telegram его не
+   * пустят), а заодно разблокирует ролики. Звук должен играть, но браузер
+   * не пустил (soundBlocked) — нажатие запускает его, а не выключает.
+   */
+  const soundPlaying = soundOn && !soundBlocked
+  const pressSound = useCallback(() => {
+    unlockMedia()
+    if (soundOn && soundBlocked) resumeMusic()
+    else toggleSound()
+  }, [soundOn, soundBlocked, resumeMusic, toggleSound])
 
   const toggle = useCallback(() => {
     if (playingRef.current) {
@@ -1077,6 +1123,25 @@ export default function Player() {
           пикселя), на маленьком — отдельной строкой под кругом. Выбирает
           размещение CSS по размеру окна, разметка одна и та же.
         */}
+        {/*
+          Звук: зеркально паузе — в левом нижнем углу квадрата вокруг круга
+          или слева в строке под кругом. Состояние видно сразу: динамик с
+          волнами на яркой кнопке — музыка играет; перечёркнутый на белой —
+          выключена или браузер её не пустил (тогда кнопка ещё и пульсирует).
+        */}
+        <div className="stage__sound">
+          <button
+            type="button"
+            className={`ctrl ctrl--sound ${soundPlaying ? 'is-on' : ''} ${soundOn && soundBlocked ? 'is-blocked' : ''}`}
+            onClick={pressSound}
+            aria-pressed={soundPlaying}
+            aria-label={soundPlaying ? 'Выключить музыку' : 'Включить музыку'}
+          >
+            {soundPlaying ? <SpeakerOn size={28} /> : <SpeakerOff size={28} />}
+          </button>
+          <span>{soundPlaying ? 'Звук' : soundOn && soundBlocked ? 'Включить звук' : 'Без звука'}</span>
+        </div>
+
         <div className="stage__pause">
           <span>{playing ? 'Пауза' : 'Играть'}</span>
           <button
@@ -1101,20 +1166,25 @@ export default function Player() {
       <aside className="player__stats">
         <div className="stats__top">
           <button
-            className={`track ${soundBlocked ? 'track--muted' : ''}`}
+            className={`track ${soundPlaying ? '' : 'track--muted'}`}
             onClick={() => {
-              // Звук не пустили — касание заодно разблокирует проигрыватель.
+              // Звук выключен или его не пустили — карточка включает звук
+              // (как кнопка у круга), а не листает трек молча.
+              if (!soundPlaying) {
+                pressSound()
+                return
+              }
               unlockMedia()
               nextTrack()
             }}
-            title="Следующий трек"
+            title={soundPlaying ? 'Следующий трек' : 'Включить звук'}
           >
             <span className="track__icon">
               <MusicNote size={19} />
             </span>
             <span className="track__text">
               <strong>{track.title}</strong>
-              <span>{soundBlocked ? 'нажмите, чтобы включить звук' : track.artist}</span>
+              <span>{soundPlaying ? track.artist : 'нажмите, чтобы включить звук'}</span>
             </span>
           </button>
         </div>

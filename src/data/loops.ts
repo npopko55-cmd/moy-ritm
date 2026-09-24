@@ -36,6 +36,7 @@ export const LOOPS: Record<string, Loop> = {
   punches: { id: 'punches', title: 'Удары руками', duration: 1.917, stepsPerMinute: 60 },
   // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
   'side-steps': { id: 'side-steps', title: 'Приставные шаги', duration: 3.125, stepsPerMinute: 110 },
+  // скрыт до перегенерации: рывок на стыке петли (src/data/streams.ts, HIDDEN_MOVES)
   'diagonal-swings': { id: 'diagonal-swings', title: 'Махи по диагонали', duration: 1.833, stepsPerMinute: 40 },
   'step-out-arms': { id: 'step-out-arms', title: 'Шаг в сторону, руки врозь', duration: 1.833, stepsPerMinute: 100 },
   // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
@@ -72,6 +73,7 @@ export const LOOPS: Record<string, Loop> = {
   'arms-to-shoulders': { id: 'arms-to-shoulders', title: 'Руки к плечам', duration: 1.875, stepsPerMinute: 60 },
   'step-out-bent-arms': { id: 'step-out-bent-arms', title: 'Шаги врозь, руки согнуты', duration: 1.875, stepsPerMinute: 100 },
   'light-jog': { id: 'light-jog', title: 'Лёгкий бег', duration: 3.833, stepsPerMinute: 140 },
+  // скрыт до перегенерации: рывок на стыке петли (src/data/streams.ts, HIDDEN_MOVES)
   'arm-swings-clap': { id: 'arm-swings-clap', title: 'Махи руками с хлопком', duration: 1.375, stepsPerMinute: 40 },
   'side-lunges': { id: 'side-lunges', title: 'Выпады в стороны', duration: 1.75, stepsPerMinute: 80 },
   'low-crosses': { id: 'low-crosses', title: 'Скрещивания рук внизу', duration: 1.875, stepsPerMinute: 40 },

@@ -49,7 +49,7 @@ export default function Unlock({ compact = false }: Props) {
   return (
     <div className={`unlock ${compact ? 'unlock--compact' : ''}`}>
       <span className="unlock__text">
-        {/* Склонение по числу: после скрытых роликов их 41 — «все 41 движение». */}
+        {/* Склонение по числу: после скрытых роликов их 39 — «все 39 движений». */}
         <span className="unlock__title">
           {trialOpensAll(trial, access)
             ? 'Шагайте без ограничений'

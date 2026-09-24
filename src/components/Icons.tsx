@@ -14,6 +14,27 @@ export const MusicNote = ({ size = 22, className }: I) => (
   </svg>
 )
 
+/*
+ * Динамик для кнопки звука. Корпус и волны (или крестик) вместе занимают
+ * по горизонтали 3…21 из 24 — визуальный центр совпадает с центром кнопки.
+ */
+const SPEAKER = 'M4.2 9.2h3.1l4.6-3.9c.33-.28.84-.05.84.39v12.62c0 .44-.51.67-.84.39l-4.6-3.9H4.2a1.2 1.2 0 0 1-1.2-1.2v-3.2a1.2 1.2 0 0 1 1.2-1.2Z'
+
+export const SpeakerOn = ({ size = 24, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path d={SPEAKER} fill="currentColor" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+    <path d="M15.6 9.2a4 4 0 0 1 0 5.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M18.2 6.6a7.6 7.6 0 0 1 0 10.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
+export const SpeakerOff = ({ size = 24, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path d={SPEAKER} fill="currentColor" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+    <path d="M16 9.4l5 5.2M21 9.4l-5 5.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
 export const Bolt = ({ size = 22, className }: I) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
     <path

@@ -345,6 +345,63 @@
   box-shadow: var(--shadow-play);
 }
 
+/* ——— Звук ——— */
+/*
+ * Кнопка звука зеркальна паузе: в строке под кругом — у левого края, в
+ * режиме «угол» — в левом нижнем углу квадрата вокруг круга. Обёртка круга
+ * (.stage__area) позиционирована, поэтому хватает left/bottom: в строке
+ * высота блока равна высоте строки, и кнопка встаёт на одну линию с паузой.
+ */
+.stage__sound {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--pause-row);
+  font-size: clamp(12px, 1.25vh, 16px);
+  color: var(--gray-500);
+}
+
+/*
+ * Выключено — белая кнопка с розовой обводкой и перечёркнутым динамиком;
+ * включено — яркая розовая, в цвет кольца, с динамиком и волнами. От
+ * оранжевой паузы она отличается и цветом, и размером.
+ */
+.ctrl--sound {
+  width: 60px;
+  height: 60px;
+  background: var(--white);
+  color: var(--pink-500);
+  border: 2px solid var(--pink-500);
+  box-shadow: 0 8px 20px rgba(255, 45, 142, 0.22);
+}
+
+.ctrl--sound.is-on {
+  background: linear-gradient(140deg, #ff2d8e 0%, #ff5ca8 55%, #ff9838 100%);
+  color: var(--white);
+  border-color: transparent;
+  box-shadow: 0 10px 24px rgba(255, 45, 142, 0.38);
+}
+
+/* Звук должен играть, но браузер не пустил: кнопка зовёт нажать. */
+.ctrl--sound.is-blocked {
+  color: var(--orange-500);
+  border-color: var(--orange-500);
+  animation: sound-call 1.6s ease-out infinite;
+}
+
+@keyframes sound-call {
+  0% { box-shadow: 0 0 0 0 rgba(255, 122, 24, 0.55); }
+  100% { box-shadow: 0 0 0 16px rgba(255, 122, 24, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctrl--sound.is-blocked { animation: none; box-shadow: 0 0 0 4px rgba(255, 122, 24, 0.35); }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Режим «угол»: круг достаточно велик, чтобы кнопка уместилась
    в пустом углу квадрата вокруг него. Пороги подобраны по кругу,
@@ -369,6 +426,10 @@
   }
 
   .ctrl--main { width: clamp(72px, 7.6vh, 104px); height: clamp(72px, 7.6vh, 104px); }
+
+  /* Звук — в левом нижнем углу того же квадрата. */
+  .stage__sound { height: auto; gap: 10px; }
+  .ctrl--sound { width: clamp(60px, 6.2vh, 84px); height: clamp(60px, 6.2vh, 84px); }
 }
 
 /* ═══════ Правая колонка ═══════ */
@@ -622,7 +683,8 @@
     width: min(78vw, calc(100dvh - var(--stage-chrome)), 100%);
   }
 
-  .stage__pause { gap: 10px; font-size: 12px; }
+  .stage__pause,
+  .stage__sound { gap: 10px; font-size: 12px; }
 
   /* ——— Статистика строкой ——— */
   .player__stats > .stat:nth-of-type(1) { grid-area: s1; }
@@ -735,7 +797,8 @@
 
   /* Подпись рядом с кнопкой снова видна: в строке под кругом ей есть где
      встать — раньше её прятали, потому что круг занимал всю ширину. */
-  .stage__pause { font-size: 12.5px; }
+  .stage__pause,
+  .stage__sound { font-size: 12.5px; }
 
   .stat__big { font-size: clamp(28px, 8vw, 38px); }
   .stat__mid { font-size: clamp(24px, 7vw, 32px); }
@@ -845,8 +908,10 @@
   .stage__figure { width: min(calc(86dvh - var(--pause-row)), 40vw, 100%); }
   .stage__note { display: none; }
 
-  .stage__pause { gap: 8px; font-size: 11.5px; }
+  .stage__pause,
+  .stage__sound { gap: 8px; font-size: 11.5px; }
   .ctrl--main { width: 54px; height: 54px; }
+  .ctrl--sound { width: 46px; height: 46px; }
 
   .track { min-height: 44px; padding: 5px 10px 5px 7px; }
   .track__icon { width: 26px; height: 26px; }

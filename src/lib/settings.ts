@@ -32,3 +32,29 @@ export function saveMoveInterval(seconds: number): void {
     /* приватный режим или запрет хранилища — просто не запоминаем */
   }
 }
+
+/**
+ * Кнопка звука в плеере: человек выключил музыку прямо в тренировке.
+ *
+ * Хранится только в браузере и только «выключено»: включение по умолчанию.
+ * Настройка «Музыка» в профиле (music_enabled) остаётся главной — кнопка
+ * лишь глушит музыку поверх неё, а включение кнопкой включает и её.
+ */
+const SOUND_OFF_KEY = 'moy-ritm.soundOff'
+
+export function loadSoundOff(): boolean {
+  try {
+    return localStorage.getItem(SOUND_OFF_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function saveSoundOff(off: boolean): void {
+  try {
+    if (off) localStorage.setItem(SOUND_OFF_KEY, '1')
+    else localStorage.removeItem(SOUND_OFF_KEY)
+  } catch {
+    /* приватный режим или запрет хранилища — просто не запоминаем */
+  }
+}

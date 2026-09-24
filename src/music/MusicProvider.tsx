@@ -8,7 +8,9 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { api } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
+import { loadSoundOff, saveSoundOff } from '../lib/settings'
 import { LONG_INTRO_SECONDS, TRACKS, type Track, shuffled, trackSrc } from '../data/music'
 import { setMusicUnlock } from '../media/unlock'
 import { isNotAllowed } from '../media/videoPool'
@@ -17,6 +19,19 @@ type MusicValue = {
   track: Track
   playing: boolean
   blocked: boolean
+  /** Звук включён: настройка «Музыка» в профиле и кнопка звука в плеере. */
+  soundOn: boolean
+  /**
+   * Кнопка звука. Звать прямо в обработчике касания: включение запускает
+   * трек тут же, пока WebKit ещё считает это жестом.
+   */
+  toggleSound: () => void
+  /**
+   * Снять музыку с паузы прямо в касании — «Играть», «Продолжить». Иначе
+   * пуск шёл бы из эффекта, уже без жеста, и после сворачивания вьюхи
+   * iPhone мог его не пустить.
+   */
+  resumeNow: () => void
   start: () => void
   setPlaying: (on: boolean) => void
   next: () => void
@@ -48,8 +63,21 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // Музыка и её громкость — настройки профиля (раздел 5.2). Выключена —
   // проигрыватель не стартует вовсе, а уже игравший встаёт на паузу.
-  const { me } = useSession()
-  const enabled = me?.settings.music_enabled ?? true
+  const { me, setMe } = useSession()
+  const musicSetting = me?.settings.music_enabled ?? true
+  // Кнопка звука в плеере глушит музыку поверх настройки профиля.
+  const [soundOff, setSoundOff] = useState(loadSoundOff)
+  const enabled = musicSetting && !soundOff
+  // «Музыку» включили в настройках — это тоже просьба о звуке: снимаем и
+  // выключение кнопкой, иначе переключатель в настройках ничего бы не дал.
+  const settingWas = useRef(musicSetting)
+  useEffect(() => {
+    if (musicSetting && !settingWas.current) {
+      setSoundOff(false)
+      saveSoundOff(false)
+    }
+    settingWas.current = musicSetting
+  }, [musicSetting])
   const target = (me?.settings.music_volume ?? DEFAULT_VOLUME) / 100
   // Ref, чтобы плавный вход читал свежую громкость, а не ту, что была при
   // создании обработчика.
@@ -113,6 +141,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       a.play().then(
         () => {
           unlocked.current = true
+          failures.current = 0
           setBlocked(false)
           fadeIn(ms)
         },
@@ -146,6 +175,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     setBlocked(false)
   }, [playlist.length])
 
+  /** Сколько треков подряд не загрузилось; сбрасывает удачный пуск. */
+  const failures = useRef(0)
+
   /** Источник уже подставлен: музыку хоть раз запускали. */
   const armed = useRef(false)
 
@@ -162,6 +194,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       // и через сервис-воркер, который отдаёт медиа кусками по 206.
       a.src = from > 0 ? `${trackSrc(t.id)}#t=${from}` : trackSrc(t.id)
       a.onended = next
+      // Трек не загрузился (сеть моргнула, файл не отдался) — раньше музыка
+      // тогда молчала до конца тренировки. Берём следующий, но не больше
+      // трёх раз подряд: без сети перебирать весь плейлист незачем.
+      a.onerror = () => {
+        if (failures.current >= 3) return
+        failures.current += 1
+        next()
+      }
       // Подстраховка, если фрагмент не подхватился: доводим руками.
       a.onloadedmetadata = () => {
         if (from > 0 && a.currentTime < from - 1) a.currentTime = from
@@ -184,17 +224,30 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
     return () => {
       a.onended = null
+      a.onerror = null
       a.onloadedmetadata = null
     }
     // on нарочно не в зависимостях: пуск и паузу ведёт эффект ниже.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.id, track.startAt, source, play])
 
+  /**
+   * Пуск уже сделан прямо в касании (toggleSound, resumeNow), и эффекту
+   * ниже повторять его не нужно: второй play() заново увёл бы громкость в
+   * ноль посреди плавного входа.
+   */
+  const startedInTap = useRef(false)
+
   // Пуск и пауза. Пауза мгновенная, возврат — без перемотки: трек
   // продолжается с того же места, только громкость возвращается плавно.
   useEffect(() => {
     const a = audioRef.current
     if (!a) return
+    if (on && startedInTap.current) {
+      startedInTap.current = false
+      return
+    }
+    startedInTap.current = false
     if (on) {
       // Первый пуск: только теперь у проигрывателя появляется источник.
       if (!armed.current) source(trackRef.current)
@@ -275,17 +328,80 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     )
   }, [play, source])
 
+  const unlockRef = useRef(unlock)
+  unlockRef.current = unlock
+
   useEffect(() => {
     setMusicUnlock(unlock)
     return () => setMusicUnlock(null)
   }, [unlock])
 
+  // Состояние «играет» для обработчиков касаний — свежее, без пересоздания.
+  const playingRef = useRef(playing)
+  playingRef.current = playing
+  const musicSettingRef = useRef(musicSetting)
+  musicSettingRef.current = musicSetting
+
+  /** Запустить трек прямо сейчас, в касании. */
+  const playInTap = useCallback(() => {
+    const a = audioRef.current
+    if (!a) return
+    if (!armed.current) source(trackRef.current)
+    play(fresh.current ? FADE_START : FADE_RESUME)
+    fresh.current = false
+  }, [play, source])
+
+  const toggleSound = useCallback(() => {
+    const a = audioRef.current
+    if (enabledRef.current) {
+      // Выключаем: сразу тишина, без ожидания перерисовки.
+      setSoundOff(true)
+      saveSoundOff(true)
+      stopFade()
+      a?.pause()
+      return
+    }
+    // Профиля нет — включать нечего (плеер открыт только после входа).
+    if (!musicSettingRef.current && !me) return
+    setSoundOff(false)
+    saveSoundOff(false)
+    // Музыка была выключена и в профиле — кнопка включает и её, иначе
+    // нажатие ничего бы не дало. Сеть подтвердит позже; не вышло — звук всё
+    // равно играет до следующей загрузки профиля.
+    if (!musicSettingRef.current && me) {
+      setMe({ ...me, settings: { ...me.settings, music_enabled: true } })
+      api.patchSettings({ music_enabled: true }).catch(() => undefined)
+    }
+    enabledRef.current = true
+    if (playingRef.current) {
+      // Тренировка идёт: трек стартует в этом же касании. Эффект пуска
+      // увидит включение следующим рендером и повторять не станет.
+      startedInTap.current = true
+      playInTap()
+    } else {
+      // Тренировка на паузе: звук включится с «Играть», а касание пока
+      // даёт проигрывателю разрешение играть.
+      unlockRef.current()
+    }
+  }, [me, setMe, playInTap])
+
+  const resumeNow = useCallback(() => {
+    const a = audioRef.current
+    if (!a || !enabledRef.current) return
+    if (!playingRef.current) {
+      // Эффект пуска увидит «играет» следующим рендером — пуск уже сделан.
+      startedInTap.current = true
+      setPlayingState(true)
+    }
+    if (a.paused) playInTap()
+  }, [playInTap])
+
   const start = useCallback(() => setPlayingState(true), [])
   const setPlaying = useCallback((on: boolean) => setPlayingState(on), [])
 
   const value = useMemo(
-    () => ({ track, playing, blocked, start, setPlaying, next }),
-    [track, playing, blocked, start, setPlaying, next],
+    () => ({ track, playing, blocked, soundOn: enabled, toggleSound, resumeNow, start, setPlaying, next }),
+    [track, playing, blocked, enabled, toggleSound, resumeNow, start, setPlaying, next],
   )
   return <MusicContext.Provider value={value}>{children}</MusicContext.Provider>
 }

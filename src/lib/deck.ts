@@ -5,8 +5,9 @@
  * колода тасуется заново, причём первый элемент новой колоды не повторяет
  * последний показанный — иначе на стыке одно и то же шло бы два раза подряд.
  *
- * Так выдаются и мотивационные фразы (src/lib/motivation.ts), и движения
- * в плеере: механика одна, поэтому и код один.
+ * Так выдаются мотивационные фразы (src/lib/motivation.ts). Движения в
+ * плеере с 24.09.2026 идут по кругу — createRotation ниже: пересдача с
+ * новым тасованием возвращала недавнее движение слишком рано.
  *
  * random вынесен в параметр, чтобы поведение можно было проверить
  * детерминированно.
@@ -83,6 +84,65 @@ export function createDeck<T>(source: readonly T[], options: DeckOptions<T> = {}
       if (cursor >= cards.length) refill()
       own = cards[cursor++]
       return own
+    },
+    last: () => own,
+  }
+}
+
+/**
+ * Круг: без повторов, пока не выйдут все, а дальше — тем же порядком.
+ *
+ * Так выдаются движения в плеере. Колода выше на каждом новом круге
+ * тасуется заново, и на стыке кругов недавнее движение возвращалось через
+ * одно-два: при пяти открытых выходило «3, 1, 3», «4, 0, 4» — человек видел,
+ * что крутятся три одних и тех же, а остальные будто пропали (жалоба
+ * заказчика 23.09.2026). Здесь следующим всегда идёт то, что показывали
+ * дольше всех назад: сначала все ещё не показанные (в случайном порядке),
+ * потом — по кругу в том же порядке. Любое движение возвращается только
+ * после всех остальных открытых.
+ *
+ * dealt — уже выданное раньше, по порядку. По нему считается, что и когда
+ * показывали, поэтому круг переживает и возвращение в заход, и смену
+ * набора: открылось больше движений — сначала пойдут новые, а не повтор
+ * первых пяти; стало меньше — круг идёт только по оставшимся.
+ */
+export function createRotation<T>(
+  source: readonly T[],
+  options: { random?: () => number; dealt?: readonly T[] } = {},
+): Deck<T> {
+  const random = options.random ?? Math.random
+  // Порядок для ещё не показанных — перемешанный один раз.
+  const order = source.slice()
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    const tmp = order[i]
+    order[i] = order[j]
+    order[j] = tmp
+  }
+  // Когда элемент показывали последний раз: номер выдачи, -1 — ни разу.
+  const shownAt = new Map<T, number>()
+  let count = 0
+  let own: T | undefined
+  for (const card of options.dealt ?? []) {
+    shownAt.set(card, count++)
+    own = card
+  }
+
+  return {
+    next(): T | undefined {
+      let best: T | undefined
+      let bestAt = Infinity
+      for (const card of order) {
+        const at = shownAt.get(card) ?? -1
+        if (at < bestAt) {
+          best = card
+          bestAt = at
+        }
+      }
+      if (best === undefined) return undefined
+      shownAt.set(best, count++)
+      own = best
+      return best
     },
     last: () => own,
   }
