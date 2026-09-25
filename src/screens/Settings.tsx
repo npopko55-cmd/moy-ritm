@@ -14,9 +14,8 @@ import { api } from '../api/client'
 import type { PatchSettingsBody } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
 import { MOVE_INTERVALS, saveMoveInterval } from '../lib/settings'
-import { ArrowRight } from '../components/Icons'
 import { errorText, Waiting } from './Account'
-import PageShell, { Card, Note, Row, useBack } from './Page'
+import PageShell, { Card, Note, Row } from './Page'
 import './Settings.css'
 
 /** Если браузер не умеет перечислять пояса — короткий список СНГ. */
@@ -64,7 +63,6 @@ const VOLUME_DELAY_MS = 500
 
 export default function Settings() {
   const { me, setMe } = useSession()
-  const back = useBack()
 
   const [saved, setSaved] = useState('')
   const [failed, setFailed] = useState<{ key: string; text: string } | null>(null)
@@ -134,7 +132,7 @@ export default function Settings() {
     <PageShell
       title="Настройки"
       lead="Всё, что влияет на тренировку. Изменения сохраняются сразу и работают на всех устройствах."
-      back={back}
+      tab="settings"
     >
       <Card title="Тренировка" text="Через сколько плеер переключает движение в круге.">
         <div className="chips" role="radiogroup" aria-label="Менять упражнение каждые">
@@ -222,16 +220,8 @@ export default function Settings() {
         {note('mail')}
       </Card>
 
-      {back.fromPlayer && (
-        <div className="page__actions">
-          <button className="btn btn--pink-lg" onClick={back.go}>
-            Вернуться к тренировке
-            <span className="settings__arrow">
-              <ArrowRight />
-            </span>
-          </button>
-        </div>
-      )}
+      {/* Кнопки «Вернуться к тренировке» здесь больше нет: в тренировку
+          ведёт вкладка «Тренировка» в панели вкладок. */}
     </PageShell>
   )
 }

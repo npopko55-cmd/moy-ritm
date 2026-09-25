@@ -98,20 +98,10 @@
   box-shadow: 0 0 0 3px var(--pink-100);
 }
 
-.settings__arrow {
-  display: inline-grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, .22);
-}
-
 @media (max-width: 767.98px) {
   /* Ползунок и список занимают строку целиком — иначе на 320 px не влезут. */
   .range { width: 100%; }
   .select { width: 100%; }
-  .page__actions .btn { width: 100%; }
 }
 
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {

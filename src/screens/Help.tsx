@@ -59,6 +59,7 @@ export default function Help() {
     <PageShell
       title="Нужна помощь?"
       lead="Быстрее всего — написать нам в Telegram. Ниже короткие ответы на частые вопросы: возможно, ваш уже там."
+      tab="help"
     >
       <Card
         title="Написать в Telegram"

@@ -1,0 +1,163 @@
+/*
+ * Панель вкладок (TabBar.tsx) — одна на пять экранов. Здесь только её вид;
+ * место на странице задаёт экран: плеер — своей сеткой (Player.css),
+ * страницы кабинета — под логотипом (Page.css, Progress.css).
+ *
+ * Четыре вида, те же, что были у меню плеера:
+ *   • список — десктоп: знак и подпись в строку;
+ *   • строка — планшет: пять равных пунктов, знак над подписью;
+ *   • панель внизу экрана — телефон;
+ *   • одни знаки — телефон в ландшафте.
+ *
+ * Селекторы — в один класс: экраны переставляют панель правилами с классом
+ * экрана впереди, и те перевешивают, в каком бы порядке ни пришёл CSS.
+ */
+
+/* ——— Список ——— */
+.tabbar {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: clamp(4px, .6vh, 10px);
+}
+
+.tabbar__item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: clamp(6px, .8vh, 11px) 6px;
+  border-radius: var(--r-sm);
+  font-size: clamp(13px, 1.3vh, 16.5px);
+  color: var(--gray-600);
+  /* Подпись вкладки — одним словом в одну строку, при любой ширине. */
+  white-space: nowrap;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.tabbar__item svg { flex: none; }
+
+/* Текущая вкладка. Толщину шрифта не меняем: подпись не должна расти в
+   ширину. */
+.tabbar__item.is-on { background: var(--pink-50); color: var(--pink-600); }
+
+/* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
+@media (hover: hover) {
+  .tabbar__item:hover { background: var(--gray-100); color: var(--ink-900); }
+  .tabbar__item.is-on:hover { background: var(--pink-100); color: var(--pink-700); }
+}
+
+/* ——— Строка: планшет (условия те же, что у одной колонки плеера) ——— */
+@media (max-width: 1023.98px),
+       (min-width: 1024px) and (max-width: 1179.98px) and (orientation: portrait) {
+  .tabbar { flex-direction: row; gap: 6px; padding-top: 0; }
+  .tabbar > li { flex: 1 1 0; min-width: 0; }
+
+  .tabbar__item {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    min-height: 52px;
+    font-size: 12px;
+    line-height: 1.15;
+    text-align: center;
+  }
+}
+
+/* ——— Страницы кабинета ниже 1180: строка прижата к низу экрана ——— */
+@media (max-width: 1179.98px) {
+  .tabbar--dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    /* Пункты — не шире 760 px и по центру: во всю ширину планшета они
+       расползались бы. */
+    padding:
+      6px max(calc(12px + env(safe-area-inset-right)), calc((100% - 760px) / 2))
+      calc(6px + env(safe-area-inset-bottom))
+      max(calc(12px + env(safe-area-inset-left)), calc((100% - 760px) / 2));
+    background: var(--white);
+    border-top: 1px solid var(--gray-200);
+  }
+}
+
+/* Кабинет уходит в одну колонку уже ниже 1180 px, и в ландшафте тоже — там,
+   где у плеера ещё список слева. Прижатой панели и здесь нужна строка. */
+@media (min-width: 1024px) and (max-width: 1179.98px) and (orientation: landscape) {
+  .tabbar--dock { flex-direction: row; gap: 6px; }
+  .tabbar--dock > li { flex: 1 1 0; min-width: 0; }
+
+  .tabbar--dock .tabbar__item {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    min-height: 52px;
+    font-size: 12px;
+    line-height: 1.15;
+    text-align: center;
+  }
+}
+
+/* ——— Панель внизу экрана: телефон ——— */
+@media (max-width: 767.98px) {
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    gap: 0;
+    height: calc(56px + env(safe-area-inset-bottom));
+    padding: 0 2px env(safe-area-inset-bottom);
+    background: var(--white);
+    border-top: 1px solid var(--gray-200);
+  }
+
+  /* Пять подписей должны лечь в одну строку и на 320 px. Самой длинной,
+     «Тренировка», при 10 px нужно 59 px (Inter 400), а вкладке там остаётся
+     (320 − 4) / 5 ≈ 63 px — поэтому боковых отступов у вкладок нет. Дальше
+     ширина вкладки растёт быстрее кегля, и запас только увеличивается. */
+  .tabbar__item {
+    height: 56px;
+    min-height: 56px;
+    padding: 5px 0;
+    border-radius: 0;
+    font-size: clamp(10px, 2.8vw, 11px);
+    gap: 2px;
+  }
+
+  /* В панели текущая вкладка отмечена только цветом, без плашки. */
+  .tabbar__item.is-on { background: none; }
+}
+
+/* ——— Одни знаки: телефон в ландшафте ——— */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  .tabbar__item {
+    height: auto;
+    min-height: 44px;
+    padding: 4px 2px;
+    gap: 0;
+    border-radius: var(--r-sm);
+  }
+
+  /* Подписи в ландшафте негде разместить: остаются знаки, название — в
+     aria-label и подсказке. */
+  .tabbar__item > span { display: none; }
+
+  /* Текущая вкладка снова с плашкой: одного цвета у маленького знака мало. */
+  .tabbar__item.is-on { background: var(--pink-50); }
+
+  /* Прижатая панель ниже: 48 px вместо 56 — экран и так низкий. */
+  .tabbar--dock {
+    height: auto;
+    gap: 4px;
+    padding:
+      2px max(calc(12px + env(safe-area-inset-right)), calc((100% - 760px) / 2))
+      calc(2px + env(safe-area-inset-bottom))
+      max(calc(12px + env(safe-area-inset-left)), calc((100% - 760px) / 2));
+  }
+}

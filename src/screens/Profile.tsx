@@ -128,7 +128,7 @@ export default function Profile() {
   }
 
   return (
-    <PageShell title="Профиль" lead={user.email}>
+    <PageShell title="Профиль" lead={user.email} tab="profile">
       <Card title="Кто вы">
         <NameRow me={me} setMe={setMe} />
 

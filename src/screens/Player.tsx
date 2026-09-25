@@ -14,20 +14,16 @@ import { days, durationTight, toMinutes, weekdayShort } from '../lib/date'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import {
-  Clock,
   FloatNote,
-  Gear,
-  Home,
   Info,
   MusicNote,
   Pause,
   Play,
-  Question,
   Sparkle,
   SpeakerOff,
   SpeakerOn,
-  User,
 } from '../components/Icons'
+import TabBar from '../components/TabBar'
 import Unlock from '../components/Unlock'
 import { DEFAULT_FREE_TIER, getStream } from '../data/streams'
 import { loopPoster, loopSrc, stepRate, stepsFor, type Loop } from '../data/loops'
@@ -107,23 +103,6 @@ const phraseClass = (text: string): string => {
   return length > 40 ? ' is-long' : ''
 }
 
-/**
- * Меню плеера: на телефоне — нижняя панель вкладок, на планшете — строка под
- * статистикой, на десктопе — список в левой колонке. Меню живёт только в
- * плеере, поэтому первая вкладка, «Тренировка» с домиком, здесь всегда
- * текущая (`to: null`) и никуда не уводит.
- *
- * Пять вкладок встают в одну строку и на 320 px только с короткими
- * подписями; полное название — в aria-label и в подсказке (title).
- */
-const MENU = [
-  { icon: <Home size={19} />, label: 'Тренировка', title: 'Тренировка', to: null },
-  { icon: <Clock size={19} />, label: 'Прогресс', title: 'Мой прогресс', to: '/progress' },
-  { icon: <User size={19} />, label: 'Профиль', title: 'Профиль', to: '/profile' },
-  { icon: <Gear size={19} />, label: 'Настройки', title: 'Настройки', to: '/settings' },
-  { icon: <Question size={19} />, label: 'Помощь', title: 'Нужна помощь?', to: '/help' },
-] as const
-
 /** Открытый кусок движения: живёт в ref, чтобы не перерисовывать плеер. */
 type OpenChunk = { startedAt: number; seconds: number; stream: string; move: string }
 
@@ -199,12 +178,12 @@ export default function Player() {
    *
    * Сама она идёт только сразу после отсчёта — это явный старт человека
    * (isStart в src/flow/FlowSession.tsx). Любое другое открытие плеера —
-   * вкладка «Тренировка», «← К тренировке», «Вернуться в поток», «Назад»,
-   * перезагрузка, повторный запуск мини-апа — встречает тренировку на паузе:
-   * ролик и музыка стоят, кольцо и таймер замерли, под кругом «Играть», а
-   * экран паузы не поднимается, как после «Вернусь позже». Раньше плеер при
-   * каждом открытии начинал играть сам, и возвращение из меню тут же снова
-   * запускало тренировку.
+   * вкладка «Тренировка», логотип и «← На главную», «Вернуться в поток»,
+   * «Назад», перезагрузка, повторный запуск мини-апа — встречает тренировку
+   * на паузе: ролик и музыка стоят, кольцо и таймер замерли, под кругом
+   * «Играть», а экран паузы не поднимается, как после «Вернусь позже».
+   * Раньше плеер при каждом открытии начинал играть сам, и возвращение из
+   * меню тут же снова запускало тренировку.
    *
    * Отсчёт мог закончиться и в спрятанной вкладке, а ОС — поднять выгруженную
    * вкладку в фоне. Тогда тренировка тоже не должна пойти сама: ждём «Играть».
@@ -217,6 +196,16 @@ export default function Player() {
   // StrictMode в разработке рисует плеер дважды, и второй раз должен увидеть
   // тот же старт.
   useEffect(() => spendStart(), [])
+  /**
+   * Заход начат: его продолжают или тренировка хоть раз пошла.
+   *
+   * Главная и вкладка «Тренировка» без идущей тренировки открывают плеер на
+   * паузе, и заход заводит только первое «Играть» — это и есть явный старт,
+   * сразу, без отсчёта. До него ничего не сохраняем: иначе лендинг и «Мой
+   * прогресс» звали бы «Вернуться в поток» туда, где человек ещё не
+   * двигался, а «Влиться в поток» теряло бы свой отсчёт.
+   */
+  const begun = useRef(resume !== null || playing)
   /**
    * Показан ли экран паузы.
    *
@@ -452,15 +441,16 @@ export default function Player() {
   /**
    * Вкладка простояла спрятанной дольше, чем тренировка ждёт возвращения, —
    * это уже новый заход, ровно как после ухода из плеера на полчаса. Счёт
-   * захода начинается с нуля, плеер остаётся на паузе.
+   * захода начинается с нуля, плеер остаётся на паузе. Прежний заход истёк
+   * вместе с получасом, а новый, как и с главной, заведёт первое «Играть».
    */
   const hiddenAt = useRef<number | null>(visible ? null : Date.now())
   const renew = useCallback(() => {
     sessionRef.current = 0
     stepsRef.current = 0
     setSessionSeconds(0)
-    beginFlow(stream.id)
-  }, [beginFlow, stream.id])
+    begun.current = false
+  }, [])
 
   /**
    * Уход со страницы: закрываем кусок и пробуем отправить буфер. Не успеет —
@@ -857,10 +847,12 @@ export default function Player() {
 
   /**
    * Запомнить тренировку. pausedAt = null, пока плеер открыт; при уходе
-   * ставим время — с него пойдут те самые тридцать минут.
+   * ставим время — с него пойдут те самые тридцать минут. Заход ещё не начат
+   * (begun выше) — запоминать нечего.
    */
   const store = useCallback(
     (pausedAt: number | null) => {
+      if (!begun.current) return
       saveFlow({
         streamId: stream.id,
         sessionSeconds: sessionRef.current,
@@ -874,11 +866,12 @@ export default function Player() {
     [saveFlow, stream.id],
   )
 
-  // Плеер открылся: продолжаем начатое или начинаем новый заход. Новый
-  // заход стирает прошлый — в том числе чужого потока.
+  // Плеер открылся: продолжаем начатое, а после отсчёта начинаем новый
+  // заход. Новый заход стирает прошлый — в том числе чужого потока. Открыли
+  // на паузе без идущей тренировки — заход заведёт первое «Играть».
   useEffect(() => {
     if (resume) store(null)
-    else beginFlow(stream.id)
+    else if (begun.current) beginFlow(stream.id)
     // Ровно один раз на открытие плеера: дальше состояние ведут эффекты ниже.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -957,9 +950,16 @@ export default function Player() {
     // Музыку — тоже в касании, а не эффектом после перерисовки: после
     // сворачивания вьюхи iPhone пуск без жеста мог и не пустить.
     resumeMusic()
+    // Первое «Играть» без идущей тренировки — явный старт нового захода:
+    // сразу, без отсчёта (отсчёт — у «Влиться в поток»). Сохранит его эффект
+    // выше, когда увидит, что тренировка пошла.
+    if (!begun.current) {
+      begun.current = true
+      beginFlow(stream.id)
+    }
     setShowPause(false)
     setPlaying(true)
-  }, [buffers, resumeMusic])
+  }, [buffers, resumeMusic, beginFlow, stream.id])
 
   /**
    * Кнопка звука. Всё — в самом касании: включение запускает трек сразу
@@ -1080,26 +1080,11 @@ export default function Player() {
         )}
 
         {/* Карточек потоков здесь больше нет: выбирать нечего, и всё, что
-            они занимали, отдано кругу. В колонке остались логотип и меню. */}
-        <ul className="side__menu">
-          {MENU.map(({ icon, label, title, to }) => (
-            <li key={label}>
-              <button
-                className={`side__menu-item ${to ? '' : 'is-on'}`}
-                aria-current={to ? undefined : 'page'}
-                aria-label={title}
-                title={title}
-                // Откуда пришли, чтобы «К тренировке» вернуло в тот же поток.
-                // «Тренировка» — это сам плеер: касание лишь возвращает
-                // прокрученную страницу к кругу.
-                onClick={() => (to ? navigate(to, { state: { from: stream.id } }) : window.scrollTo(0, 0))}
-              >
-                {icon}
-                <span>{label}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+            они занимали, отдано кругу. В колонке остались логотип и меню —
+            панель вкладок, общая с «Прогрессом», «Профилем», «Настройками»
+            и «Помощью» (src/components/TabBar.tsx). Здесь текущая вкладка —
+            «Тренировка»; где панель стоит, решает сетка плеера (.side__menu). */}
+        <TabBar current="workout" className="side__menu" />
       </aside>
 
       {/* ——— Центр ——— */}

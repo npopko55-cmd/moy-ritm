@@ -15,6 +15,11 @@
 
 .page > *:not(.wave-bg) { position: relative; z-index: 1; }
 
+/* На страницах-вкладках в шапке живёт панель вкладок, а ниже 1180 px она
+   прижата к низу экрана. Свой слой шапки запер бы её под карточками
+   страницы — поэтому слоя нет; над волнами шапка и так, по порядку. */
+.page--tabs > .page__header { z-index: auto; }
+
 /* Логотип и кнопка возврата — оба слева, кнопка сразу за знаком. */
 .page__header {
   display: flex;
@@ -252,4 +257,42 @@ a.page__btn { display: inline-flex; align-items: center; justify-content: center
   .page__title { font-size: 24px; }
   .page__lead { margin-top: 6px; }
   .page__card { margin-top: 12px; padding: 14px 18px; }
+}
+
+/* ═══════ Страницы-вкладки: панель вкладок (TabBar) ═══════ */
+
+/* Десктоп: как в «Моём прогрессе» — слева колонка с логотипом и списком
+   вкладок, справа та же колонка страницы по центру своего места. */
+@media (min-width: 1180px) {
+  .page--tabs {
+    display: grid;
+    grid-template-columns: calc(clamp(190px, 14vw, 216px) + clamp(44px, 3.5vw, 72px)) minmax(0, 1fr);
+  }
+
+  .page--tabs .page__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: clamp(8px, 1.2vh, 14px);
+    max-width: none;
+    margin: 0;
+    padding-right: 0;
+  }
+
+  /* Логотип — ссылкой по своей ширине, а не во всю колонку. */
+  .page--tabs .page__header > a { align-self: flex-start; }
+}
+
+/* Ниже 1180 px панель прижата к низу экрана — последним карточкам нужен
+   запас под неё и под «домашнюю полоску» iPhone. Высота панели: строка
+   65 px на планшете, 56 px на телефоне, 49 px одними знаками в ландшафте. */
+@media (max-width: 1179.98px) {
+  .page--tabs .page__main { padding-bottom: calc(65px + 36px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 767.98px) {
+  .page--tabs .page__main { padding-bottom: calc(56px + 32px + env(safe-area-inset-bottom)); }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  .page--tabs .page__main { padding-bottom: calc(49px + 18px + env(safe-area-inset-bottom)); }
 }

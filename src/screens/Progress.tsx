@@ -20,6 +20,7 @@ import { useSession } from '../auth/SessionProvider'
 import { flowLabel, useFlowStart } from '../auth/guards'
 import { useFlow } from '../flow/FlowSession'
 import Logo from '../components/Logo'
+import TabBar from '../components/TabBar'
 import WaveBg from '../components/WaveBg'
 import {
   Bars,
@@ -27,16 +28,12 @@ import {
   Check,
   Clock,
   Flame,
-  Gear,
   Heart,
-  Home,
-  PlayCircle,
   Rocket,
   Sprout,
   Steps,
   Sun,
   Trophy,
-  User,
 } from '../components/Icons'
 import { VISIBLE_STREAMS, getStream } from '../data/streams'
 import { asset } from '../lib/asset'
@@ -57,7 +54,7 @@ import {
 } from '../lib/date'
 import { unlockMedia } from '../media/unlock'
 import { errorText } from './Account'
-import { useBack, useHome } from './Page'
+import { useHome } from './Page'
 import '../components/Logo.css'
 import './Progress.css'
 
@@ -68,21 +65,6 @@ const DAY_GOAL_MINUTES = 30
 const WEEKS_SHOWN = 4
 
 const WEEKDAYS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']
-
-/**
- * Меню кабинета. «Тренировка» — не ссылка, а кнопка: переход в тренировку
- * идёт через useFlowStart, как у «Влиться в поток». Касание заодно
- * разблокирует ролики и музыку (иначе на iPhone в Telegram плеер встречал
- * лишним «Нажмите, чтобы начать»), а новый заход начинается с отсчёта;
- * идущий — продолжается в плеере.
- */
-const MENU: { icon: ReactNode; label: string; to?: string }[] = [
-  { icon: <Home size={19} />, label: 'Главная', to: '/' },
-  { icon: <Clock size={19} />, label: 'Мой прогресс', to: '/progress' },
-  { icon: <PlayCircle size={19} />, label: 'Тренировка' },
-  { icon: <User size={19} />, label: 'Профиль', to: '/profile' },
-  { icon: <Gear size={19} />, label: 'Настройки', to: '/settings' },
-]
 
 /**
  * Своя картинка и свой цвет у каждой награды: коды приходят с сервера,
@@ -156,7 +138,6 @@ const SHOW_STREAMS = VISIBLE_STREAMS.length > 1
 export default function Progress() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const back = useBack()
   const home = useHome()
   const { me, access, reload } = useSession()
   const { session: flow } = useFlow()
@@ -282,30 +263,10 @@ export default function Progress() {
           <Logo />
         </Link>
 
-        {/* Кнопка возврата у левого края, сразу под знаком. Пришли из плеера —
-            она зовёт назад в ту же тренировку, иначе на главную, а главная
-            для вошедшего — тоже тренер. */}
-        <button className="dash__back" onClick={back.go}>
-          {back.label}
-        </button>
-
-        <ul className="dash__nav">
-          {MENU.map((m) => (
-            <li key={m.label}>
-              {m.to ? (
-                <Link className={`dash__nav-item ${m.to === '/progress' ? 'is-on' : ''}`} to={m.to}>
-                  {m.icon}
-                  <span>{m.label}</span>
-                </Link>
-              ) : (
-                <button className="dash__nav-item" type="button" onClick={() => goFlow()}>
-                  {m.icon}
-                  <span>{m.label}</span>
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+        {/* Панель вкладок, общая с плеером и страницами кабинета: здесь —
+            списком под знаком, ниже 1180 px — внизу экрана. Своё меню
+            кабинета и кнопка «← К тренировке» были бы её дублями. */}
+        <TabBar current="progress" dock />
 
         {paid ? (
           <p className="dash__paid">Доступ до {formatDate(paid)}</p>

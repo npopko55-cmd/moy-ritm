@@ -32,10 +32,15 @@
 
 .dash > *:not(.wave-bg) { position: relative; z-index: 1; }
 
+/* В колонке слева живёт панель вкладок (TabBar), а ниже 1180 px она
+   прижата к низу экрана. Свой слой колонки запер бы её под карточкой —
+   поэтому слоя нет; над волнами колонка и так, по порядку. */
+.dash > .dash__side { z-index: auto; }
+
 /* Волны — только на первый экран: ниже они размазываются. */
 .dash .wave-bg { bottom: auto; height: 100vh; height: 100dvh; }
 
-/* ——— Меню кабинета ——— */
+/* ——— Колонка слева: логотип, вкладки, доступ ——— */
 .dash__side {
   display: flex;
   flex-direction: column;
@@ -46,43 +51,6 @@
 }
 
 .dash__logo { display: block; margin-bottom: 4px; }
-
-.dash__back {
-  align-self: flex-start;
-  min-height: 40px;
-  padding: 8px 14px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--gray-200);
-  background: var(--white);
-  font-size: 13.5px;
-  font-weight: 600;
-  box-shadow: var(--shadow-card);
-}
-
-.dash__nav { display: flex; flex-direction: column; gap: 1px; }
-
-.dash__nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 38px;
-  padding: 8px 12px;
-  border-radius: var(--r-md);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--gray-600);
-  transition: background-color .15s ease, color .15s ease;
-}
-
-.dash__nav-item.is-on {
-  background: var(--pink-50);
-  color: var(--pink-600);
-}
-
-.dash__nav-item svg { flex: none; }
-
-/* «Тренировка» — кнопка, а не ссылка: во всю ширину пункта, как соседи. */
-button.dash__nav-item { width: 100%; }
 
 /* ——— Промо и строка доступа ——— */
 .dash__promo {
@@ -810,9 +778,6 @@ button.dash__nav-item { width: 100%; }
 .flow__nums span { opacity: .9; white-space: nowrap; }
 
 @media (hover: hover) {
-  .dash__nav-item:hover { background: var(--gray-100); color: var(--ink-900); }
-  .dash__nav-item.is-on:hover { background: var(--pink-100); color: var(--pink-700); }
-  .dash__back:hover { border-color: var(--gray-300); }
   .cal__arrow:not(:disabled):hover,
   .cal__now:not(:disabled):hover { border-color: var(--gray-300); }
   .dash__promo-btn:hover { box-shadow: 0 10px 22px rgba(240, 23, 127, .36); }
@@ -820,14 +785,11 @@ button.dash__nav-item { width: 100%; }
   .dash__more:hover { color: var(--pink-700); }
 }
 
-/* Палец меньше курсора: пункты меню, стрелки календаря, «Сегодня» и
-   «Смотреть все» получают гарантированные 44 px. Условия те же, что
-   у .btn в global.css. */
+/* Палец меньше курсора: стрелки календаря, «Сегодня» и «Смотреть все»
+   получают гарантированные 44 px. Условия те же, что у .btn в global.css. */
 @media (max-width: 1023.98px),
        (pointer: coarse),
        (max-width: 1179.98px) and (orientation: portrait) {
-  .dash__nav-item { min-height: 44px; }
-  .dash__back { min-height: 44px; }
   .cal__arrow { width: 44px; height: 44px; }
   .cal__now { min-height: 44px; }
   .dash__promo-btn { min-height: 44px; }
@@ -835,8 +797,8 @@ button.dash__nav-item { width: 100%; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   До 1180: меню разворачивается в строку вкладок над карточкой.
-   Разметка та же — переставлена стилями, второго меню в DOM нет.
+   До 1180: одна колонка — логотип и доступ над карточкой, панель
+   вкладок прижата к низу экрана (TabBar.css, .tabbar--dock).
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 1179.98px) {
   .dash { grid-template-columns: minmax(0, 1fr); gap: 14px; }
@@ -851,22 +813,6 @@ button.dash__nav-item { width: 100%; }
 
   .dash__logo { margin-bottom: 0; }
 
-  /* Лента вкладок: на узком экране она прокручивается сама и не тянет
-     за собой страницу. */
-  .dash__nav {
-    flex-direction: row;
-    gap: 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 20px), transparent 100%);
-    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 20px), transparent 100%);
-  }
-
-  .dash__nav::-webkit-scrollbar { display: none; }
-  .dash__nav > li { flex: none; }
-  .dash__nav-item { padding: 10px 12px; white-space: nowrap; }
-
-  .dash__back { grid-column: 1; }
   .dash__promo,
   .dash__paid { grid-column: 1 / -1; margin-top: 0; }
 
@@ -954,4 +900,20 @@ button.dash__nav-item { width: 100%; }
   .cal__top { flex-wrap: wrap; }
   .cal__pager { flex: 1 0 100%; justify-content: space-between; margin-bottom: 6px; }
   .cal__now { margin-left: auto; }
+}
+
+/* Ниже 1180 px панель вкладок прижата к низу экрана — карточке нужен запас
+   под неё и под «домашнюю полоску» iPhone. Высота панели: строка 65 px на
+   планшете, 56 px на телефоне, 49 px одними знаками в ландшафте. Правила —
+   последними в файле: иначе телефонный padding выше вернул бы старый низ. */
+@media (max-width: 1179.98px) {
+  .dash { padding-bottom: calc(65px + 28px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 767.98px) {
+  .dash { padding-bottom: calc(56px + 24px + env(safe-area-inset-bottom)); }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  .dash { padding-bottom: calc(49px + 16px + env(safe-area-inset-bottom)); }
 }

@@ -118,7 +118,9 @@ export default function App() {
               RequireTrial — пробный период воронки: кончился — вместо
               отсчёта и плеера «Бесплатный доступ истёк» (trial3d), у
               челленджа trial20 через три дня — один раз предложение тарифов
-              перед отсчётом. */}
+              перед новым заходом: перед отсчётом и перед плеером, если
+              тренировки ещё нет (главная и вкладка «Тренировка» ведут прямо
+              в плеер на паузе). */}
           <Route
             path="/start/:streamId"
             element={
@@ -133,7 +135,7 @@ export default function App() {
             path="/player/:streamId"
             element={
               <RequireAuth>
-                <RequireTrial>
+                <RequireTrial start>
                   <Player />
                 </RequireTrial>
               </RequireAuth>

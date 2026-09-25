@@ -63,27 +63,13 @@
   .access-note:hover { background: #ffdcbe; }
 }
 
-/* Меню стоит сразу под логотипом: в колонке кроме них ничего не осталось. */
-.side__menu { display: flex; flex-direction: column; gap: 1px; padding-top: clamp(4px, .6vh, 10px); }
-
-.side__menu-item {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  width: 100%;
-  padding: clamp(6px, .8vh, 11px) 6px;
-  border-radius: var(--r-sm);
-  font-size: clamp(13px, 1.3vh, 16.5px);
-  color: var(--gray-600);
-  /* Подпись вкладки — одним словом в одну строку, при любой ширине. */
-  white-space: nowrap;
-  transition: background-color .15s ease, color .15s ease;
-}
-
-/* Текущая вкладка — «Тренировка». Цвета те же, что у текущего пункта
-   меню в «Моём прогрессе». Толщину шрифта не меняем: подпись не должна
-   расти в ширину. */
-.side__menu-item.is-on { background: var(--pink-50); color: var(--pink-600); }
+/*
+ * Меню стоит сразу под логотипом: в колонке кроме них ничего не осталось.
+ * Это панель вкладок (ul.tabbar.side__menu) — её вид во всех раскладках
+ * живёт в src/components/TabBar.css, здесь только её место в сетке плеера.
+ * Селекторы начинаются с .player: так они перевешивают TabBar.css, в каком
+ * бы порядке ни пришли куски CSS.
+ */
 
 /* ═══════ Центр ═══════ */
 .player__stage {
@@ -569,8 +555,6 @@
 
 /* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
 @media (hover: hover) {
-  .side__menu-item:hover { background: var(--white); color: var(--ink-900); }
-  .side__menu-item.is-on:hover { background: var(--pink-100); color: var(--pink-700); }
   .track:hover { border-color: var(--gray-300); }
   .ctrl--main:hover { box-shadow: 0 14px 32px rgba(251, 59, 33, 0.45); }
 }
@@ -591,7 +575,7 @@
   /* Отступы плеера здесь свои — круг считается от них. */
   .player__stage { --stage-pad: 14px; }
 
-  .side__menu-item { padding: 6px; font-size: 13px; gap: 9px; }
+  .player .tabbar__item { padding: 6px; font-size: 13px; gap: 9px; }
 
   .stat { padding: 12px 14px; }
   .stat__big { font-size: clamp(34px, 4.6vh, 46px); }
@@ -620,7 +604,7 @@
   .stat { padding: 10px 14px; }
   .stat__big { font-size: clamp(30px, 6.4vh, 44px); margin: 4px 0 8px; }
   .stat__mid { font-size: clamp(24px, 5vh, 36px); }
-  .side__menu-item { padding: 4px 6px; }
+  .player .tabbar__item { padding: 4px 6px; }
 }
 
 /* График недели на низком экране: 70 px хватает на столбики и две подписи. */
@@ -736,20 +720,8 @@
   .week__min { height: auto; }
   .week__col .week__unit { display: inline; }
 
-  /* ——— Меню строкой ——— */
-  .side__menu { grid-area: menu; flex-direction: row; gap: 6px; padding-top: 0; }
-  .side__menu > li { flex: 1 1 0; min-width: 0; }
-
-  .side__menu-item {
-    flex-direction: column;
-    justify-content: center;
-    gap: 3px;
-    padding: 6px 4px;
-    min-height: 52px;
-    font-size: 12px;
-    line-height: 1.15;
-    text-align: center;
-  }
+  /* ——— Меню строкой (вид строки — TabBar.css) ——— */
+  .player .side__menu { grid-area: menu; }
 
   /* Колонки распущены в сетку, поэтому плашке нужен свой ряд. Он заводится
      только вместе с ней: без неё сетка та же, что была.
@@ -820,35 +792,9 @@
   .week__min { height: 1.95em; }
   .week__col .week__unit { display: block; }
 
-  /* Нижняя панель вкладок. Это тот же ul.side__menu — переставлен стилями. */
-  .side__menu {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 20;
-    gap: 0;
-    height: calc(56px + env(safe-area-inset-bottom));
-    padding: 0 2px env(safe-area-inset-bottom);
-    background: var(--white);
-    border-top: 1px solid var(--gray-200);
-  }
-
-  /* Пять подписей должны лечь в одну строку и на 320 px. Самой длинной,
-     «Тренировка», при 10 px нужно 59 px (Inter 400), а вкладке там остаётся
-     (320 − 4) / 5 ≈ 63 px — поэтому боковых отступов у вкладок нет. Дальше
-     ширина вкладки растёт быстрее кегля, и запас только увеличивается. */
-  .side__menu-item {
-    height: 56px;
-    min-height: 56px;
-    padding: 5px 0;
-    border-radius: 0;
-    font-size: clamp(10px, 2.8vw, 11px);
-    gap: 2px;
-  }
-
-  /* В панели текущая вкладка отмечена только цветом, без плашки. */
-  .side__menu-item.is-on { background: none; }
+  /* Нижняя панель вкладок — тот же ul.side__menu: на телефоне он прижат к
+     низу экрана правилами TabBar.css, одинаковыми на всех пяти вкладках.
+     Место под панель — в нижнем отступе плеера выше. */
 
   /* Те же дополнительные ряды, но сетка здесь в две колонки. */
   .player--notice {
@@ -937,8 +883,9 @@
      важнее. Карточку не прячем: время в движении теперь живёт в ней. */
   .week { display: none; }
 
-  /* Меню — маленькими иконками в правом верхнем углу. */
-  .side__menu {
+  /* Меню — маленькими иконками в правом верхнем углу: не панель внизу, а
+     ячейка сетки. Вид знаков — TabBar.css. */
+  .player .side__menu {
     position: static;
     grid-area: menu;
     height: auto;
@@ -948,20 +895,6 @@
     background: none;
     border: 0;
   }
-
-  .side__menu-item {
-    height: auto;
-    min-height: 44px;
-    padding: 4px 2px;
-    gap: 0;
-    border-radius: var(--r-sm);
-  }
-
-  /* Остаются только иконки: подписи в ландшафте негде разместить. */
-  .side__menu-item > span { display: none; }
-
-  /* Панели здесь нет — текущая вкладка снова с плашкой, как на десктопе. */
-  .side__menu-item.is-on { background: var(--pink-50); }
 
   /* В ландшафте на 390 px высоты плашке места нет: круг важнее. Про конец
      доступа человек уже узнал из письма, а на тарифах его встретит строка. */
