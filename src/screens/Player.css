@@ -75,8 +75,15 @@
   border-radius: var(--r-sm);
   font-size: clamp(13px, 1.3vh, 16.5px);
   color: var(--gray-600);
+  /* Подпись вкладки — одним словом в одну строку, при любой ширине. */
+  white-space: nowrap;
   transition: background-color .15s ease, color .15s ease;
 }
+
+/* Текущая вкладка — «Тренировка». Цвета те же, что у текущего пункта
+   меню в «Моём прогрессе». Толщину шрифта не меняем: подпись не должна
+   расти в ширину. */
+.side__menu-item.is-on { background: var(--pink-50); color: var(--pink-600); }
 
 /* ═══════ Центр ═══════ */
 .player__stage {
@@ -563,6 +570,7 @@
 /* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
 @media (hover: hover) {
   .side__menu-item:hover { background: var(--white); color: var(--ink-900); }
+  .side__menu-item.is-on:hover { background: var(--pink-100); color: var(--pink-700); }
   .track:hover { border-color: var(--gray-300); }
   .ctrl--main:hover { box-shadow: 0 14px 32px rgba(251, 59, 33, 0.45); }
 }
@@ -821,20 +829,26 @@
     z-index: 20;
     gap: 0;
     height: calc(56px + env(safe-area-inset-bottom));
-    padding: 0 4px env(safe-area-inset-bottom);
+    padding: 0 2px env(safe-area-inset-bottom);
     background: var(--white);
     border-top: 1px solid var(--gray-200);
   }
 
+  /* Пять подписей должны лечь в одну строку и на 320 px. Самой длинной,
+     «Тренировка», при 10 px нужно 59 px (Inter 400), а вкладке там остаётся
+     (320 − 4) / 5 ≈ 63 px — поэтому боковых отступов у вкладок нет. Дальше
+     ширина вкладки растёт быстрее кегля, и запас только увеличивается. */
   .side__menu-item {
     height: 56px;
     min-height: 56px;
-    padding: 5px 2px;
+    padding: 5px 0;
     border-radius: 0;
-    /* «Нужна помощь?» должна лечь в одну строку и на 360 px. */
     font-size: clamp(10px, 2.8vw, 11px);
     gap: 2px;
   }
+
+  /* В панели текущая вкладка отмечена только цветом, без плашки. */
+  .side__menu-item.is-on { background: none; }
 
   /* Те же дополнительные ряды, но сетка здесь в две колонки. */
   .player--notice {
@@ -945,6 +959,9 @@
 
   /* Остаются только иконки: подписи в ландшафте негде разместить. */
   .side__menu-item > span { display: none; }
+
+  /* Панели здесь нет — текущая вкладка снова с плашкой, как на десктопе. */
+  .side__menu-item.is-on { background: var(--pink-50); }
 
   /* В ландшафте на 390 px высоты плашке места нет: круг важнее. Про конец
      доступа человек уже узнал из письма, а на тарифах его встретит строка. */

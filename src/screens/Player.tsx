@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import {
   hasAccess,
@@ -17,6 +17,7 @@ import {
   Clock,
   FloatNote,
   Gear,
+  Home,
   Info,
   MusicNote,
   Pause,
@@ -31,7 +32,13 @@ import Unlock from '../components/Unlock'
 import { DEFAULT_FREE_TIER, getStream } from '../data/streams'
 import { loopPoster, loopSrc, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
-import { FLOW_RESUME_MINUTES, useFlow, type FlowSession } from '../flow/FlowSession'
+import {
+  FLOW_RESUME_MINUTES,
+  isStart,
+  spendStart,
+  useFlow,
+  type FlowSession,
+} from '../flow/FlowSession'
 import { createChunkQueue, type ChunkQueue } from '../lib/chunks'
 import { createRotation, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
@@ -100,11 +107,21 @@ const phraseClass = (text: string): string => {
   return length > 40 ? ' is-long' : ''
 }
 
+/**
+ * Меню плеера: на телефоне — нижняя панель вкладок, на планшете — строка под
+ * статистикой, на десктопе — список в левой колонке. Меню живёт только в
+ * плеере, поэтому первая вкладка, «Тренировка» с домиком, здесь всегда
+ * текущая (`to: null`) и никуда не уводит.
+ *
+ * Пять вкладок встают в одну строку и на 320 px только с короткими
+ * подписями; полное название — в aria-label и в подсказке (title).
+ */
 const MENU = [
-  { icon: <Clock size={19} />, label: 'Мой прогресс', to: '/progress' },
-  { icon: <User size={19} />, label: 'Профиль', to: '/profile' },
-  { icon: <Gear size={19} />, label: 'Настройки', to: '/settings' },
-  { icon: <Question size={19} />, label: 'Нужна помощь?', to: '/help' },
+  { icon: <Home size={19} />, label: 'Тренировка', title: 'Тренировка', to: null },
+  { icon: <Clock size={19} />, label: 'Прогресс', title: 'Мой прогресс', to: '/progress' },
+  { icon: <User size={19} />, label: 'Профиль', title: 'Профиль', to: '/profile' },
+  { icon: <Gear size={19} />, label: 'Настройки', title: 'Настройки', to: '/settings' },
+  { icon: <Question size={19} />, label: 'Помощь', title: 'Нужна помощь?', to: '/help' },
 ] as const
 
 /** Открытый кусок движения: живёт в ref, чтобы не перерисовывать плеер. */
@@ -113,6 +130,8 @@ type OpenChunk = { startedAt: number; seconds: number; stream: string; move: str
 export default function Player() {
   const { streamId } = useParams()
   const navigate = useNavigate()
+  // Состояние записи истории: по нему видно, что плеер открыл отсчёт.
+  const { state: routeState } = useLocation()
   const stream = getStream(streamId)
   const { access, me, reload } = useSession()
 
@@ -175,9 +194,29 @@ export default function Player() {
   const stepRef = useRef(step)
   stepRef.current = step
   const [inMove, setInMove] = useState(() => resume?.moveSeconds ?? 0)
-  // Отсчёт мог закончиться в спрятанной вкладке, а ОС — поднять выгруженную
-  // вкладку в фоне. Тогда тренировка не должна пойти сама: ждём «Играть».
-  const [playing, setPlaying] = useState(() => document.visibilityState !== 'hidden')
+  /**
+   * Идёт ли тренировка.
+   *
+   * Сама она идёт только сразу после отсчёта — это явный старт человека
+   * (isStart в src/flow/FlowSession.tsx). Любое другое открытие плеера —
+   * вкладка «Тренировка», «← К тренировке», «Вернуться в поток», «Назад»,
+   * перезагрузка, повторный запуск мини-апа — встречает тренировку на паузе:
+   * ролик и музыка стоят, кольцо и таймер замерли, под кругом «Играть», а
+   * экран паузы не поднимается, как после «Вернусь позже». Раньше плеер при
+   * каждом открытии начинал играть сам, и возвращение из меню тут же снова
+   * запускало тренировку.
+   *
+   * Отсчёт мог закончиться и в спрятанной вкладке, а ОС — поднять выгруженную
+   * вкладку в фоне. Тогда тренировка тоже не должна пойти сама: ждём «Играть».
+   */
+  const [playing, setPlaying] = useState(
+    () => isStart(routeState) && document.visibilityState !== 'hidden',
+  )
+  // Старт одноразовый: «Назад» в эту же запись истории и перезагрузка
+  // откроют плеер уже на паузе. Гасим после монтирования, а не при чтении:
+  // StrictMode в разработке рисует плеер дважды, и второй раз должен увидеть
+  // тот же старт.
+  useEffect(() => spendStart(), [])
   /**
    * Показан ли экран паузы.
    *
@@ -1043,15 +1082,20 @@ export default function Player() {
         {/* Карточек потоков здесь больше нет: выбирать нечего, и всё, что
             они занимали, отдано кругу. В колонке остались логотип и меню. */}
         <ul className="side__menu">
-          {MENU.map((m) => (
-            <li key={m.label}>
+          {MENU.map(({ icon, label, title, to }) => (
+            <li key={label}>
               <button
-                className="side__menu-item"
+                className={`side__menu-item ${to ? '' : 'is-on'}`}
+                aria-current={to ? undefined : 'page'}
+                aria-label={title}
+                title={title}
                 // Откуда пришли, чтобы «К тренировке» вернуло в тот же поток.
-                onClick={() => navigate(m.to, { state: { from: stream.id } })}
+                // «Тренировка» — это сам плеер: касание лишь возвращает
+                // прокрученную страницу к кругу.
+                onClick={() => (to ? navigate(to, { state: { from: stream.id } }) : window.scrollTo(0, 0))}
               >
-                {m.icon}
-                <span>{m.label}</span>
+                {icon}
+                <span>{label}</span>
               </button>
             </li>
           ))}

@@ -5,7 +5,7 @@ import WaveBg from '../components/WaveBg'
 import { FloatNote, MusicNote, Sparkle } from '../components/Icons'
 import { getStream, WARM_MOVES } from '../data/streams'
 import { loopPoster, loopSrc } from '../data/loops'
-import { useFlow } from '../flow/FlowSession'
+import { startState, useFlow } from '../flow/FlowSession'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { player } from '../lib/screens'
 import { useMusic } from '../music/MusicProvider'
@@ -55,8 +55,9 @@ export default function Countdown() {
    *
    * Отсчёт перед стартом нужен, чтобы человек встал и
    * приготовился. Тот, кто просто заглянул в прогресс и вернулся,
-   * приготовился полчаса назад: его пускаем в плеер сразу, и музыка
-   * продолжается с той же секунды, а не начинается заново.
+   * приготовился полчаса назад: его пускаем в плеер сразу — на паузе, с
+   * кнопкой «Играть» (isStart в src/flow/FlowSession.tsx), — и по ней музыка
+   * продолжится с той же секунды, а не начнётся заново.
    *
    * Другой поток — это новый заход: отсчёт на месте, а прошлую тренировку
    * плеер закроет сам, когда откроется.
@@ -89,7 +90,9 @@ export default function Countdown() {
     if (resume) return
     if (left <= 0) {
       toPlayer.current = true
-      navigate(`/player/${target}`, { replace: true })
+      // Отсчёт дошёл до нуля — единственный переход, после которого плеер
+      // пускает тренировку сам (startState в src/flow/FlowSession.tsx).
+      navigate(`/player/${target}`, { replace: true, state: startState() })
       return
     }
     const t = setTimeout(() => setLeft((n) => n - 1), 1000)
