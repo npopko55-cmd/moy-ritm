@@ -39,6 +39,7 @@ import { createChunkQueue, type ChunkQueue } from '../lib/chunks'
 import { createRotation, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { onAppReturn } from '../lib/appReturn'
+import { recentMoves, rememberMove } from '../lib/moveHistory'
 import { loadMoveInterval } from '../lib/settings'
 import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
@@ -290,6 +291,11 @@ export default function Player() {
    * движение приходило снова через одно-два — при пяти бесплатных казалось,
    * что крутятся три одних и тех же.
    *
+   * Круг сквозной между тренировками: колоде отдаётся и история устройства
+   * (src/lib/moveHistory.ts) — что человек делал в прошлых тренировках, —
+   * поэтому новая тренировка начинает не со случайного порядка, а с
+   * движений, которых давно не было. Внутри тренировки всё как прежде.
+   *
    * Уже выданные движения остаются в `list`: двойная буферизация видео
    * смотрит на шаг вперёд и через один, и эти взгляды не должны сдвигать
    * порядок — иначе «следующее» менялось бы на каждом рендере.
@@ -300,14 +306,18 @@ export default function Player() {
     // сохранённому порядку, чтобы человек увидел ровно то, на чём ушёл.
     // Незнакомый идентификатор обрывает восстановление — дальше колода
     // сдаёт сама (набор движений мог измениться вместе с доступом).
-    // Круг продолжается с того же места: он помнит, что уже показывали.
+    // Круг продолжается с того же места: он помнит, что уже показывали, —
+    // выданное в этом заходе идёт после истории и важнее её.
     const list: Loop[] = []
     for (const id of resume?.deck ?? []) {
       const found = moves.find((m) => m.id === id)
       if (!found) break
       list.push(found)
     }
-    orderRef.current = { deck: createRotation(moves, { dealt: list }), list }
+    orderRef.current = {
+      deck: createRotation(moves, { dealt: [...recentMoves(moves), ...list] }),
+      list,
+    }
   }
 
   const moveAt = (n: number): Loop => {
@@ -350,6 +360,8 @@ export default function Player() {
   // показанное, и новые движения идут раньше повторов. Заглядывание вперёд
   // (step + 1, step + 2) отбрасываем — его пересчитают из нового набора.
   // Иначе (набор сузился и текущего движения в нём нет) — с нуля.
+  // В обоих случаях колода помнит и историю устройства: круг сквозной и
+  // тогда, когда бесплатный уровень пришёл с сервера уже после открытия.
   const [, setReorder] = useState(0)
   const deckKey = `${stream.id}:${moves.map((m) => m.id).join(',')}`
   const builtFor = useRef(deckKey)
@@ -359,13 +371,16 @@ export default function Player() {
     const shown = orderRef.current?.list.slice(0, stepRef.current + 1) ?? []
     const ids = new Set(moves.map((m) => m.id))
     if (shown.length > 0 && shown.every((m) => ids.has(m.id))) {
-      orderRef.current = { deck: createRotation(moves, { dealt: shown }), list: shown }
+      orderRef.current = {
+        deck: createRotation(moves, { dealt: [...recentMoves(moves), ...shown] }),
+        list: shown,
+      }
       // Порядок живёт в ref: перерисовка нужна, чтобы следующий ролик во
       // втором <video> взялся уже из нового набора.
       setReorder((n) => n + 1)
       return
     }
-    orderRef.current = { deck: createRotation(moves), list: [] }
+    orderRef.current = { deck: createRotation(moves, { dealt: recentMoves(moves) }), list: [] }
     setStep(0)
     setInMove(0)
   }, [deckKey, moves])
@@ -451,6 +466,22 @@ export default function Player() {
       closeChunk()
     }
   }, [playing, visible, stream.id, loopId, openChunk, closeChunk])
+
+  /**
+   * Движение, которое человек действительно делал, — в историю устройства
+   * (src/lib/moveHistory.ts): по ней следующая тренировка продолжит круг.
+   * Один раз на шаг и только когда тренировка идёт: плеер, открытый на
+   * паузе и закрытый без «Играть», ничего не показал. Шаг, на котором
+   * человек вернулся в заход, уже записан в прошлый раз.
+   */
+  const rememberedStep = useRef(resume && loopId ? `${step}:${loopId}` : '')
+  useEffect(() => {
+    if (!playing || !loopId) return
+    const key = `${step}:${loopId}`
+    if (rememberedStep.current === key) return
+    rememberedStep.current = key
+    rememberMove(loopId)
+  }, [playing, step, loopId])
 
   /**
    * Вкладка простояла спрятанной дольше, чем тренировка ждёт возвращения, —
