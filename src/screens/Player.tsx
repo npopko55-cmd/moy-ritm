@@ -40,7 +40,7 @@ import { createRotation, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { onAppReturn } from '../lib/appReturn'
 import { loadMoveInterval } from '../lib/settings'
-import { lastBootstrap, loadBootstrap, markTrialStale } from '../lib/trial'
+import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { uuid } from '../lib/uuid'
 import { unlockMedia } from '../media/unlock'
@@ -322,6 +322,20 @@ export default function Player() {
    * разблокировки, а таймер, куски и музыка стоят.
    */
   const empty = moves.length === 0
+
+  /**
+   * Блок разблокировки (src/components/Unlock.tsx) — одно место на экране.
+   *
+   * Открыты не все движения — плашка «Открой все 40» вверху, сразу под
+   * карточкой музыки (правка заказчика 26.09.2026). Идёт trial3d и открыто
+   * всё — прежний блок пробного периода на прежнем месте: в правой колонке,
+   * на телефоне — последним в ленте статистики. Движений нет вовсе — блок
+   * стоит на месте круга, и больше его нигде нет. С оплатой — нигде.
+   */
+  const opensAll = trialOpensAll(useTrial(), access)
+  const topBanner = limited && !empty && !opensAll
+  const sideUnlock = limited && !empty && opensAll
+
   const loop: Loop | null = empty ? null : moveAt(step)
   const nextLoop: Loop | null = empty ? null : moveAt(step + 1)
   const afterNext: Loop | null = empty ? null : moveAt(step + 2)
@@ -1061,7 +1075,7 @@ export default function Player() {
         раскладка видна снова, только ролик стоит.
       */}
       <div
-        className={`player ${notice ? 'player--notice' : ''} ${limited ? 'player--locked' : ''}`}
+        className={`player ${notice ? 'player--notice' : ''} ${sideUnlock ? 'player--locked' : ''} ${topBanner ? 'player--banner' : ''}`}
         hidden={showPause}
       >
       <WaveBg opacity={0.28} />
@@ -1185,8 +1199,8 @@ export default function Player() {
         </>
         ) : (
           // Бесплатно не открыто ни одного движения: вместо круга — вход в
-          // тарифы. Тот же блок в правой колонке тогда не дублируем.
-          <div className="stage__empty">{limited && <Unlock />}</div>
+          // тарифы. Ни вверху, ни в правой колонке его тогда не дублируем.
+          <div className="stage__empty">{limited && <Unlock place="player" />}</div>
         )}
         </div>
       </main>
@@ -1217,6 +1231,17 @@ export default function Player() {
             </span>
           </button>
         </div>
+
+        {/* Плашка «Открой все 40» — сразу под карточкой музыки, «чтобы
+            прям в глаза бросалась». На десктопе это верх правой колонки, в
+            одну колонку — отдельный ряд между шапкой и кругом, в ландшафте
+            телефона — правый столбец под карточкой трека. Узел один, место
+            выбирает сетка (Player.css, .player--banner). */}
+        {topBanner && (
+          <div className="player__banner">
+            <Unlock place="player" />
+          </div>
+        )}
 
         {/* Время за сегодня и неделя одной карточкой: раньше это были два
             блока с одной и той же цифрой в разном виде. */}
@@ -1276,12 +1301,13 @@ export default function Player() {
           </div>
         </section>
 
-        {/* Единственный вход в тарифы из тренировки. На телефоне и планшете
-            правой колонки нет, и блок встаёт последним в ленте статистики —
-            но остаётся тем же самым узлом, второго в разметке нет. */}
-        {limited && !empty && (
+        {/* Прежний блок пробного периода trial3d (открыто всё) — на своём
+            прежнем месте. На телефоне и планшете правой колонки нет, и блок
+            встаёт последним в ленте статистики — но остаётся тем же самым
+            узлом, второго в разметке нет. */}
+        {sideUnlock && (
           <div className="stats__unlock">
-            <Unlock />
+            <Unlock place="player" />
           </div>
         )}
       </aside>

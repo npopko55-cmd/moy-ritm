@@ -345,6 +345,14 @@
    блоков карточки, чтобы ритм не сбивался. */
 .pause__unlock { margin-top: clamp(18px, 2.2vw, 28px); }
 
+/* Плашка «Открой все 40»: карточка паузы широкая — заголовок одной строкой
+   и кнопка справа. На телефоне заголовок в две строки, кнопка по-прежнему
+   справа; на самых узких экранах она уходит под заголовок (решает сама
+   плашка, Unlock.css). */
+.pause__unlock .unlock-banner { gap: 8px 16px; padding: 14px 18px; }
+.pause__unlock .unlock-banner__title { font-size: clamp(15px, 1.3vw, 18px); }
+.pause__unlock .unlock-banner__cta { padding: 9px 20px; font-size: clamp(13.5px, 1.05vw, 15px); }
+
 /* ——— Кнопки ——— */
 /* Стоят сразу под тремя карточками итогов, перед полосой дня. Отступы те же,
    что были внизу: над «Продолжить» — общий отступ между блоками карточки, под
@@ -445,6 +453,12 @@
 
   .dots { gap: 4px; }
   .dot__mark { width: 34px; height: 34px; }
+
+  /* Две строки заголовка и кнопка справа помещаются от ~390 px; уже —
+     кнопка переносится под заголовок сама. */
+  .pause__unlock .unlock-banner { gap: 8px; padding: 12px; }
+  .pause__unlock .unlock-banner__title { font-size: 14px; }
+  .pause__unlock .unlock-banner__cta { padding: 8px 13px; font-size: 13.5px; }
 }
 
 /* Совсем узкие экраны: 320 px на три карточки уже не хватает. */

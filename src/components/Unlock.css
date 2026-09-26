@@ -2,7 +2,67 @@
  * Блок разблокировки. Градиент розовый→оранжевый — тот же, что у кольца
  * вокруг персонажа и у кнопки паузы: он в интерфейсе означает «действие».
  * Здесь блок нарочно самый яркий на экране — это единственный вход в тарифы.
+ *
+ * Два вида (src/components/Unlock.tsx): плашка «Разнообразь тренировки и
+ * открой все 40 движений!» (.unlock-banner) и прежний блок пробного периода
+ * trial3d «Шагайте без ограничений» (.unlock) — он не менялся.
  */
+
+/* ═══════ Плашка «Открой все 40» ═══════ */
+/*
+ * Заголовок крупным шрифтом и кнопка «Открыть», без цены (правка заказчика
+ * 26.09.2026).
+ *
+ * Кнопка стоит справа, если рядом с ней заголовку хватает места на две
+ * строки, а если нет — переносится под заголовок. Решает ширина самой
+ * плашки, а не экрана, поэтому одна и та же разметка годится и для ряда на
+ * телефоне, и для узкой правой колонки десктопа: flex-wrap и основа
+ * заголовка в em. 15,5em — это более длинная из двух строк («Разнообразь
+ * тренировки и» ≈ 14,9em в Montserrat 800) с запасом; основа растёт вместе
+ * с кеглем, и справа кнопка встаёт, только когда заголовок рядом с ней
+ * укладывается в две строки. Кегли и отступы под каждое место — в
+ * Player.css и PlayerPause.css.
+ */
+.unlock-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 13px 15px;
+  border-radius: var(--r-lg);
+  background: linear-gradient(120deg, #ff2d8e 0%, #ff7a18 100%);
+  color: var(--white);
+  box-shadow: 0 10px 24px rgba(251, 59, 33, .28);
+}
+
+.unlock-banner__title {
+  flex: 1 1 15.5em;
+  min-width: 0;
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: clamp(14px, 1.55vh, 18px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.unlock-banner__cta {
+  flex: none;
+  padding: 9px 16px;
+  border-radius: var(--r-pill);
+  background: var(--white);
+  color: var(--pink-600);
+  font-size: clamp(13px, 1.3vh, 15px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  transition: transform .16s ease;
+}
+
+.unlock-banner__cta:active { transform: scale(0.96); }
+
+/* ═══════ Прежний блок: trial3d, открыто всё ═══════ */
 .unlock {
   display: flex;
   flex-direction: column;
@@ -24,6 +84,9 @@
   letter-spacing: -0.01em;
 }
 
+/* Строка под заголовком — о пробном периоде («Пробный доступ: ещё 2 дня…»).
+   Имя класса осталось от цены, которая стояла здесь раньше: по нему блок
+   ужимают правила Player.css. */
 .unlock__price { font-size: clamp(11.5px, 1.15vh, 14px); opacity: .92; }
 
 .unlock__cta {
@@ -41,7 +104,8 @@
 .unlock__cta:active { transform: scale(0.96); }
 
 @media (hover: hover) {
-  .unlock__cta:hover { transform: translateY(-1px); }
+  .unlock__cta:hover,
+  .unlock-banner__cta:hover { transform: translateY(-1px); }
 }
 
 /* Строкой: текст слева, кнопка справа. Экран паузы длинный, и лишняя
@@ -54,4 +118,3 @@
 }
 
 .unlock--compact .unlock__cta { align-self: center; margin-left: auto; }
-

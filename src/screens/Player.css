@@ -550,7 +550,13 @@
   opacity: .8;
 }
 
-/* ——— Разблокировка под карточками ——— */
+/* ——— Плашка «Открой все 40» под карточкой музыки ——— */
+/* Правка заказчика 26.09.2026: «наверх прям … чтобы прям в глаза
+   бросалась». На десктопе это верх правой колонки: колонка узкая, и кнопка
+   там встаёт под заголовком — плашка решает это сама (Unlock.css). */
+.player__banner { flex: 0 0 auto; }
+
+/* ——— Прежний блок trial3d под карточками ——— */
 .stats__unlock { flex: 0 0 auto; }
 
 /* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
@@ -584,6 +590,9 @@
 
   .stats__unlock .unlock { gap: 6px; padding: 10px 12px; }
   .stats__unlock .unlock__cta { padding: 5px 14px; }
+
+  .player__banner .unlock-banner { gap: 6px 10px; padding: 10px 12px; }
+  .player__banner .unlock-banner__cta { padding: 7px 14px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -600,6 +609,8 @@
   /* Правой колонке на 650 px высоты тесно — блок разблокировки ужимаем. */
   .stats__unlock .unlock { flex-direction: row; align-items: center; gap: 10px; padding: 9px 12px; }
   .stats__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 5px 14px; }
+  .player__banner .unlock-banner { gap: 6px 10px; padding: 9px 12px; }
+  .player__banner .unlock-banner__cta { padding: 6px 14px; }
 
   .stat { padding: 10px 14px; }
   .stat__big { font-size: clamp(30px, 6.4vh, 44px); margin: 4px 0 8px; }
@@ -701,6 +712,28 @@
   .stats__unlock .unlock__title { font-size: 13px; }
   .stats__unlock .unlock__price { font-size: 11px; }
   .stats__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 6px 13px; font-size: 12.5px; }
+
+  /* Плашка «Открой все 40» — своим рядом сразу под шапкой с карточкой
+     музыки, над фразой и кругом. Ряд заводится только вместе с ней. С
+     прежним блоком (.player--locked) и плашкой о конце доступа
+     (.player--notice) она не встречается: первый — у trial3d с открытыми
+     движениями, вторая — при оплаченном доступе. На планшете заголовок
+     помещается в строку, кнопка — справа. */
+  .player__banner { grid-area: banner; }
+
+  .player--banner {
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "top    top    top"
+      "banner banner banner"
+      "stage  stage  stage"
+      "s1     s1     s2"
+      "menu   menu   menu";
+  }
+
+  .player__banner .unlock-banner { padding: 12px 14px; }
+  .player__banner .unlock-banner__title { font-size: clamp(15px, 2vw, 17px); }
+  .player__banner .unlock-banner__cta { font-size: 14px; }
 
   .track { min-height: 44px; }
 
@@ -814,6 +847,41 @@
       "unlock unlock";
   }
 
+  /* Плашка «Открой все 40» — под карточкой музыки, над фразой и кругом.
+     Заголовок в две строки, кнопка справа; на самых узких (до ~355 px)
+     кнопка уходит под заголовок — это решает сама плашка (Unlock.css). */
+  .player--banner {
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "top    top"
+      "banner banner"
+      "stage  stage"
+      "s1     s2";
+  }
+
+  .player__banner .unlock-banner { gap: 8px; padding: 11px 12px; }
+  .player__banner .unlock-banner__title { font-size: clamp(13.5px, 3.8vw, 16px); }
+  .player__banner .unlock-banner__cta { padding: 9px 16px; font-size: 13.5px; }
+
+  /*
+   * Плашка сдвигает круг вниз на свою высоту, а панель вкладок прибита к
+   * низу экрана. На невысоких телефонах (ниже ~600 px) строка «Играть» /
+   * «Пауза» ушла бы под панель — там круг ужимается ровно настолько, чтобы
+   * строка осталась над ней. 340 px — шапка, плашка, фраза, строка с
+   * кнопкой, панель и зазоры между ними. Ниже 200 px этот предел круг не
+   * ужимает: на совсем маленьких экранах страница просто прокручивается.
+   * На высоких телефонах он не срабатывает — там круг и так меньше по
+   * пределу 58dvh.
+   */
+  .player--banner .stage__figure {
+    width: min(
+      92vw,
+      calc(58dvh - var(--pause-row)),
+      max(200px, calc(100dvh - 340px - env(safe-area-inset-top) - env(safe-area-inset-bottom))),
+      100%
+    );
+  }
+
   .access-note { font-size: 12px; padding: 8px 10px; }
 }
 
@@ -856,6 +924,31 @@
   .stats__unlock .unlock__title { font-size: 11px; }
   .stats__unlock .unlock__price { display: none; }
   .stats__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 4px 10px; font-size: 11px; }
+
+  /* Плашка «Открой все 40» — в правом столбце сразу под карточкой трека.
+     Свободная высота столбца уходит под неё, а карточки статистики, как и
+     раньше, прижаты к низу. Столбец узкий: кнопка — под заголовком. */
+  .player--banner {
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "stage menu"
+      "stage top"
+      "stage banner"
+      "stage s1"
+      "stage s2";
+    padding:
+      calc(4px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
+      calc(4px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+  }
+
+  .player__banner { align-self: start; }
+  .player__banner .unlock-banner { gap: 6px; padding: 7px 9px; border-radius: var(--r-md); }
+  .player__banner .unlock-banner__title { font-size: 11.5px; }
+  .player__banner .unlock-banner__cta { padding: 5px 12px; font-size: 11.5px; }
+
+  /* Круг здесь слева, и плашка его не сдвигает: предел телефона в портрете
+     (правило выше) снимаем — та же ширина, что без плашки. */
+  .player--banner .stage__figure { width: min(calc(86dvh - var(--pause-row)), 40vw, 100%); }
 
   /* На 390 px высоты полноразмерная строка съела бы круг: здесь она ниже,
      вместе с уменьшенной кнопкой. */
@@ -915,4 +1008,5 @@
   padding: 24px 0;
 }
 
-.stage__empty .unlock { width: min(100%, 340px); }
+.stage__empty .unlock,
+.stage__empty .unlock-banner { width: min(100%, 340px); }

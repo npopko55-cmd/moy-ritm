@@ -14,7 +14,7 @@
  */
 
 import { api } from '../api/client'
-import { ApiError } from '../api/types'
+import { ApiError, type BannerPlace } from '../api/types'
 import { telegramStartParam } from './telegram'
 import { uuid } from './uuid'
 
@@ -142,4 +142,70 @@ export function launchFunnel(): Promise<string | null> {
     return result === 'not_found' ? null : token
   })()
   return launch
+}
+
+/* ——— Плашка «Открой все 40» ——— */
+
+/**
+ * Показ плашки уже засчитан сервером в эти сутки: `<id человека>:<дата по
+ * Москве>`. Во вкладке, а не в localStorage: новая вкладка пошлёт показ ещё
+ * раз, и сервер сам его погасит.
+ */
+const BANNER_SHOWN_KEY = 'moy-ritm.banner_shown'
+
+/** Сутки — по Москве, как их считает бэкенд («раз в сутки по Москве»). */
+function moscowDay(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' }).format(new Date())
+  } catch {
+    // Пояса браузер не знает — сутки по UTC: в худшем случае лишний показ,
+    // который сервер всё равно погасит.
+    return new Date().toISOString().slice(0, 10)
+  }
+}
+
+/** Показ уже в пути: плеер и пауза или StrictMode не пошлют его дважды. */
+let bannerShownPending = false
+
+/**
+ * Плашку «Открой все 40» показали (POST /funnel/banner, shown).
+ *
+ * Сервер пишет показ не чаще раза в сутки по Москве на человека, поэтому
+ * второй раз за те же сутки из этой вкладки его не шлём вовсе. Отметку
+ * ставим по ответу: не дошёл — пошлёт следующий показ. Ошибки глушим —
+ * метрика не должна мешать тренировке.
+ */
+export function reportBannerShown(place: BannerPlace, userId: string | undefined): void {
+  if (!userId || bannerShownPending) return
+  const mark = `${userId}:${moscowDay()}`
+  try {
+    if (sessionStorage.getItem(BANNER_SHOWN_KEY) === mark) return
+  } catch {
+    /* хранилище закрыто — шлём: повтор сервер погасит сам */
+  }
+  bannerShownPending = true
+  api
+    .funnelBanner('shown', place)
+    .then(
+      () => {
+        try {
+          sessionStorage.setItem(BANNER_SHOWN_KEY, mark)
+        } catch {
+          /* приватный режим — следующий показ пошлёт ещё раз, не страшно */
+        }
+      },
+      () => undefined,
+    )
+    .finally(() => {
+      bannerShownPending = false
+    })
+}
+
+/**
+ * Нажали «Открыть» на плашке (POST /funnel/banner, click) — каждое нажатие.
+ * Уходит до перехода и без ожидания ответа: переход на тарифы не ждёт
+ * метрику, а её ошибки глушим.
+ */
+export function reportBannerClick(place: BannerPlace): void {
+  api.funnelBanner('click', place).catch(() => undefined)
 }

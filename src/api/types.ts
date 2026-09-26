@@ -273,6 +273,14 @@ export type Trial = {
 
 export type FunnelVisit = { funnel: Funnel }
 
+/**
+ * Плашка «Открой все 40» (POST /funnel/banner): shown — показана, click —
+ * нажали «Открыть». Где — в плеере или на экране паузы. Других значений
+ * бэкенд не примет (422).
+ */
+export type BannerAction = 'shown' | 'click'
+export type BannerPlace = 'player' | 'pause'
+
 /** Один кусок движения. `client_chunk_id` плеер придумывает сам до отправки. */
 export type Chunk = {
   client_chunk_id: string

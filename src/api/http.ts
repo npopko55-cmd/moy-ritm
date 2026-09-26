@@ -340,6 +340,9 @@ export function createHttpApi(rawBase: string): Api {
 
     funnelOfferSeen: () => request<{ ok: boolean }>('POST', '/funnel/offer-seen'),
 
+    funnelBanner: (action, place) =>
+      request<{ ok: boolean }>('POST', '/funnel/banner', { body: { action, place } }),
+
     /* ——— Telegram Mini App ——— */
 
     async telegramAuth(initData) {

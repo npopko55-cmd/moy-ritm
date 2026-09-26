@@ -17,6 +17,8 @@
 import { createHttpApi } from './http'
 import type {
   Access,
+  BannerAction,
+  BannerPlace,
   Checkout,
   Chunk,
   ChunksResponse,
@@ -110,6 +112,11 @@ export interface Api {
   funnelVisit(token: string, anonId: string): Promise<FunnelVisit>
   /** Предложение тарифов после 10-й тренировки показано. Требует входа. */
   funnelOfferSeen(): Promise<{ ok: boolean }>
+  /**
+   * Плашка «Открой все 40»: показана или нажали «Открыть». Требует входа.
+   * Показ бэкенд пишет не чаще раза в сутки по Москве, нажатие — каждое.
+   */
+  funnelBanner(action: BannerAction, place: BannerPlace): Promise<{ ok: boolean }>
 
   /* ——— Telegram Mini App ——— */
   /**

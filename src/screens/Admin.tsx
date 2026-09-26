@@ -128,6 +128,18 @@ function share(value: number, prev: number | null): string {
   return `${Math.round((value / prev) * 100)}% от предыдущего`
 }
 
+/**
+ * Доля нажавших «Открыть» от видевших плашку — как её посчитал бэкенд
+ * (0…1). Никто не видел — «—». Поля нет (старый бэкенд) — null: строка
+ * тогда пустая, как и две над ней.
+ */
+function bannerShare(data: FunnelSummary): string | null {
+  if (data.banner_seen === undefined) return null
+  const value =
+    data.banner_click_share ?? (data.banner_seen > 0 ? (data.banner_clicked ?? 0) / data.banner_seen : null)
+  return value === null ? '—' : `${Math.round(value * 100)}%`
+}
+
 /** Админке не место в поиске: noindex, пока страница открыта. */
 function useNoindex(): void {
   useEffect(() => {
@@ -372,8 +384,8 @@ function Funnels({ token, fail }: { token: string; fail: Fail }) {
           </div>
         )}
         <p className="admin__period-note">
-          Старты бота и визиты — по дате события. Остальное — люди, зарегистрированные в этот
-          период, и их состояние на сегодня.
+          Старты бота, визиты и плашка «Открой все 40» — по дате события. Остальное — люди,
+          зарегистрированные в этот период, и их состояние на сегодня.
         </p>
         {summaryError && <p className="page__note is-bad">{summaryError}</p>}
       </Card>
@@ -427,6 +439,19 @@ function FunnelColumn({ funnel, title, data, loading }: ColumnProps) {
   // Процент — от предыдущего шага, который у воронки есть.
   let prev: number | null = null
 
+  // Плашка «Открой все 40». Старый бэкенд полей не шлёт — строки с «—».
+  const banner: { label: string; value: string | null }[] = [
+    {
+      label: 'Видели плашку «Открой все 40»',
+      value: data?.banner_seen === undefined ? null : num(data.banner_seen),
+    },
+    {
+      label: 'Нажали «Открыть»',
+      value: data?.banner_clicked === undefined ? null : num(data.banner_clicked),
+    },
+    { label: 'Доля нажавших от видевших', value: data ? bannerShare(data) : null },
+  ]
+
   return (
     <section className="page__card admin__funnel">
       <h2 className="page__card-title">{title}</h2>
@@ -470,6 +495,20 @@ function FunnelColumn({ funnel, title, data, loading }: ColumnProps) {
             )}
           </span>
         </li>
+      </ol>
+
+      {/* Плашка «Открой все 40» в плеере — не шаг воронки, а своя метрика:
+          сколько людей её увидели и сколько из них нажали «Открыть».
+          Уникальные люди, по дате события, как визиты и старты бота. */}
+      <ol className="admin__steps admin__steps--banner">
+        {banner.map((row) => (
+          <li key={row.label} className={`admin__step ${row.value === null ? 'is-empty' : ''}`}>
+            <span className="admin__step-label">{row.label}</span>
+            <span className="admin__step-num">
+              <span className="admin__step-value">{loading ? '…' : (row.value ?? '—')}</span>
+            </span>
+          </li>
+        ))}
       </ol>
     </section>
   )

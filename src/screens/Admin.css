@@ -125,6 +125,13 @@
 .admin__step.is-empty .admin__step-value { color: var(--gray-300); }
 .admin__step--money .admin__step-value { color: var(--pink-600); }
 
+/* Плашка «Открой все 40» — своя метрика, не шаг воронки: отделена от шагов
+   чертой потемнее. */
+.admin__steps--banner {
+  margin-top: 6px;
+  border-top: 1px solid var(--gray-200);
+}
+
 /* ——— Таблица людей ——— */
 .admin__tools {
   display: flex;

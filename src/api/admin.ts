@@ -39,6 +39,14 @@ export type FunnelSummary = {
   paid_users: number
   revenue: number
   currency: string
+  /**
+   * Плашка «Открой все 40» в плеере — события за период, уникальные люди:
+   * увидели (нажавший тоже увидел) и нажали «Открыть». Доля — от 0 до 1,
+   * null — не видел никто. Нет полей — бэкенд старый, в строках «—».
+   */
+  banner_seen?: number
+  banner_clicked?: number
+  banner_click_share?: number | null
 }
 
 /** Тариф в строке человека: бэкенд может прислать строкой или объектом. */

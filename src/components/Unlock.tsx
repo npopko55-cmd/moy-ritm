@@ -1,64 +1,142 @@
 /**
  * Яркий блок разблокировки — единственный вход в тарифы из продукта.
  *
- * Живёт там, где человек упирается в границу бесплатного уровня: в правой
- * колонке плеера и на экране паузы. Больше на тарифы из тренировки попасть
- * неоткуда: ни регистрация, ни вход туда не уводят.
+ * Вида два (правки заказчика 26.09.2026):
  *
- * Число движений и цена берутся из данных, а не из текста, чтобы блок не
- * начал врать, когда появятся новые ролики или изменится тариф. Цена —
- * стоимость самого короткого тарифа (месяц) из тарифов сервера, пока они не
- * пришли — локального месячного тарифа.
+ *   • открыты не все движения (без воронки — 5 бесплатных, челлендж
+ *     trial20 — 10) — плашка «Разнообразь тренировки и открой все 40
+ *     движений!» и кнопка «Открыть». Без цены и без второй строки: заказчик
+ *     убрал «от … в месяц», текст заголовка дал владелец. В плеере она стоит
+ *     вверху, сразу под карточкой музыки, — «чтобы прям в глаза бросалась»;
+ *     на паузе — под полосой дня. Показ и нажатие уходят в журнал воронок
+ *     (POST /funnel/banner): по ним в админке видно, сколько людей плашку
+ *     увидели и сколько нажали «Открыть»;
+ *   • идёт trial3d и открыты все движения — прежний блок «Шагайте без
+ *     ограничений» со строкой «Пробный доступ: ещё 2 дня, открыты все
+ *     движения»: обещать «все 40» тут нечего, они и так открыты. Он остался
+ *     на прежнем месте — в правой колонке плеера (на телефоне — последним в
+ *     ленте статистики) и на паузе — и не изменился.
  *
- * Идёт пробный период воронки — вместо цены строка о нём: «Пробный доступ:
- * ещё 2 дня, открыты все движения» (trial3d) или «Челлендж: 10 движений
- * бесплатно. Все 40 — в полном доступе» (trial20). У trial3d все движения и
- * так открыты, поэтому и заголовок другой — «Шагайте без ограничений»: после
- * трёх дней их закроет срок. У челленджа заголовок «Откройте все движения»
- * без числа: число — в строке под ним.
- * В Telegram Mini App платить нельзя: кнопка «Оформить на сайте»
- * открывает тарифы сайта во внешнем браузере.
+ * Оплатившим блок не показывают: его не ставят ни плеер, ни пауза.
+ *
+ * Кнопка ведёт на тарифы сайта. В Telegram Mini App платить нельзя (правила
+ * Telegram): там она открывает тарифы сайта во внешнем браузере.
  */
 
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import type { BannerPlace } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { TARIFFS, rub } from '../data/tariffs'
 import { plural } from '../lib/date'
-import { useFromPrice } from '../lib/tariffs'
+import { reportBannerClick, reportBannerShown } from '../lib/funnel'
+import { loadTariffs } from '../lib/tariffs'
 import { openTariffsOnSite, useInTelegram } from '../lib/telegram'
-import { CATALOG_MOVES_TEXT, trialHint, trialOpensAll, useTrial } from '../lib/trial'
+import { CATALOG_MOVES_TEXT, trialHint, trialOpensAll, useTrialState } from '../lib/trial'
 import './Unlock.css'
 
 /**
- * Самый короткий тариф: от него и считается «от … в месяц». Скидочную цену
- * месяца внутри длинного пакета здесь не показываем — это принятое решение.
- * Пока тарифы сервера не пришли — локальный месячный.
+ * Тарифы — заранее, один раз за жизнь страницы, как раньше их грузила цена
+ * «от … в месяц»: «Открыть» ведёт на страницу тарифов, и она откроется уже
+ * с ними. Не вышло — не повторяем на каждом экране паузы. В мини-апе тарифы
+ * открываются во внешнем браузере — грузить их здесь незачем.
  */
-const FALLBACK_PRICE = (TARIFFS.find((t) => t.code === 'month') ?? TARIFFS[0]).price
+let tariffsWarmed = false
 
-type Props = {
-  /** Строкой, а не столбиком: для экрана паузы, где места по высоте мало. */
-  compact?: boolean
+function warmTariffs(): void {
+  if (tariffsWarmed) return
+  tariffsWarmed = true
+  loadTariffs().catch(() => undefined)
 }
 
-export default function Unlock({ compact = false }: Props) {
-  const fromPrice = useFromPrice(FALLBACK_PRICE)
+/**
+ * Заголовок плашки — дословно текст владельца. Число — обещание
+ * (CATALOG_MOVES_TEXT = 40), а не длина каталога: «Разнообразь тренировки и
+ * открой все 40 движений!».
+ */
+export const UNLOCK_TITLE = `Разнообразь тренировки и открой все ${plural(
+  CATALOG_MOVES_TEXT,
+  'движение',
+  'движения',
+  'движений',
+)}!`
+
+type Props = {
+  /**
+   * Где стоит блок: в плеере или на экране паузы. На паузе прежний блок
+   * trial3d идёт строкой (там мало места по высоте), а метрика плашки
+   * помечает, где её увидели.
+   */
+  place: BannerPlace
+}
+
+export default function Unlock({ place }: Props) {
   const { access } = useSession()
-  const trial = useTrial()
-  const hint = trialHint(trial, access)
+  const { trial } = useTrialState()
+  const inTelegram = useInTelegram()
+
+  useEffect(() => {
+    if (!inTelegram) warmTariffs()
+  }, [inTelegram])
+
+  return trialOpensAll(trial, access) ? (
+    <TrialUnlock compact={place === 'pause'} hint={trialHint(trial, access)} />
+  ) : (
+    <UnlockBanner place={place} />
+  )
+}
+
+/**
+ * Плашка «Разнообразь тренировки и открой все 40 движений!».
+ *
+ * Показ засчитывается, когда плашка на экране и пробный период известен:
+ * без него это мог оказаться trial3d, у которого через миг встанет прежний
+ * блок. Дальше — раз в сутки (reportBannerShown в src/lib/funnel.ts).
+ */
+function UnlockBanner({ place }: { place: BannerPlace }) {
+  const { me } = useSession()
+  const { known } = useTrialState()
+  const inTelegram = useInTelegram()
+  const userId = me?.user.id
+
+  useEffect(() => {
+    if (known) reportBannerShown(place, userId)
+  }, [known, place, userId])
+
+  return (
+    <div className={`unlock-banner unlock-banner--${place}`}>
+      <p className="unlock-banner__title">{UNLOCK_TITLE}</p>
+      {inTelegram ? (
+        <button
+          className="unlock-banner__cta"
+          type="button"
+          onClick={() => {
+            // Метрика — первой и без ожидания: переход её не ждёт.
+            reportBannerClick(place)
+            openTariffsOnSite()
+          }}
+        >
+          Открыть
+        </button>
+      ) : (
+        <Link className="unlock-banner__cta" to="/tariffs" onClick={() => reportBannerClick(place)}>
+          Открыть
+        </Link>
+      )}
+    </div>
+  )
+}
+
+/**
+ * trial3d, открыто всё: «Шагайте без ограничений» и строка о пробном
+ * периоде. Цены здесь не было и нет — её место занимает эта строка.
+ */
+function TrialUnlock({ compact, hint }: { compact: boolean; hint: string | null }) {
   const inTelegram = useInTelegram()
   return (
     <div className={`unlock ${compact ? 'unlock--compact' : ''}`}>
       <span className="unlock__text">
-        {/* Число — обещание владельца (CATALOG_MOVES_TEXT = 40), а не длина каталога. */}
-        <span className="unlock__title">
-          {trialOpensAll(trial, access)
-            ? 'Шагайте без ограничений'
-            : hint
-              ? 'Откройте все движения'
-              : `Откройте все ${plural(CATALOG_MOVES_TEXT, 'движение', 'движения', 'движений')}`}
-        </span>
-        <span className="unlock__price">{hint ?? `от ${rub(fromPrice)} в месяц`}</span>
+        <span className="unlock__title">Шагайте без ограничений</span>
+        {hint && <span className="unlock__price">{hint}</span>}
       </span>
       {inTelegram ? (
         <button className="unlock__cta" type="button" onClick={openTariffsOnSite}>

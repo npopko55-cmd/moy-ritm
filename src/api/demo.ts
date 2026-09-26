@@ -1040,6 +1040,13 @@ export function createDemoApi(): Api {
       return { ok: true }
     },
 
+    // Метрика плашки «Открой все 40» живёт только в журнале бэкенда: в демо
+    // считать её негде, а сводка админки берёт свои цифры.
+    async funnelBanner() {
+      requireUser()
+      return { ok: true }
+    },
+
     /* ——— Telegram Mini App ——— */
 
     // Мини-ап открывается только с боевого сайта: в демо Telegram выключен —
@@ -1353,6 +1360,10 @@ export function createDemoAdminApi(): AdminApi {
         // Визиты и старты бота — в той же доле, что и регистрации за период.
         const share = all.length ? mine.length / all.length : 0
         const paid = mine.filter((p) => p.paid)
+        // Плашку «Открой все 40» видят те, у кого открыты не все движения:
+        // в демо — те, кто начал шагать; нажимает примерно каждый шестой.
+        const bannerSeen = mine.filter((p) => p.active_days > 0).length
+        const bannerClicked = Math.round(bannerSeen / 6)
         return {
           funnel: f.funnel,
           token: f.token,
@@ -1379,6 +1390,9 @@ export function createDemoAdminApi(): AdminApi {
           paid_users: paid.length,
           revenue: paid.reduce((sum, p) => sum + (p.paid_amount ?? 0), 0),
           currency: 'RUB',
+          banner_seen: bannerSeen,
+          banner_clicked: bannerClicked,
+          banner_click_share: bannerSeen ? bannerClicked / bannerSeen : null,
         }
       })
     },
