@@ -5,9 +5,12 @@
  * что и вход), после чего попадает туда, куда шёл (параметр next — например,
  * к оплате со страницы тарифов), а без него — на главную.
  *
- * Занятая почта — ответ бэкенда дословно совпадает с обычным «проверьте
- * почту», иначе по форме перебором узнают, кто у нас зарегистрирован.
- * Только в этом случае и остаётся экран ожидания письма.
+ * Занятая почта — прямо в форме: «Эта почта уже зарегистрирована» и ссылки
+ * «Войти» и «Забыли пароль?» (бэкенд отвечает 409 EMAIL_TAKEN). Раньше
+ * здесь был экран «Проверьте почту», одинаковый для новой и занятой почты, и
+ * тестеры принимали его за успешную регистрацию с новым паролем, хотя
+ * работал старый. Почту ссылки уносят в состоянии перехода, не в адресе:
+ * на входе и в восстановлении поле уже заполнено.
  *
  * Согласие на обработку персональных данных — отдельная галочка, по
  * умолчанию не отмечена (так требует 152-ФЗ). Без неё — ошибка под ней, и
@@ -18,9 +21,10 @@
  * оставил, — см. черновик ниже.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { api, IS_DEMO } from '../api/client'
+import { IS_DEMO } from '../api/client'
+import { ApiError } from '../api/types'
 import { safeNext } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
 import {
@@ -28,8 +32,8 @@ import {
   Field,
   Form,
   FormError,
-  FormOk,
   MIN_PASSWORD,
+  emailState,
   errorText,
   isEmail,
   passwordProblem,
@@ -59,7 +63,7 @@ export default function Register() {
   const navigate = useNavigate()
   const next = params.get('next')
   const loginNext = next ? `?next=${encodeURIComponent(next)}` : ''
-  const { me, signUp } = useSession()
+  const { signUp } = useSession()
 
   const [email, setEmail] = useState(draft.email)
   const [password, setPassword] = useState(draft.password)
@@ -68,14 +72,27 @@ export default function Register() {
   const [consent, setConsent] = useState(draft.consent)
   const [bad, setBad] = useState({ email: '', password: '', repeat: '', consent: '' })
   const [error, setError] = useState('')
+  /** Почта, на которую аккаунт уже есть: под кнопкой — дорога ко входу. */
+  const [taken, setTaken] = useState('')
+  const takenRef = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState(false)
-
-  const [resend, setResend] = useState({ ok: '', error: '', busy: false })
 
   useEffect(() => {
     draft = { email, password, repeat, name, consent }
   }, [email, password, repeat, name, consent])
+
+  // Сообщение встаёт под кнопкой, а на телефоне кнопка — у нижнего края
+  // экрана: без прокрутки ссылки «Войти» и «Забыли пароль?» остались бы за
+  // краем, и человек решил бы, что ничего не произошло.
+  useEffect(() => {
+    if (taken) takenRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [taken])
+
+  const changeEmail = (value: string) => {
+    setEmail(value)
+    // Исправил адрес — «уже зарегистрирована» к новому не относится.
+    setTaken('')
+  }
 
   const submit = async () => {
     const problems = {
@@ -86,12 +103,14 @@ export default function Register() {
     }
     setBad(problems)
     setError('')
+    setTaken('')
     if (problems.email || problems.password || problems.repeat || problems.consent) return
 
+    const address = email.trim()
     setBusy(true)
     try {
       const res = await signUp({
-        email: email.trim(),
+        email: address,
         password,
         name: name.trim() || undefined,
         timezone: browserTimezone(),
@@ -104,70 +123,19 @@ export default function Register() {
         navigate(safeNext(next) ?? '/', { replace: true })
         return
       }
-      setDone(true)
+      // Так на занятую почту отвечал бэкенд до 28.09 (check_email) — то же,
+      // что нынешний 409.
+      setTaken(address)
     } catch (e) {
-      setError(errorText(e))
+      if (e instanceof ApiError && e.code === 'EMAIL_TAKEN') {
+        draft = EMPTY_DRAFT
+        setTaken(address)
+      } else {
+        setError(errorText(e))
+      }
     } finally {
       setBusy(false)
     }
-  }
-
-  const sendAgain = async () => {
-    setResend({ ok: '', error: '', busy: true })
-    try {
-      const res = await api.resendConfirmation()
-      setResend({ ok: res.message, error: '', busy: false })
-    } catch (e) {
-      setResend({ ok: '', error: errorText(e), busy: false })
-    }
-  }
-
-  if (done) {
-    return (
-      <AccountShell
-        title="Проверьте почту"
-        lead={
-          IS_DEMO
-            ? 'В демо-режиме писем нет — просто войдите с этой почтой.'
-            : `Мы отправили письмо на ${email.trim()}. Перейдите по ссылке из него — без подтверждения нельзя оплатить доступ.`
-        }
-      >
-        <div className="form__actions">
-          <Link className="form__submit" to={`/login${loginNext}`}>
-            Войти
-          </Link>
-
-          {/* Повторную отправку письма умеет только вошедший: ручка требует
-              токен. Если человек уже вошёл — кнопка здесь, если нет — она
-              ждёт его на странице тарифов. */}
-          {!IS_DEMO && me && !me.user.email_verified && (
-            <button
-              className="form__second"
-              type="button"
-              onClick={() => void sendAgain()}
-              disabled={resend.busy}
-            >
-              {resend.busy ? 'Отправляем…' : 'Отправить письмо ещё раз'}
-            </button>
-          )}
-          <FormOk>{resend.ok}</FormOk>
-          <FormError>{resend.error}</FormError>
-        </div>
-
-        {!IS_DEMO && !me && (
-          <p className="account__demo">
-            Письмо не пришло? Войдите — на странице тарифов будет кнопка «Отправить письмо ещё
-            раз».
-          </p>
-        )}
-
-        {/* Кнопка «Войти» выше — здесь только боковые дороги. */}
-        <nav className="account__links">
-          <Link to="/tariffs">К тарифам</Link>
-          <Link to="/forgot-password">Забыли пароль?</Link>
-        </nav>
-      </AccountShell>
-    )
   }
 
   return (
@@ -177,7 +145,7 @@ export default function Register() {
           label="Почта"
           type="email"
           value={email}
-          onChange={setEmail}
+          onChange={changeEmail}
           autoComplete="email"
           placeholder="you@example.com"
           error={bad.email}
@@ -246,7 +214,22 @@ export default function Register() {
           <button className="form__submit" type="submit" disabled={busy}>
             {busy ? 'Создаём…' : 'Зарегистрироваться'}
           </button>
-          <FormError>{error}</FormError>
+          {taken ? (
+            // Не «проверьте почту», а прямо: аккаунт есть, вот вход в него.
+            <div ref={takenRef} role="alert">
+              <p className="form__error">Эта почта уже зарегистрирована.</p>
+              <nav className="form__taken-links">
+                <Link to={`/login${loginNext}`} state={emailState(taken)}>
+                  Войти
+                </Link>
+                <Link to="/forgot-password" state={emailState(taken)}>
+                  Забыли пароль?
+                </Link>
+              </nav>
+            </div>
+          ) : (
+            <FormError>{error}</FormError>
+          )}
         </div>
       </Form>
 

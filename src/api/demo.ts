@@ -726,9 +726,9 @@ export function createDemoApi(): Api {
         throw new ApiError(422, 'VALIDATION_ERROR', 'Пароль короче 8 символов')
       }
       const all = users()
-      // Почта занята: токенов не даём и отвечаем ровно то же, что настоящий
-      // бэкенд, — иначе перебором по форме узнали бы, кто зарегистрирован.
-      if (all[email]) return { status: 'check_email' as const, message: 'Проверьте почту' }
+      // Почта занята — та же ошибка, что у настоящего бэкенда: форма сама
+      // скажет «Эта почта уже зарегистрирована» и поведёт на вход.
+      if (all[email]) throw new ApiError(409, 'EMAIL_TAKEN', 'Эта почта уже зарегистрирована')
 
       const user: DemoUser = {
         id: uuid(),

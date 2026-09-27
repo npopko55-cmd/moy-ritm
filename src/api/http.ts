@@ -224,7 +224,8 @@ export function createHttpApi(rawBase: string): Api {
         auth: false,
       })
       // Регистрация теперь и есть вход: refresh-cookie бэкенд уже поставил,
-      // остаётся запомнить access-токен. У занятой почты токенов нет.
+      // остаётся запомнить access-токен. Занятая почта сюда не доходит —
+      // это 409 EMAIL_TAKEN, и request() бросает ApiError.
       if (data.status === 'registered') accessToken = data.access_token
       return data
     },
@@ -255,6 +256,13 @@ export function createHttpApi(rawBase: string): Api {
       }
     },
 
+    /**
+     * Выйти на всех устройствах. Бэкенд гасит и refresh-сессии, и все выданные
+     * access-токены: на других устройствах ближайший запрос получит 401, а
+     * обновление по cookie не пройдёт — их уведёт на вход onSessionLost.
+     * Свой токен забываем в любом случае; если сервер не ответил, cookie ещё
+     * жива, и следующий запрос молча получит новый токен.
+     */
     async logoutAll() {
       try {
         return await request<MessageResponse>('POST', '/auth/logout-all')

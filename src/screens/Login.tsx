@@ -1,7 +1,12 @@
-/** Вход. Параметр next возвращает туда, откуда человека увели. */
+/**
+ * Вход. Параметр next возвращает туда, откуда человека увели.
+ *
+ * Пришёл с регистрации, где почта оказалась занятой, — почта уже в поле
+ * (состояние перехода, src/screens/Account.tsx), и курсор сразу в пароле.
+ */
 
 import { useState } from 'react'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { IS_DEMO } from '../api/client'
 import { safeNext } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
@@ -12,6 +17,7 @@ import {
   FormError,
   OFFLINE_WAITING,
   Waiting,
+  emailFromState,
   errorText,
   isEmail,
 } from './Account'
@@ -20,9 +26,12 @@ export default function Login() {
   const [params] = useSearchParams()
   const next = safeNext(params.get('next')) ?? '/'
   const navigate = useNavigate()
+  const location = useLocation()
   const { me, loading, offline, signIn } = useSession()
 
-  const [email, setEmail] = useState('')
+  // Почта пришла готовой — фокус сразу в пароль. Считается один раз, при открытии.
+  const [prefilled] = useState(() => emailFromState(location.state))
+  const [email, setEmail] = useState(prefilled)
   const [password, setPassword] = useState('')
   const [bad, setBad] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
@@ -63,7 +72,7 @@ export default function Login() {
           autoComplete="email"
           placeholder="you@example.com"
           error={bad.email}
-          autoFocus
+          autoFocus={!prefilled}
           disabled={busy}
         />
         <Field
@@ -73,6 +82,7 @@ export default function Login() {
           onChange={setPassword}
           autoComplete="current-password"
           error={bad.password}
+          autoFocus={Boolean(prefilled)}
           disabled={busy}
         />
 

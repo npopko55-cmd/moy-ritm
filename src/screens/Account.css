@@ -239,6 +239,26 @@ a.form__second {
 .form__error { color: var(--red-500); }
 .form__ok { color: var(--green-600); }
 
+/* Почта уже зарегистрирована: под ошибкой — дорога ко входу и восстановлению. */
+.form__taken-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
+  font-size: 14.5px;
+}
+
+.form__taken-links a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--pink-600);
+  font-weight: 600;
+}
+
+@media (hover: hover) {
+  .form__taken-links a:hover { color: var(--pink-700); }
+}
+
 /* ——— Ссылки под формой ——— */
 .account__links {
   display: flex;

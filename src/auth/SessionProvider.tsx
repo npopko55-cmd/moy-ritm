@@ -31,6 +31,15 @@
  * Вернулся в приложение (src/lib/appReturn.ts) — профиль перечитывается,
  * не чаще раза в полминуты: пока человека не было, он мог оплатить доступ в
  * браузере, и мини-ап должен это увидеть без перезапуска.
+ *
+ * «Выйти на всех устройствах» бэкенд отрабатывает сразу: гаснут и
+ * refresh-сессии, и выданные access-токены. Другое устройство на ближайшем
+ * запросе получает 401, обновление по cookie не проходит — onSessionLost
+ * гасит состояние, и защита маршрутов уводит на вход. Мини-ап заново по
+ * initData посреди работы не входит: signInWithTelegram — одна попытка на
+ * загрузку страницы, поэтому круга «401 → вход по Telegram → 401» нет. При
+ * следующем открытии мини-апа привязанный Telegram впустит снова — это и
+ * есть вход.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
@@ -116,11 +125,18 @@ type SessionValue = {
   reload(): Promise<Me | null>
   /**
    * Регистрация. При `registered` человек уже вошёл — профиль сразу
-   * оказывается в контексте, и главная встречает его своим.
+   * оказывается в контексте, и главная встречает его своим. Занятая почта —
+   * ApiError с кодом EMAIL_TAKEN.
    */
   signUp(body: RegisterBody): Promise<RegisterResponse>
   signIn(email: string, password: string): Promise<Me>
   signOut(): Promise<void>
+  /**
+   * «Выйти на всех устройствах»: это устройство тоже выходит. Сервер не
+   * ответил — ошибка наружу и человек остаётся вошедшим: остальные
+   * устройства ещё в аккаунте, изображать выход отовсюду нельзя.
+   */
+  signOutEverywhere(): Promise<void>
   /** Положить свежий профиль без запроса: PATCH возвращает его целиком. */
   setMe(me: Me): void
 }
@@ -294,7 +310,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // Пришёл по ссылке воронки — метку получит бэкенд вместе с регистрацией.
       const funnelToken = readFunnelToken()
       const res = await api.register(funnelToken ? { ...body, funnel_token: funnelToken } : body)
-      // Занятая почта токенов не даёт — в контексте ничего не меняем.
+      // Занятая почта — 409 EMAIL_TAKEN, до этой строки она не доходит. Без
+      // токенов отвечал только бэкенд до 28.09 (check_email): в контексте
+      // тогда ничего не меняем.
       if (res.status === 'registered') {
         forgetFunnelToken()
         const next = await api.getMe()
@@ -332,6 +350,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const signOutEverywhere = useCallback(async () => {
+    const userId = meRef.current?.user.id
+    // Минуты — пока токен ещё действует: после ответа сервера он погаснет.
+    if (userId) await flushBeforeSignOut(userId)
+    // Не в finally, как у signOut: сервер не отозвал сессии — остальные
+    // устройства остались в аккаунте, и это устройство тоже не выходит, а
+    // экран показывает ошибку. Свой токен api забыло, но cookie жива, и
+    // следующий запрос молча получит новый.
+    await api.logoutAll()
+    api.clearSession()
+    setMe(null)
+  }, [])
+
   // Источник истины по настройкам — сервер, но плеер стартует мгновенно и
   // ждать профиля не может. Поэтому интервал смены движения дублируется в
   // localStorage: свежий профиль всегда переписывает кэш.
@@ -340,8 +371,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [me])
 
   const value = useMemo<SessionValue>(
-    () => ({ me, access: me?.access ?? null, loading, offline, reload, signUp, signIn, signOut, setMe }),
-    [me, loading, offline, reload, signUp, signIn, signOut],
+    () => ({
+      me,
+      access: me?.access ?? null,
+      loading,
+      offline,
+      reload,
+      signUp,
+      signIn,
+      signOut,
+      signOutEverywhere,
+      setMe,
+    }),
+    [me, loading, offline, reload, signUp, signIn, signOut, signOutEverywhere],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
