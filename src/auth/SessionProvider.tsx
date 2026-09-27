@@ -129,8 +129,9 @@ type SessionValue = {
   reload(): Promise<Me | null>
   /**
    * Регистрация. При `registered` человек уже вошёл — профиль сразу
-   * оказывается в контексте, и главная встречает его своим. Занятая почта —
-   * ApiError с кодом EMAIL_TAKEN.
+   * оказывается в контексте, и главная встречает его своим. Не пришёл
+   * профиль — регистрация всё равно удалась, а он догружается сам (loading).
+   * Занятая почта — ApiError с кодом EMAIL_TAKEN.
    */
   signUp(body: RegisterBody): Promise<RegisterResponse>
   signIn(email: string, password: string): Promise<Me>
@@ -171,6 +172,48 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (alive.current) setMe(null)
       return null
     }
+  }, [])
+
+  /**
+   * Вход уже есть, а профиля нет: /me не ответил сразу после регистрации
+   * (токены пришли вместе с ней). Экраны в это время ждут, как при запуске
+   * (loading: защита маршрутов показывает «Секунду…», а не вход), а профиль
+   * догружается сам — повторами с паузой, пока сервер не ответит по существу.
+   * Отказ по существу — человек не вошёл, как и при запуске.
+   */
+  const recovering = useRef(false)
+  const recoverProfile = useCallback(() => {
+    if (recovering.current) return
+    recovering.current = true
+    setLoading(true)
+    let attempt = 0
+    const tick = async () => {
+      try {
+        const next = await api.getMe()
+        recovering.current = false
+        if (!alive.current) return
+        setMe(next)
+        setOffline(false)
+        setLoading(false)
+      } catch (e) {
+        if (!alive.current) {
+          recovering.current = false
+          return
+        }
+        if (!isTemporary(e)) {
+          recovering.current = false
+          setMe(null)
+          setOffline(false)
+          setLoading(false)
+          return
+        }
+        // «Нет связи» — не с первого же сбоя: обычно второй запрос проходит.
+        if (attempt > 0) setOffline(true)
+        window.setTimeout(() => void tick(), RETRY_MS[Math.min(attempt, RETRY_MS.length - 1)])
+        attempt += 1
+      }
+    }
+    void tick()
   }, [])
 
   /**
@@ -323,13 +366,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // тогда ничего не меняем.
       if (res.status === 'registered') {
         forgetFunnelToken()
-        const next = await api.getMe()
-        if (alive.current) setMe(next)
+        try {
+          const next = await api.getMe()
+          if (alive.current) setMe(next)
+        } catch {
+          // Аккаунт создан, и вход уже есть. Ошибку не показываем: повторная
+          // отправка формы наткнулась бы на «почта уже зарегистрирована», и
+          // человек решил бы, что всё сломалось. Регистрация уводит дальше, а
+          // профиль догрузится сам (recoverProfile) — экраны его подождут.
+          recoverProfile()
+        }
         linkTelegram()
       }
       return res
     },
-    [linkTelegram],
+    [linkTelegram, recoverProfile],
   )
 
   const signIn = useCallback(
