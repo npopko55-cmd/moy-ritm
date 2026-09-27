@@ -366,6 +366,12 @@ export function startTelegram(): void {
   if (!IN_TELEGRAM) return
   postRaw('web_app_ready')
   postRaw('web_app_expand')
+  onTelegramEvent('deactivated', () => {
+    active = false
+  })
+  onTelegramEvent('activated', () => {
+    active = true
+  })
   whenTelegram((app) => {
     safely('ready', () => app.ready())
     safely('expand', () => app.expand())
@@ -390,6 +396,18 @@ export function startTelegram(): void {
 type TelegramEvent = 'activated' | 'deactivated'
 
 const handlers = new Map<TelegramEvent, Set<() => void>>()
+
+/** Мини-ап развёрнут: после deactivated — false до activated. */
+let active = true
+
+/**
+ * Мини-ап сейчас развёрнут. Свёрнутый может оставаться «на виду» для
+ * visibilityState — тогда тренировка сама не пускается (src/screens/Player.tsx).
+ * Вне мини-апа всегда true.
+ */
+export function telegramActive(): boolean {
+  return active
+}
 
 export function onTelegramEvent(event: TelegramEvent, handler: () => void): () => void {
   if (!IN_TELEGRAM) return () => undefined

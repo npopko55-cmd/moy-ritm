@@ -43,6 +43,7 @@ import { recentMoves, rememberMove } from '../lib/moveHistory'
 import { loadMoveInterval } from '../lib/settings'
 import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
+import { onTelegramEvent, telegramActive } from '../lib/telegram'
 import { uuid } from '../lib/uuid'
 import { holdAwake, keepAwake, releaseAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
@@ -193,9 +194,10 @@ export default function Player() {
    *
    * Отсчёт мог закончиться и в спрятанной вкладке, а ОС — поднять выгруженную
    * вкладку в фоне. Тогда тренировка тоже не должна пойти сама: ждём «Играть».
+   * То же — в свёрнутом мини-апе: для visibilityState он бывает «на виду».
    */
   const [playing, setPlaying] = useState(
-    () => isStart(routeState) && document.visibilityState !== 'hidden',
+    () => isStart(routeState) && document.visibilityState !== 'hidden' && telegramActive(),
   )
   // Старт одноразовый: «Назад» в эту же запись истории и перезагрузка
   // откроют плеер уже на паузе. Гасим после монтирования, а не при чтении:
@@ -272,6 +274,7 @@ export default function Player() {
     soundOn,
     toggleSound,
     resumeNow: resumeMusic,
+    pauseNow: pauseMusicNow,
     setPlaying: setMusicPlaying,
     next: nextTrack,
   } = useMusic()
@@ -525,32 +528,57 @@ export default function Player() {
    *
    * Спрятанная вкладка для сохранённой тренировки — тот же уход из плеера:
    * время ухода запоминаем, и правило получаса действует и здесь.
+   *
+   * Свёрнутый мини-ап (событие Telegram deactivated) — та же пауза: вьюха при
+   * этом может остаться «на виду» для visibilityState, и visibilitychange не
+   * приходит вовсе. Развернули (activated) — как возвращение на вкладку.
+   *
+   * Ролики и музыку останавливаем прямо в обработчике, а не эффектом после
+   * перерисовки: свёрнутая вьюха перерисовки может и не дождаться, и трек
+   * звучал бы в фоне. Экран тоже отпускаем сразу (src/media/keepAwake.ts).
    */
+  const cameBack = useCallback(() => {
+    const away = hiddenAt.current
+    hiddenAt.current = null
+    if (away !== null && Date.now() - away >= FLOW_RESUME_MINUTES * 60_000) renew()
+  }, [renew])
+
   useEffect(() => {
     const leave = () => {
       closeChunk()
       queueRef.current?.flush()
     }
+    const goneAway = () => {
+      // Пул — те же два элемента, что и `buffers` ниже: объявлены они позже.
+      for (const video of videoPool()) pauseVideo(video)
+      pauseMusicNow()
+      releaseAwake()
+      leave()
+      hiddenAt.current ??= Date.now()
+      setPlaying(false)
+    }
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
-        leave()
-        hiddenAt.current ??= Date.now()
+        goneAway()
         setVisible(false)
-        setPlaying(false)
       } else {
-        const away = hiddenAt.current
-        hiddenAt.current = null
-        if (away !== null && Date.now() - away >= FLOW_RESUME_MINUTES * 60_000) renew()
+        cameBack()
         setVisible(true)
       }
     }
+    const offDeactivated = onTelegramEvent('deactivated', goneAway)
+    const offActivated = onTelegramEvent('activated', () => {
+      if (document.visibilityState !== 'hidden') cameBack()
+    })
     window.addEventListener('pagehide', leave)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.removeEventListener('pagehide', leave)
       document.removeEventListener('visibilitychange', onVisibility)
+      offDeactivated()
+      offActivated()
     }
-  }, [closeChunk, renew])
+  }, [closeChunk, cameBack, pauseMusicNow])
 
   /** Ответ bootstrap — в плеер: настройки, цифры и бесплатный уровень. */
   const applyBoot = useCallback((data: PlayerBootstrap) => {
@@ -1022,6 +1050,9 @@ export default function Player() {
   const continueFlow = useCallback(() => {
     unlockMedia()
     keepAwake()
+    // Касание — значит, человек вернулся, даже если Telegram не прислал
+    // activated после deactivated: правило получаса считаем здесь.
+    if (hiddenAt.current !== null && document.visibilityState !== 'hidden') cameBack()
     setNeedTap(false)
     void playVideo(buffers[activeRef.current]).catch(() => undefined)
     // Музыку — тоже в касании, а не эффектом после перерисовки: после
@@ -1036,7 +1067,7 @@ export default function Player() {
     }
     setShowPause(false)
     setPlaying(true)
-  }, [buffers, resumeMusic, beginFlow, stream.id])
+  }, [buffers, resumeMusic, beginFlow, stream.id, cameBack])
 
   /**
    * Кнопка звука. Всё — в самом касании, и решает сам проигрыватель

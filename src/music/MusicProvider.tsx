@@ -39,6 +39,12 @@ type MusicValue = {
    * iPhone мог его не пустить.
    */
   resumeNow: () => void
+  /**
+   * Остановить музыку сразу, в обработчике — вкладку спрятали или свернули
+   * мини-ап. Эффект паузы пришёл бы только после перерисовки, а свёрнутой
+   * вьюхе её можно и не дождаться: трек звучал бы в фоне.
+   */
+  pauseNow: () => void
   start: () => void
   setPlaying: (on: boolean) => void
   /**
@@ -543,12 +549,34 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     if (a.paused || a.muted) playInTap()
   }, [playInTap])
 
+  const pauseNow = useCallback(() => {
+    // Состояние для обработчиков — сразу: разблокировка в касании до
+    // перерисовки иначе запустила бы трек снова.
+    onRef.current = false
+    playingRef.current = false
+    startedInTap.current = false
+    stopFade()
+    audioRef.current?.pause()
+    setPlayingState(false)
+  }, [])
+
   const start = useCallback(() => setPlayingState(true), [])
   const setPlaying = useCallback((on: boolean) => setPlayingState(on), [])
 
   const value = useMemo(
-    () => ({ track, playing, blocked, soundOn: enabled, toggleSound, resumeNow, start, setPlaying, next }),
-    [track, playing, blocked, enabled, toggleSound, resumeNow, start, setPlaying, next],
+    () => ({
+      track,
+      playing,
+      blocked,
+      soundOn: enabled,
+      toggleSound,
+      resumeNow,
+      pauseNow,
+      start,
+      setPlaying,
+      next,
+    }),
+    [track, playing, blocked, enabled, toggleSound, resumeNow, pauseNow, start, setPlaying, next],
   )
   return <MusicContext.Provider value={value}>{children}</MusicContext.Provider>
 }
