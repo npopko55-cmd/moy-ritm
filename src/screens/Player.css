@@ -318,7 +318,16 @@
   height: var(--pause-row);
   font-size: clamp(12px, 1.25vh, 16px);
   color: var(--gray-500);
+  /*
+   * В строке этот ряд — во всю ширину сцены и лежит поверх кнопки звука
+   * (тот же z-index, но позже в разметке). Прозрачный ряд забирал касания
+   * себе, и на телефоне — в мини-апе и на сайте — кнопка «Звук» не
+   * нажималась вовсе. Касания ловит только сама кнопка паузы.
+   */
+  pointer-events: none;
 }
+
+.stage__pause .ctrl { pointer-events: auto; }
 
 .ctrl {
   display: grid;
@@ -349,7 +358,8 @@
   position: absolute;
   left: 0;
   bottom: 0;
-  z-index: 2;
+  /* Выше строки паузы: она растянута на всю ширину и накрывала кнопку. */
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 12px;

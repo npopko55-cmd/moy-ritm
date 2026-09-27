@@ -50,6 +50,7 @@ import {
   pauseVideo,
   playVideo,
   setVideoSource,
+  unlockVideos,
   videoPool,
   watchVideo,
 } from '../media/videoPool'
@@ -1007,17 +1008,21 @@ export default function Player() {
   }, [buffers, resumeMusic, beginFlow, stream.id])
 
   /**
-   * Кнопка звука. Всё — в самом касании: включение запускает трек сразу
-   * (play() прямо в обработчике — иначе iPhone и вьюха Telegram его не
-   * пустят), а заодно разблокирует ролики. Звук должен играть, но браузер
-   * не пустил (soundBlocked) — нажатие запускает его, а не выключает.
+   * Кнопка звука. Всё — в самом касании, и решает сам проигрыватель
+   * (toggleSound в src/music/MusicProvider.tsx): играет — pause() сразу;
+   * выключен — play() прямо в обработчике, иначе iPhone и вьюха Telegram его
+   * не пустят; должен играть, но браузер не пустил (soundBlocked) —
+   * нажатие запускает его, а не выключает.
+   *
+   * Заодно касание разблокирует ролики. Только ролики: разблокировка музыки
+   * (unlockMedia) в том же касании спорила бы с кнопкой — выключаемый трек
+   * она запускала бы снова.
    */
   const soundPlaying = soundOn && !soundBlocked
   const pressSound = useCallback(() => {
-    unlockMedia()
-    if (soundOn && soundBlocked) resumeMusic()
-    else toggleSound()
-  }, [soundOn, soundBlocked, resumeMusic, toggleSound])
+    unlockVideos()
+    toggleSound()
+  }, [toggleSound])
 
   const toggle = useCallback(() => {
     if (playingRef.current) {
@@ -1248,7 +1253,10 @@ export default function Player() {
                 pressSound()
                 return
               }
-              unlockMedia()
+              // Следующий трек ставится и запускается в этом же касании
+              // (next в src/music/MusicProvider.tsx). Разблокируем только
+              // ролики: трек, который сейчас сменится, запускать незачем.
+              unlockVideos()
               nextTrack()
             }}
             title={soundPlaying ? 'Следующий трек' : 'Включить звук'}

@@ -13,7 +13,12 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { PatchSettingsBody } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
-import { MOVE_INTERVALS, saveMoveInterval } from '../lib/settings'
+import {
+  bumpSettingsRevision,
+  currentSettingsRevision,
+  MOVE_INTERVALS,
+  saveMoveInterval,
+} from '../lib/settings'
 import { errorText, Waiting } from './Account'
 import PageShell, { Card, Note, Row } from './Page'
 import './Settings.css'
@@ -90,14 +95,21 @@ export default function Settings() {
 
   const patch = async (key: string, body: PatchSettingsBody) => {
     const before = me.settings
+    // Номер правки: ответ ляжет в профиль, только если свежее правок не было
+    // (src/lib/settings.ts). Экран к ответу может быть уже закрыт — человек
+    // выключил музыку и сразу ушёл в тренировку, а там включил её кнопкой.
+    const revision = bumpSettingsRevision()
     setFailed(null)
     setMe({ ...me, settings: { ...before, ...body } })
     try {
       const next = await api.patchSettings(body)
+      // Ответ устарел: свежую правку не откатываем, её подтвердит свой ответ.
+      if (currentSettingsRevision() !== revision) return
       setMe({ ...me, settings: next })
       if (body.move_interval_seconds) saveMoveInterval(next.move_interval_seconds)
       done(key)
     } catch (e) {
+      if (currentSettingsRevision() !== revision) return
       setMe({ ...me, settings: before })
       setVolume(before.music_volume)
       setFailed({ key, text: errorText(e) })
