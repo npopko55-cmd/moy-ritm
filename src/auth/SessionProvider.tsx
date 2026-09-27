@@ -66,8 +66,11 @@ const noConnection = (e: unknown) => e instanceof ApiError && e.status === 0 && 
 /** Пауза перед единственным повтором входа по Telegram, если не было сети. */
 const TELEGRAM_RETRY_MS = 1000
 
-/** Сколько экраны ждут визит воронки из параметра запуска мини-апа. */
-const LAUNCH_FUNNEL_WAIT_MS = 2000
+/**
+ * Сколько экраны ждут визит воронки из параметра запуска мини-апа. Дольше
+ * не держим: визит доходит и в фоне, и токен запомнится, когда он ответит.
+ */
+const LAUNCH_FUNNEL_WAIT_MS = 1500
 
 const pause = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
