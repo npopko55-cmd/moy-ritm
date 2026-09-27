@@ -68,7 +68,7 @@ type Open = '' | 'email' | 'password' | 'delete'
 
 export default function Profile() {
   const navigate = useNavigate()
-  const { me, setMe, reload, signOut } = useSession()
+  const { me, setMe, reload, signOut, signOutEverywhere } = useSession()
 
   const [open, setOpen] = useState<Open>('')
   const [rows, setRows] = useState<SessionRow[] | null>(null)
@@ -97,15 +97,22 @@ export default function Profile() {
   const { user, access, totals } = me
   const paidUntil = formatDate(access.paid_until)
 
+  /**
+   * Выход отовсюду, и отсюда тоже — сразу на вход. Остальные устройства
+   * бэкенд выкидывает сразу же: их токены гаснут, и ближайший запрос уводит
+   * их на вход (мини-ап Telegram при следующем открытии входит снова сам).
+   * Сервер не ответил — остаёмся и говорим об этом: иначе человек решил бы,
+   * что потерянный телефон уже вне аккаунта.
+   */
   const leaveEverywhere = async () => {
+    setRowsError('')
     try {
-      await api.logoutAll()
-    } finally {
-      // Профиль перечитываем: сервер отозвал все сессии, и его 401 сам
-      // погасит состояние входа.
-      await reload()
-      navigate('/login', { replace: true })
+      await signOutEverywhere()
+    } catch (e) {
+      setRowsError(errorText(e, 'Не получилось выйти на всех устройствах. Попробуйте ещё раз'))
+      return
     }
+    navigate('/login', { replace: true })
   }
 
   const leaveDevice = async (row: SessionRow) => {
@@ -115,6 +122,8 @@ export default function Profile() {
       return
     }
     try {
+      // Это устройство сервер выкидывает сразу. Токен текущего при этом тоже
+      // гаснет, но его сессия жива: следующий запрос молча возьмёт новый.
       await api.deleteSession(row.id)
     } catch (e) {
       setRowsError(errorText(e))
@@ -421,7 +430,9 @@ function PasswordForm({ onDone }: { onDone: () => Promise<void> }) {
       setCurrent('')
       setNext('')
       setAgain('')
-      // Список устройств после этого другой: там осталось только это.
+      // Список устройств после этого другой: там осталось только это. Его
+      // токен сервер тоже погасил, но сессия жива — запрос списка молча
+      // получит новый токен по cookie.
       await onDone()
     } catch (e) {
       setBad(errorText(e))
