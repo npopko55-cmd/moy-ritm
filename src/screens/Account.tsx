@@ -49,6 +49,20 @@ export function errorText(e: unknown, fallback = 'Не получилось. П�
   }
 }
 
+/**
+ * Почта, которую экран передаёт соседнему в состоянии перехода (`state` у
+ * Link), а не в адресе: из адреса она попала бы в журналы сервера и историю
+ * браузера. Регистрация на занятую почту ведёт так на вход и восстановление
+ * пароля — там поле уже заполнено.
+ */
+export const emailState = (email: string) => ({ email })
+
+/** Почта из состояния перехода; нет её — пустая строка. */
+export function emailFromState(state: unknown): string {
+  const email = (state as { email?: unknown } | null)?.email
+  return typeof email === 'string' ? email : ''
+}
+
 /** Проверка почты нарочно мягкая: строгую всё равно делает сервер. */
 export const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim())
 

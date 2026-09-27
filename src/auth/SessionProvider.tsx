@@ -116,7 +116,8 @@ type SessionValue = {
   reload(): Promise<Me | null>
   /**
    * Регистрация. При `registered` человек уже вошёл — профиль сразу
-   * оказывается в контексте, и главная встречает его своим.
+   * оказывается в контексте, и главная встречает его своим. Занятая почта —
+   * ApiError с кодом EMAIL_TAKEN.
    */
   signUp(body: RegisterBody): Promise<RegisterResponse>
   signIn(email: string, password: string): Promise<Me>
@@ -294,7 +295,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // Пришёл по ссылке воронки — метку получит бэкенд вместе с регистрацией.
       const funnelToken = readFunnelToken()
       const res = await api.register(funnelToken ? { ...body, funnel_token: funnelToken } : body)
-      // Занятая почта токенов не даёт — в контексте ничего не меняем.
+      // Занятая почта — 409 EMAIL_TAKEN, до этой строки она не доходит. Без
+      // токенов отвечал только бэкенд до 28.09 (check_email): в контексте
+      // тогда ничего не меняем.
       if (res.status === 'registered') {
         forgetFunnelToken()
         const next = await api.getMe()

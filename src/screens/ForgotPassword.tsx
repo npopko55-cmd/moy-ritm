@@ -3,15 +3,27 @@
  *
  * Ответ всегда одинаковый, есть такая почта или нет: иначе форма
  * превращается в проверялку «кто у вас зарегистрирован».
+ *
+ * Пришёл с регистрации, где почта оказалась занятой, — она уже в поле
+ * (состояние перехода, src/screens/Account.tsx).
  */
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api/client'
-import { AccountShell, Field, Form, FormError, errorText, isEmail } from './Account'
+import {
+  AccountShell,
+  Field,
+  Form,
+  FormError,
+  emailFromState,
+  errorText,
+  isEmail,
+} from './Account'
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState('')
+  const location = useLocation()
+  const [email, setEmail] = useState(() => emailFromState(location.state))
   const [bad, setBad] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)

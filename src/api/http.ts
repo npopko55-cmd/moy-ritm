@@ -224,7 +224,8 @@ export function createHttpApi(rawBase: string): Api {
         auth: false,
       })
       // Регистрация теперь и есть вход: refresh-cookie бэкенд уже поставил,
-      // остаётся запомнить access-токен. У занятой почты токенов нет.
+      // остаётся запомнить access-токен. Занятая почта сюда не доходит —
+      // это 409 EMAIL_TAKEN, и request() бросает ApiError.
       if (data.status === 'registered') accessToken = data.access_token
       return data
     },
