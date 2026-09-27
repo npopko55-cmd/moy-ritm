@@ -1,0 +1,83 @@
+/* ═══════ Оплаты без доступа (/admin/payments) ═══════
+   Таблица — та же, что у людей воронок (Admin.css). Своё здесь: мелкие
+   подписи под значениями, плашка статуса и форма выдачи прямо в строке. */
+
+.payments__foreign { margin-top: 12px; }
+.payments__foreign .chip { flex: 0 1 auto; }
+
+.payments__table td { vertical-align: top; }
+
+/* Длинные названия офферов и причины разбора переносятся, цифры — нет. */
+.payments__wrap {
+  min-width: 180px;
+  max-width: 280px;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+.payments__sub {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--gray-500);
+  white-space: normal;
+}
+
+.payments__none,
+.payments__muted { color: var(--gray-500); }
+
+.payments__muted {
+  display: block;
+  max-width: 300px;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+/* Статус — плашкой, как у постов: видно, что человек не найден, а что сломалось. */
+.payments__status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--gray-100);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+.payments__status.is-unmatched_user { background: var(--pink-50); color: var(--pink-600); }
+.payments__status.is-unknown_offer { background: #fff5e0; color: #b7791f; }
+.payments__status.is-error { background: #fff1ee; color: var(--red-500); }
+.payments__status.is-processed { background: #e4f7ed; color: var(--green-600); }
+
+/* ——— Выдача доступа в строке ——— */
+.payments__action { min-width: 300px; white-space: normal !important; }
+
+.payments__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.payments__input {
+  min-height: 40px;
+  width: 220px;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  background: var(--white);
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink-900);
+}
+
+.payments__select { width: auto; min-width: 140px; }
+
+.payments__btn { min-height: 40px; padding: 8px 16px; font-size: 14px; }
+
+.payments__form .page__note { margin-top: 6px; white-space: normal; }
+
+.payments__result { margin-top: 0; max-width: 320px; white-space: normal; }

@@ -20,7 +20,9 @@
  * Второй раздел — /admin/posts, посты в Telegram-каналы воронок и рассылки
  * ботом (AdminPosts.tsx), третий — /admin/behavior, поведение людей по
  * воронкам (AdminBehavior.tsx), четвёртый — /admin/survey, ответы на опрос в
- * боте (AdminSurvey.tsx). Разделы переключаются чипами вверху страницы; вход общий.
+ * боте (AdminSurvey.tsx), пятый — /admin/payments, оплаты из GetCourse, по
+ * которым доступ не открылся сам, и выдача доступа руками (AdminPayments.tsx).
+ * Разделы переключаются чипами вверху страницы; вход общий.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -43,6 +45,7 @@ import type { Funnel } from '../api/types'
 import { rub } from '../data/tariffs'
 import { AccountShell, Field, Form, FormError, errorText, isEmail } from './Account'
 import AdminBehavior from './AdminBehavior'
+import AdminPayments from './AdminPayments'
 import AdminPosts from './AdminPosts'
 import AdminSurvey from './AdminSurvey'
 import PageShell, { Card } from './Page'
@@ -153,7 +156,7 @@ function useNoindex(): void {
 
 /* ——— Страница ——— */
 
-type Section = 'funnels' | 'posts' | 'behavior' | 'survey'
+type Section = 'funnels' | 'posts' | 'behavior' | 'survey' | 'payments'
 
 const SECTIONS: { section: Section; path: string; label: string; title: string; lead: string }[] = [
   {
@@ -183,6 +186,13 @@ const SECTIONS: { section: Section; path: string; label: string; title: string; 
     label: 'Опрос',
     title: 'Опрос в боте',
     lead: 'Ответы на опрос через 3, 7 и 21 день после регистрации: NPS по воронкам и что пишут люди.',
+  },
+  {
+    section: 'payments',
+    path: '/admin/payments',
+    label: 'Оплаты',
+    title: 'Оплаты без доступа',
+    lead: 'Кто заплатил, а доступ сам не открылся: почта в заказе не совпала с аккаунтом или оффер не привязан к тарифу. Здесь же доступ выдаётся руками.',
   },
 ]
 
@@ -320,6 +330,8 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
         <AdminBehavior token={token} fail={fail} />
       ) : section === 'survey' ? (
         <AdminSurvey token={token} fail={fail} />
+      ) : section === 'payments' ? (
+        <AdminPayments token={token} fail={fail} />
       ) : (
         <Funnels token={token} fail={fail} />
       )}
