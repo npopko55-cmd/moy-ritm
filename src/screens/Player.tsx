@@ -76,6 +76,9 @@ const FORCE_CLOSE_MS = 60_000
 /** Длиннее сервер не примет: такой кусок означает спящую вкладку. */
 const MAX_CHUNK_SECONDS = 300
 
+/** «Вернусь позже» ждёт отправку минут не дольше этого, потом уходит в «Мой прогресс». */
+const PROGRESS_WAIT_MS = 1500
+
 /** Пока сводка не пришла — та же сетка из семи дней, чтобы карточка не прыгала. */
 function emptyWeek(): DayStats[] {
   const p = (n: number) => String(n).padStart(2, '0')
@@ -544,9 +547,11 @@ export default function Player() {
   }, [renew])
 
   useEffect(() => {
+    // keepalive: страница прячется или закрывается, и запрос должен дойти
+    // без неё. Не дошёл — куски лежат в буфере и уйдут при следующем открытии.
     const leave = () => {
       closeChunk()
-      queueRef.current?.flush()
+      void queueRef.current?.flush({ keepalive: true })
     }
     const goneAway = () => {
       // Пул — те же два элемента, что и `buffers` ниже: объявлены они позже.
@@ -1047,7 +1052,21 @@ export default function Player() {
    * экрана Safari даёт только из жеста, а запасное видео со звуковой
    * дорожкой без жеста не пускают вьюхи.
    */
+  /**
+   * «Вернусь позже» ждёт отправку минут (leaveToProgress ниже). За это время
+   * человек мог передумать — «Продолжить» и крестик переход отменяют, уход из
+   * плеера тоже.
+   */
+  const leaving = useRef(false)
+  useEffect(
+    () => () => {
+      leaving.current = false
+    },
+    [],
+  )
+
   const continueFlow = useCallback(() => {
+    leaving.current = false
     unlockMedia()
     keepAwake()
     // Касание — значит, человек вернулся, даже если Telegram не прислал
@@ -1109,8 +1128,9 @@ export default function Player() {
    * дожидаясь склейки, — минуты этого захода уйдут на сервер сразу.
    */
   const closePause = useCallback(() => {
+    leaving.current = false
     closeChunk()
-    queueRef.current?.flush()
+    void queueRef.current?.flush()
     setShowPause(false)
   }, [closeChunk])
 
@@ -1118,15 +1138,26 @@ export default function Player() {
    * «Вернусь позже» — в «Мой прогресс»: человек закончил подход и хочет
    * увидеть свои минуты, а не снова плеер (правка тестера 27.09.2026).
    *
-   * Буфер отправляем сразу, до перехода: минуты этого захода уходят на
-   * сервер раньше, чем «Мой прогресс» спросит цифры. Тренировка не
-   * заканчивается: уход из плеера запоминает её (эффекты выше), и полчаса
-   * «Вернуться в поток» ведёт обратно сюда.
+   * Буфер отправляем сразу и ждём отправку, но не дольше PROGRESS_WAIT_MS:
+   * «Мой прогресс» спрашивает цифры сразу при открытии, и минуты этого захода
+   * должны быть на сервере раньше — иначе их там не было видно. Не успело —
+   * всё равно уходим: неотправленное «Мой прогресс» прибавит к «Сегодня» сам.
+   * «Продолжить» или крестик за это время переход отменяют.
+   *
+   * Тренировка не заканчивается: уход из плеера запоминает её (эффекты
+   * выше), и полчаса «Вернуться в поток» ведёт обратно сюда.
    */
   const leaveToProgress = useCallback(() => {
+    if (leaving.current) return
+    leaving.current = true
     closeChunk()
-    queueRef.current?.flush()
-    navigate('/progress')
+    const sent = queueRef.current?.flush() ?? Promise.resolve()
+    const waited = new Promise<void>((resolve) => window.setTimeout(resolve, PROGRESS_WAIT_MS))
+    void Promise.race([sent, waited]).then(() => {
+      if (!leaving.current) return
+      leaving.current = false
+      navigate('/progress')
+    })
   }, [closeChunk, navigate])
 
   // Пока стоит экран паузы, плеер спрятан, и фокус с его кнопки пропадал бы

@@ -98,7 +98,11 @@ export interface Api {
 
   /* ——— Плеер и статистика ——— */
   playerBootstrap(): Promise<PlayerBootstrap>
-  sendChunks(chunks: Chunk[]): Promise<ChunksResponse>
+  /**
+   * Пакет кусков движения. keepalive — вкладку прячут или закрывают: запрос
+   * должен дойти и без страницы (у демо ничего не меняет).
+   */
+  sendChunks(chunks: Chunk[], options?: { keepalive?: boolean }): Promise<ChunksResponse>
   statsSummary(): Promise<StatsSummary>
   /** month в формате YYYY-MM; без него — текущий месяц человека. */
   statsProgress(month?: string): Promise<StatsProgress>

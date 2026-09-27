@@ -42,6 +42,24 @@ type Options = {
   auth?: boolean
   /** Свой предел ожидания вместо TIMEOUT_MS — для необязательных запросов. */
   timeout?: number
+  /**
+   * Запрос должен пережить страницу: вкладку прячут или закрывают. Браузер
+   * держит такие запросы, только пока их тела вместе меньше 64 КБ, поэтому
+   * тело крупнее KEEPALIVE_BYTES уходит обычным запросом.
+   */
+  keepalive?: boolean
+}
+
+/** Потолок тела для keepalive: 64 КБ на все такие запросы разом, берём с запасом. */
+const KEEPALIVE_BYTES = 60_000
+
+/** Размер тела в байтах: кириллица в UTF-8 занимает больше знаков строки. */
+function byteLength(text: string): number {
+  try {
+    return new TextEncoder().encode(text).length
+  } catch {
+    return text.length * 3
+  }
 }
 
 /**
@@ -124,13 +142,17 @@ export function createHttpApi(rawBase: string): Api {
       timedOut = true
       ctrl.abort()
     }, opts.timeout ?? TIMEOUT_MS)
+    const body = opts.body === undefined ? undefined : JSON.stringify(opts.body)
+    const keepalive = opts.keepalive === true && body !== undefined && byteLength(body) < KEEPALIVE_BYTES
     try {
       const res = await fetch(base + path, {
         method,
         headers,
         credentials: 'include',
-        body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+        body,
         signal: ctrl.signal,
+        // Только когда просили: у обычных запросов его нет, как и раньше.
+        ...(keepalive ? { keepalive: true } : {}),
       })
       // Заголовки могли прийти, а тело — застрять: читаем его под тем же таймером.
       return {
@@ -327,8 +349,11 @@ export function createHttpApi(rawBase: string): Api {
 
     playerBootstrap: () => request<PlayerBootstrap>('GET', '/player/bootstrap'),
 
-    sendChunks: (chunks: Chunk[]) =>
-      request<ChunksResponse>('POST', '/activity/chunks', { body: { chunks } }),
+    sendChunks: (chunks: Chunk[], options) =>
+      request<ChunksResponse>('POST', '/activity/chunks', {
+        body: { chunks },
+        keepalive: options?.keepalive,
+      }),
 
     statsSummary: () => request<StatsSummary>('GET', '/stats/summary'),
 

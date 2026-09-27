@@ -37,6 +37,7 @@ import {
 } from '../components/Icons'
 import { VISIBLE_STREAMS, getStream } from '../data/streams'
 import { asset } from '../lib/asset'
+import { onBufferChange, pendingTodaySeconds } from '../lib/chunks'
 import { trialHint, trialOpensAll, useTrial, warmTrial } from '../lib/trial'
 import {
   duration,
@@ -167,6 +168,29 @@ export default function Progress() {
    */
   const [todaySeconds, setTodaySeconds] = useState(0)
 
+  /**
+   * Секунды, которые плеер записал, а сервер ещё не видел (буфер кусков,
+   * src/lib/chunks.ts): «Вернусь позже» ждёт отправку лишь полторы секунды,
+   * а сеть бывает и медленнее, и без сети куски лежат в буфере. Прибавляем их
+   * к «Сегодня», как это делает плеер. Буфер опустел — сервер их принял:
+   * перечитываем цифры, чтобы минуты не пропали с экрана.
+   */
+  const [pendingToday, setPendingToday] = useState(() => (userId ? pendingTodaySeconds(userId) : 0))
+  useEffect(() => {
+    if (!userId) {
+      setPendingToday(0)
+      return
+    }
+    let last = pendingTodaySeconds(userId)
+    setPendingToday(last)
+    return onBufferChange(() => {
+      const now = pendingTodaySeconds(userId)
+      setPendingToday(now)
+      if (now < last) setRefresh((n) => n + 1)
+      last = now
+    })
+  }, [userId])
+
   // Скрытая команда владельца. Куски отправляются обычной ручкой, поэтому
   // дальше всё считается тем же кодом, что и настоящая тренировка.
   const fill = IS_DEMO && params.get('demo') === 'fill'
@@ -233,9 +257,11 @@ export default function Progress() {
   const totalTime = duration(totalSeconds)
   const totalHours = Math.floor(toMinutes(totalSeconds) / 60)
   const streak = me?.totals.current_streak_days ?? 0
+  // «Сегодня» — с сервера плюс то, что он ещё не видел (pendingToday выше).
+  const todayTotal = todaySeconds + pendingToday
   // Минуты — только для шкалы кольца, всё остальное печатается из `todayTime`.
-  const todayMinutes = toMinutes(todaySeconds)
-  const todayTime = duration(todaySeconds)
+  const todayMinutes = toMinutes(todayTotal)
+  const todayTime = duration(todayTotal)
   const avgTime = duration(data?.averages.per_active_day_seconds ?? 0)
   const recordTime = duration(data?.records.best_day?.seconds ?? 0)
   const paid = access?.status === 'none' || access?.status === 'expired' ? null : access?.paid_until
@@ -439,12 +465,12 @@ export default function Progress() {
                   <Ring value={todayMinutes / DAY_GOAL_MINUTES} />
                   <span className="today__center">
                     <span className="today__num">{todayTime.value}</span>
-                    <span className="today__unit">{durationWord(todaySeconds)} в движении</span>
+                    <span className="today__unit">{durationWord(todayTotal)} в движении</span>
                   </span>
                 </div>
 
                 <p className="today__note">
-                  {todaySeconds > 0
+                  {todayTotal > 0
                     ? 'Отличное начало дня! 🎉 Будет время — загляните ещё и наберите минуты.'
                     : 'Сегодня вы ещё не двигались — самое время начать'}
                 </p>

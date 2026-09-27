@@ -38,6 +38,9 @@ const keyOf = (userId: string) => `${PREFIX}.${userId}`
 /** Если localStorage недоступен — буфер в памяти, общий на вкладку. */
 const memory = new Map<string, Chunk[]>()
 
+/** Кто следит за буфером: «Мой прогресс» прибавляет неотправленное к «Сегодня». */
+const bufferListeners = new Set<() => void>()
+
 function dropLegacy(): void {
   try {
     localStorage.removeItem(LEGACY_KEY)
@@ -83,6 +86,33 @@ function save(key: string, list: Chunk[]): void {
   } catch {
     /* приватный режим или запрет хранилища — переживём без буфера на диске */
   }
+  bufferListeners.forEach((fn) => {
+    try {
+      fn()
+    } catch {
+      /* подписчик упал — очередь от этого не должна */
+    }
+  })
+}
+
+/** Подписка на изменения буфера — любого человека в этой вкладке. Возвращает отписку. */
+export function onBufferChange(fn: () => void): () => void {
+  bufferListeners.add(fn)
+  return () => {
+    bufferListeners.delete(fn)
+  }
+}
+
+/**
+ * Секунды из буфера человека, которые сервер ещё не видел, — только за
+ * сегодня по часам браузера (так же считает плеер): кусок, застрявший с
+ * вечера, к новому дню не относится.
+ */
+export function pendingTodaySeconds(userId: string): number {
+  const today = new Date().toDateString()
+  return load(keyOf(userId))
+    .filter((c) => new Date(c.started_at).toDateString() === today)
+    .reduce((sum, c) => sum + c.duration_seconds, 0)
 }
 
 /** Убрать из буфера пакет, который уже не вернётся: принят либо забракован. */
@@ -114,9 +144,20 @@ export type ChunkQueue = {
   push(chunk: Chunk): void
   /** Куски, которые сервер ещё не признал: плеер считает их сам. */
   pending(): readonly Chunk[]
-  /** Отправить не откладывая — уход со страницы и конец тренировки. */
-  flush(): void
-  /** Снять таймеры: плеер закрылся. */
+  /**
+   * Отправить не откладывая — уход со страницы и конец тренировки.
+   *
+   * keepalive — вкладку прячут или закрывают: запрос должен дойти и без
+   * страницы. Ответ тогда может не вернуться — куски останутся в буфере и
+   * уйдут ещё раз при следующем открытии, а сервер не засчитает их дважды
+   * (client_chunk_id).
+   *
+   * Обещание выполняется, когда попытка кончилась — успехом или нет; буфер
+   * пуст — сразу. Идёт отправка — дожидается её и сразу отправляет то, что в
+   * тот пакет не попало.
+   */
+  flush(options?: { keepalive?: boolean }): Promise<void>
+  /** Снять таймеры: плеер закрылся. Уже начатый flush доводится до конца. */
   stop(): void
 }
 
@@ -135,7 +176,8 @@ export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: 
   const key = keyOf(userId)
   dropLegacy()
   let timer: number | null = null
-  let sending = false
+  /** Отправка, которая идёт сейчас: второй пакет параллельно не шлём, flush её дожидается. */
+  let inflight: Promise<void> | null = null
   let attempt = 0
   let lastTry = 0
   let stopped = false
@@ -144,6 +186,12 @@ export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: 
   const store = (list: Chunk[]) => {
     save(key, list)
     onChange()
+  }
+
+  const clearTimer = () => {
+    if (timer === null) return
+    window.clearTimeout(timer)
+    timer = null
   }
 
   const schedule = (ms: number) => {
@@ -162,23 +210,36 @@ export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: 
   /** Выбросить из буфера то, что уже не вернётся: принято либо забраковано. */
   const drop = (batch: Chunk[]) => store(without(key, batch))
 
-  async function run(): Promise<void> {
-    if (stopped || sending) return
+  /**
+   * Отправить пакет, если склейка позволяет. force — явная просьба (flush):
+   * её не отменяет и stop(), иначе минуты, закрытые при уходе из плеера,
+   * ждали бы его следующего открытия.
+   */
+  function run(keepalive = false, force = false): Promise<void> {
+    if (inflight) return inflight
+    if (stopped && !force) return Promise.resolve()
     const buffer = load(key)
-    if (!buffer.length) return
+    if (!buffer.length) return Promise.resolve()
 
     const wait = lastTry + MIN_GAP_MS - Date.now()
     if (wait > 0) {
       schedule(wait)
-      return
+      return Promise.resolve()
     }
 
-    sending = true
-    const batch = buffer.slice(0, BATCH)
+    const job = send(buffer.slice(0, BATCH), keepalive).finally(() => {
+      inflight = null
+    })
+    inflight = job
+    return job
+  }
+
+  /** Один пакет: ответ, повтор по сбою, следующая попытка. Не падает. */
+  async function send(batch: Chunk[], keepalive: boolean): Promise<void> {
     lastTry = Date.now()
 
     try {
-      const res = await api.sendChunks(batch)
+      const res = await api.sendChunks(batch, keepalive ? { keepalive: true } : undefined)
       attempt = 0
       // Забракованные куски не вернутся: повтор с тем же телом получит тот же
       // отказ. Человеку тут сказать нечего, а при разработке причина нужна.
@@ -202,12 +263,9 @@ export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: 
       } else {
         const pause = err?.status === 429 ? (err.retry_after ?? 60) : BACKOFF[Math.min(attempt, BACKOFF.length - 1)]
         attempt += 1
-        sending = false
         schedule(pause * 1000)
         return
       }
-    } finally {
-      sending = false
     }
 
     plan()
@@ -231,20 +289,30 @@ export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: 
 
     pending: () => load(key),
 
-    flush() {
+    flush(options) {
+      const keepalive = options?.keepalive === true
       // Человек уходит со страницы: ждать склейку уже некогда.
-      lastTry = 0
-      if (timer !== null) {
-        clearTimeout(timer)
-        timer = null
+      const now = () => {
+        lastTry = 0
+        clearTimer()
+        return run(keepalive, true)
       }
-      void run()
+      if (!inflight) return now()
+      if (keepalive) {
+        // Вкладку прячут или закрывают, а прошлый пакет ещё в пути: его
+        // ответа страница может и не дождаться. Весь буфер — сразу и с
+        // keepalive; то, что уже ушло, сервер второй раз не засчитает.
+        clearTimer()
+        const batch = load(key).slice(0, BATCH)
+        return batch.length ? send(batch, true) : Promise.resolve()
+      }
+      // Пакет в пути — дождаться его и сразу отправить то, что в него не попало.
+      return inflight.then(now)
     },
 
     stop() {
       stopped = true
-      if (timer !== null) clearTimeout(timer)
-      timer = null
+      clearTimer()
     },
   }
 }
