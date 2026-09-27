@@ -7,6 +7,12 @@
  * Пока анимация качается, на её месте стоит постер (24 КБ), он же остаётся
  * навсегда, если сеть слабая или человек выключил анимацию.
  *
+ * На телефоне так рано её не качаем: 0,7 МБ анимации отнимали канал у кода,
+ * шрифтов и запросов к серверу — у нашей аудитории мобильная сеть и VPN. Там
+ * анимация ждёт load и паузы в работе браузера (whenQuiet). В мини-апе
+ * Telegram её нет вовсе — только постер: там человек пришёл за тренировкой, и
+ * мегабайт на украшение ей мешает.
+ *
  * Формат зависит от браузера:
  * · WebKit (Safari, любой браузер на iPhone и iPad, вьюхи Telegram на iOS и
  *   macOS) и всегда мини-ап Telegram — анимированный WebP в <img>;
@@ -22,6 +28,7 @@
 import { useEffect, useState } from 'react'
 import type { RefObject } from 'react'
 import { asset } from './asset'
+import { whenIdle } from './prefetch'
 import { IN_TELEGRAM } from './telegram'
 
 type Connection = { saveData?: boolean; effectiveType?: string }
@@ -40,6 +47,8 @@ const TRIES = 5
 
 /** Случаи, когда анимация не нужна вовсе: остаёмся на постере. */
 function skip(): boolean {
+  // Мини-ап: пришли за тренировкой, мегабайт анимации ей только мешает.
+  if (IN_TELEGRAM) return true
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true
   const net = (navigator as Navigator & { connection?: Connection }).connection
   if (!net) return false
@@ -85,6 +94,28 @@ function afterPaint(cb: () => void): () => void {
 }
 
 /**
+ * Колбэк, когда страница загрузилась (код, стили, шрифты, постер) и браузеру
+ * нечем заняться: анимация больше не отнимает у них канал.
+ */
+function whenQuiet(cb: () => void): () => void {
+  let stopIdle: (() => void) | undefined
+  const go = () => {
+    stopIdle = whenIdle(cb)
+  }
+  if (document.readyState === 'complete') go()
+  else window.addEventListener('load', go, { once: true })
+  return () => {
+    window.removeEventListener('load', go)
+    stopIdle?.()
+  }
+}
+
+/** Когда ставить адрес анимации: на телефоне — не раньше, чем всё важное пришло. */
+function whenToLoad(cb: () => void): () => void {
+  return small() ? whenQuiet(cb) : afterPaint(cb)
+}
+
+/**
  * Анимированный WebP. Картинка прозрачна до события load (файл скачан
  * целиком — анимация пойдёт без запинок) и разбора первого кадра: подмена
  * постера идёт уже готовым кадром, без мигания.
@@ -103,7 +134,7 @@ function playImage(img: HTMLImageElement, onLive: () => void): () => void {
       })
   img.addEventListener('load', onLoad)
 
-  const stop = afterPaint(() => {
+  const stop = whenToLoad(() => {
     // Низкий приоритет: постер и шрифты не должны ждать мегабайтную анимацию.
     img.fetchPriority = 'low'
     img.src = asset(small() ? 'mascot/warmup-anim.webp' : 'mascot/warmup-anim-lg.webp')
@@ -164,7 +195,7 @@ function playVideo(video: HTMLVideoElement, onLive: () => void): () => void {
   }
   video.addEventListener('playing', onPlaying)
 
-  const stop = afterPaint(() => {
+  const stop = whenToLoad(() => {
     const source = document.createElement('source')
     source.src = asset(small() ? 'mascot/warmup-small.webm' : 'mascot/warmup.webm')
     source.type = 'video/webm; codecs="vp9"'

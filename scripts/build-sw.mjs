@@ -79,16 +79,29 @@ function warmPosters() {
 // под шаблон не подходит — он в предкэше.
 const MASCOT_MEDIA = /\.(webm|mov)$|-anim(-lg)?\.webp$/
 
+/**
+ * Что не идёт в предкэш, хоть и лежит рядом: код админки (её открывает один
+ * владелец — сюда же попадут и новые её экраны, Admin*.js и Admin*.css),
+ * юридические страницы (оферта, политика, согласие — 14 КБ текста, их
+ * открывают единицы) и рукописный шрифт Caveat (подписи на тарифах, паузе и
+ * прогрессе — без него виден запасной шрифт, а догрузится он по ходу). Всё
+ * это по-прежнему доступно — просто качается, когда понадобится, а не при
+ * установке воркера у каждого посетителя.
+ */
+const NOT_PRECACHED = [/^assets\/admin/i, /^assets\/Legal-/, /^fonts\/caveat-/i]
+const precached = (f) => !NOT_PRECACHED.some((re) => re.test(f))
+
 // Предкэш — только то, без чего первый экран не покажется: разметка, бандлы
-// (все чанки из assets/, в том числе экраны, которые грузятся по маршруту),
-// шрифты, постер маскота и постеры первых движений. Фото потоков сюда больше
-// не идут: потоки скрыты и нигде не показываются. Сама анимация маскота —
-// ролики и анимированный WebP — тоже не идёт: она мегабайтная, из вариантов
-// браузеру нужен один, и тот кэшируется по ходу (см. MASCOT ниже).
+// (чанки из assets/, в том числе экраны, которые грузятся по маршруту, — кроме
+// NOT_PRECACHED), шрифты, постер маскота и постеры первых движений. Фото
+// потоков сюда больше не идут: потоки скрыты и нигде не показываются. Сама
+// анимация маскота — ролики и анимированный WebP — тоже не идёт: она
+// мегабайтная, из вариантов браузеру нужен один, и тот кэшируется по ходу
+// (см. MASCOT ниже).
 const precache = [
   'index.html',
-  ...filesIn('assets'),
-  ...filesIn('fonts'),
+  ...filesIn('assets').filter(precached),
+  ...filesIn('fonts').filter(precached),
   ...filesIn('mascot').filter((f) => f.endsWith('-poster.webp')),
   ...warmPosters(),
   'manifest.webmanifest',
@@ -126,14 +139,23 @@ const SLOW = ['slow-2g', '2g']
 
 const ASSETS = ${JSON.stringify(urls, null, 2)}
 
+/** Куски сборки с хешем в имени: под тем же именем они не меняются никогда. */
+const HASHED = BASE + 'assets/'
+
 self.addEventListener('install', (e) => {
   // Промахи не должны валить установку целиком: кладём файлы по одному.
-  // Всё берём мимо кэша браузера (cache: 'reload'): nginx отдаёт файлам
-  // недельный кэш, и заменённый под тем же именем файл иначе приехал бы
-  // из него старым.
+  // Файлы под постоянными именами (разметка, шрифты, постеры) берём мимо
+  // кэша браузера (cache: 'reload'): nginx отдаёт им недельный кэш, и
+  // заменённый под тем же именем файл иначе приехал бы из него старым.
+  // Куски из assets/ — с хешем в имени, их обычный кэш всегда верен: берём
+  // оттуда и не качаем заново при каждом обновлении воркера.
   e.waitUntil(
     caches.open(PRECACHE).then((c) =>
-      Promise.all(ASSETS.map((u) => c.add(new Request(u, { cache: 'reload' })).catch(() => undefined))),
+      Promise.all(
+        ASSETS.map((u) =>
+          c.add(u.startsWith(HASHED) ? u : new Request(u, { cache: 'reload' })).catch(() => undefined),
+        ),
+      ),
     ).then(() => self.skipWaiting()),
   )
 })
@@ -180,8 +202,19 @@ function keep(cache, whole, response, limit) {
  * сначала качал весь файл, и на слабой сети звук стоял). Целый файл в кэш
  * докачиваем фоном — кроме экономии трафика и совсем медленных сетей, где
  * второй поток отнял бы канал у воспроизведения.
+ *
+ * Любой сбой воркера (Cache API недоступен, кончилось место, запись битая) —
+ * запрос уходит в сеть как есть: лучше без кэша, чем без ролика и музыки.
  */
 async function media(event, request, cacheName, limit) {
+  try {
+    return await mediaFromCache(event, request, cacheName, limit)
+  } catch (e) {
+    return fetch(request)
+  }
+}
+
+async function mediaFromCache(event, request, cacheName, limit) {
   const whole = new Request(request.url, { credentials: 'same-origin' })
   const cache = await caches.open(cacheName)
   const range = request.headers.get('range')
@@ -209,15 +242,38 @@ async function media(event, request, cacheName, limit) {
   if (!range) return full
 
   const body = await full.clone().arrayBuffer()
+  const size = body.byteLength
+  // Пустая запись — битая: убираем её и идём в сеть.
+  if (size === 0) {
+    event.waitUntil(cache.delete(whole).catch(() => undefined))
+    return fetch(request)
+  }
   const asked = /^bytes=(\\d*)-(\\d*)$/.exec(range)
-  const start = asked && asked[1] ? Number(asked[1]) : 0
-  const end = asked && asked[2] ? Number(asked[2]) : body.byteLength - 1
+  let start = 0
+  let end = size - 1
+  if (asked && asked[1] === '' && asked[2] !== '') {
+    // bytes=-N — последние N байт файла.
+    start = Math.max(0, size - Number(asked[2]))
+  } else if (asked) {
+    if (asked[1]) start = Number(asked[1])
+    if (asked[2]) end = Number(asked[2])
+  }
+  // Конец дальше файла — отдаём до последнего байта, как и сам сервер.
+  end = Math.min(end, size - 1)
+  // Начало за концом файла — такого куска нет: 416, как ответил бы сервер.
+  if (start >= size || start > end) {
+    return new Response(null, {
+      status: 416,
+      statusText: 'Range Not Satisfiable',
+      headers: { 'Content-Range': 'bytes */' + size },
+    })
+  }
   return new Response(body.slice(start, end + 1), {
     status: 206,
     statusText: 'Partial Content',
     headers: {
       'Content-Type': full.headers.get('Content-Type') || 'application/octet-stream',
-      'Content-Range': 'bytes ' + start + '-' + end + '/' + body.byteLength,
+      'Content-Range': 'bytes ' + start + '-' + end + '/' + size,
       'Content-Length': String(end - start + 1),
       'Accept-Ranges': 'bytes',
     },
