@@ -30,6 +30,31 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Код сайта собран под браузеры с 2020 года (?. и прочее из ES2020). Старый
+      браузер падает на нём молча и оставляет белый экран — вместо него
+      говорим, что делать. Проверка — обычным скриптом: модульный такой
+      браузер не запустит. Считаем старым только синтаксическую ошибку:
+      запрет eval политикой безопасности (EvalError) о возрасте браузера
+      ничего не говорит.
+    -->
+    <script>
+      (function () {
+        try {
+          new Function('var a; return a?.b');
+        } catch (e) {
+          if (!(e instanceof SyntaxError)) return;
+          var root = document.getElementById('root');
+          if (!root) return;
+          var note = document.createElement('p');
+          note.textContent = 'Обновите браузер или откройте с другого устройства';
+          note.style.cssText =
+            'margin:0;padding:48px 24px;text-align:center;color:#101114;' +
+            'font:600 18px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
+          root.appendChild(note);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
