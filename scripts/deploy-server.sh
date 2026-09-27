@@ -82,14 +82,26 @@ log "3/4 Отправляю в $SERVER:$REMOTE_DIR"
 RSYNC_FLAGS=(-az)
 [ "${DRY_RUN:-0}" = "1" ] && RSYNC_FLAGS+=(-n -v)
 
-ssh -o BatchMode=yes "$SERVER" "mkdir -p '$REMOTE_DIR/assets'"
-rsync "${RSYNC_FLAGS[@]}" "$DIST/assets"/ "$SERVER:$REMOTE_DIR/assets"/
-rsync "${RSYNC_FLAGS[@]}" --delete --exclude='/assets/' "$DIST"/ "$SERVER:$REMOTE_DIR"/
+# Служебное на сервер не везём: .DS_Store (Finder кладёт его и в public/, а
+# vite копирует в dist/) выдаёт состав каталогов, README.md — внутреннюю
+# кухню (public/streams/README.md). Шаблоны без «/» совпадают на любой глубине.
+EXCLUDES=(--exclude=.DS_Store --exclude=README.md)
 
+ssh -o BatchMode=yes "$SERVER" "mkdir -p '$REMOTE_DIR/assets'"
+rsync "${RSYNC_FLAGS[@]}" "${EXCLUDES[@]}" "$DIST/assets"/ "$SERVER:$REMOTE_DIR/assets"/
+rsync "${RSYNC_FLAGS[@]}" "${EXCLUDES[@]}" --delete --exclude='/assets/' "$DIST"/ "$SERVER:$REMOTE_DIR"/
+
+# Уже лежащие на сервере с прошлых выкладок --delete не уберёт: исключённое
+# он не трогает (без --delete-excluded, а его здесь взять нельзя — он снёс бы
+# и assets/, исключённый во втором проходе). Поэтому — явно, find по имени.
+JUNK="find '$REMOTE_DIR' -type f \\( -name .DS_Store -o -name README.md \\)"
 if [ "${DRY_RUN:-0}" = "1" ]; then
+    info "служебные файлы на сервере, которые выкладка удалит:"
+    ssh -o BatchMode=yes "$SERVER" "$JUNK -print"
     info "это была примерка (DRY_RUN=1), на сервере ничего не изменилось"
     exit 0
 fi
+ssh -o BatchMode=yes "$SERVER" "$JUNK -print -delete"
 
 # Статику читает nginx от www-data, а владельцем каталога должен остаться
 # пользователь сервиса.
