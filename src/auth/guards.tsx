@@ -10,6 +10,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, type NavigateOptions } from 'react-router-dom'
 import { DEFAULT_STREAM, getStream } from '../data/streams'
 import { useFlow, type FlowSession } from '../flow/FlowSession'
+import { readFunnelToken } from '../lib/funnel'
+import { IN_TELEGRAM } from '../lib/telegram'
 import { loadBootstrap, offerDue, trialBlocks, useTrialState } from '../lib/trial'
 import { keepAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
@@ -47,10 +49,26 @@ export const FIRST_STREAM = `/start/${DEFAULT_STREAM.id}`
  * На тарифы отсюда больше не уводим. Пейволл живёт внутри тренировки —
  * ярким блоком разблокировки: человек сначала пробует бесплатный поток и
  * только потом решает, платить ли.
+ *
+ * Гость из бота — не на вход, а на регистрацию (newcomerFromBot): аккаунта у
+ * него почти наверняка нет, а экран входа он принимал за тупик. Ссылка «Уже
+ * есть аккаунт» на регистрации ведёт на вход с тем же next.
  */
 export function flowTarget(signedIn: boolean, flow?: FlowSession | null): string {
   const target = flow ? `/player/${flow.streamId}` : FIRST_STREAM
-  return signedIn ? target : `/login${nextParam(target)}`
+  if (signedIn) return target
+  return `${newcomerFromBot() ? '/register' : '/login'}${nextParam(target)}`
+}
+
+/**
+ * Гость пришёл из бота: сайт открыт как мини-ап Telegram (не вошёл — значит,
+ * Telegram ни к какому аккаунту не привязан) или лежит токен воронки — его
+ * снимает только регистрация. С токеном по ссылке /go/<токен> человек и так
+ * попадает на регистрацию (GoFunnel); это — для тех, кто пришёл без него или
+ * вернулся на главную.
+ */
+function newcomerFromBot(): boolean {
+  return IN_TELEGRAM || readFunnelToken() !== null
 }
 
 /** Подпись той же кнопки: заход продолжается — значит, «вернуться». */
@@ -80,9 +98,11 @@ export function homeTarget(signedIn: boolean, flow?: FlowSession | null): string
  * Первым делом, пока касание ещё идёт, — разблокировка медиа
  * (src/media/unlock.ts): во вьюхе Telegram на iPhone ролики и музыка,
  * запущенные позже, после отсчёта, без неё застывают. В том же касании —
- * запрет гасить экран (src/media/keepAwake.ts), только вошедшему: гостя
- * кнопка уводит на вход или регистрацию, а не в тренировку. Потом переход — по
- * умолчанию туда же, куда ведёт flowTarget.
+ * запрет гасить экран (src/media/keepAwake.ts). Гостя кнопка уводит на
+ * регистрацию или вход, и экран касание отпустит само через пятнадцать
+ * секунд, но запасное видео уже разблокировано: после формы отсчёт возьмёт
+ * экран и без нового касания. Потом переход — по умолчанию туда же, куда
+ * ведёт flowTarget.
  */
 export function useFlowStart(): (to?: string, options?: NavigateOptions) => void {
   const navigate = useNavigate()
@@ -92,7 +112,7 @@ export function useFlowStart(): (to?: string, options?: NavigateOptions) => void
   return useCallback(
     (to?: string, options?: NavigateOptions) => {
       unlockMedia()
-      if (signedIn) keepAwake()
+      keepAwake()
       navigate(to ?? flowTarget(signedIn, flow), options)
     },
     [navigate, signedIn, flow],
