@@ -108,6 +108,9 @@ const phraseClass = (text: string): string => {
 /** Открытый кусок движения: живёт в ref, чтобы не перерисовывать плеер. */
 type OpenChunk = { startedAt: number; seconds: number; stream: string; move: string }
 
+/** Вид движения для круга: соседние движения — разного вида (src/data/loops.ts). */
+const moveKind = (move: Loop) => move.kind
+
 export default function Player() {
   const { streamId } = useParams()
   const navigate = useNavigate()
@@ -297,6 +300,13 @@ export default function Player() {
    * поэтому новая тренировка начинает не со случайного порядка, а с
    * движений, которых давно не было. Внутри тренировки всё как прежде.
    *
+   * Ещё не показанные движения идут так, чтобы соседние были разного вида
+   * (kind: шаги, ноги, руки): почти половина каталога — шаги с разными
+   * руками, и в чисто случайном порядке они шли по два-три подряд — тестер
+   * видел, что «дублируется упражнение шагов вперёд» (27.09.2026). Сам круг
+   * от этого не меняется: движение по-прежнему возвращается только после
+   * всех остальных открытых.
+   *
    * Уже выданные движения остаются в `list`: двойная буферизация видео
    * смотрит на шаг вперёд и через один, и эти взгляды не должны сдвигать
    * порядок — иначе «следующее» менялось бы на каждом рендере.
@@ -316,7 +326,7 @@ export default function Player() {
       list.push(found)
     }
     orderRef.current = {
-      deck: createRotation(moves, { dealt: [...recentMoves(moves), ...list] }),
+      deck: createRotation(moves, { dealt: [...recentMoves(moves), ...list], kind: moveKind }),
       list,
     }
   }
@@ -373,7 +383,7 @@ export default function Player() {
     const ids = new Set(moves.map((m) => m.id))
     if (shown.length > 0 && shown.every((m) => ids.has(m.id))) {
       orderRef.current = {
-        deck: createRotation(moves, { dealt: [...recentMoves(moves), ...shown] }),
+        deck: createRotation(moves, { dealt: [...recentMoves(moves), ...shown], kind: moveKind }),
         list: shown,
       }
       // Порядок живёт в ref: перерисовка нужна, чтобы следующий ролик во
@@ -381,7 +391,7 @@ export default function Player() {
       setReorder((n) => n + 1)
       return
     }
-    orderRef.current = { deck: createRotation(moves, { dealt: recentMoves(moves) }), list: [] }
+    orderRef.current = { deck: createRotation(moves, { dealt: recentMoves(moves), kind: moveKind }), list: [] }
     setStep(0)
     setInMove(0)
   }, [deckKey, moves])

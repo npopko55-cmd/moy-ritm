@@ -18,13 +18,31 @@
  * порядка.
  */
 
-const KEY = 'moy-ritm.moveHistory'
+/**
+ * Ключ со второй версией истории (27.09.2026).
+ *
+ * Круг повторяет порядок своего первого прохода, а первый проход по старой
+ * истории был чисто случайным — шаги в нём шли по два-три подряд. С видами
+ * движений (createRotation в src/lib/deck.ts) новый круг разносит их, но
+ * старая история держала бы прежний порядок. Поэтому история начинается
+ * заново: один раз новая тренировка начнёт круг не с «давно не было», а с
+ * разнесённого порядка. Прежний ключ стираем, чтобы не лежал мусором.
+ */
+const KEY = 'moy-ritm.moveHistory.v2'
+const OLD_KEY = 'moy-ritm.moveHistory'
 
 /** Сколько последних показов помнить. */
 export const HISTORY_LIMIT = 120
 
+/** Прежний ключ уже стёрт в этой вкладке. */
+let oldKeyGone = false
+
 function load(): string[] {
   try {
+    if (!oldKeyGone) {
+      oldKeyGone = true
+      localStorage.removeItem(OLD_KEY)
+    }
     const raw = localStorage.getItem(KEY)
     const list: unknown = raw ? JSON.parse(raw) : []
     if (!Array.isArray(list)) return []

@@ -89,6 +89,84 @@ export function createDeck<T>(source: readonly T[], options: DeckOptions<T> = {}
   }
 }
 
+/** Фишер–Йейтс на переданном random: новая перемешанная копия. */
+function shuffled<T>(items: readonly T[], random: () => number): T[] {
+  const out = items.slice()
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    const tmp = out[i]
+    out[i] = out[j]
+    out[j] = tmp
+  }
+  return out
+}
+
+/**
+ * Случайный порядок, в котором соседи — разного вида, если так вообще можно
+ * разложить. `after` — вид того, что показано прямо перед первым.
+ *
+ * На каждом шаге берём случайный вид, отличный от предыдущего, с весом по
+ * тому, сколько его осталось, — но только если после этого раскладка ещё
+ * возможна: вид, которого осталось больше половины, иначе в конце шёл бы
+ * подряд. Нельзя иначе — ставим подряд, как есть.
+ */
+function spreadByKind<T>(
+  items: readonly T[],
+  kindOf: (item: T) => string,
+  random: () => number,
+  after?: string,
+): T[] {
+  const groups = new Map<string, T[]>()
+  for (const item of shuffled(items, random)) {
+    const kind = kindOf(item)
+    const group = groups.get(kind)
+    if (group) group.push(item)
+    else groups.set(kind, [item])
+  }
+
+  /**
+   * Можно ли, взяв сейчас элемент вида `taken`, разложить остальные `left`
+   * без соседей одного вида. Первым в остатке не может идти `taken`, поэтому
+   * его хватит на floor(left / 2) мест, любого другого — на ceil(left / 2).
+   */
+  const possible = (left: number, taken: string): boolean => {
+    for (const [kind, group] of groups) {
+      const count = kind === taken ? group.length - 1 : group.length
+      const limit = kind === taken ? Math.floor(left / 2) : Math.ceil(left / 2)
+      if (count > limit) return false
+    }
+    return true
+  }
+
+  const out: T[] = []
+  let prev = after
+  while (out.length < items.length) {
+    const left = items.length - out.length
+    const options: [string, T[]][] = []
+    for (const [kind, group] of groups) {
+      if (group.length === 0 || kind === prev) continue
+      if (possible(left - 1, kind)) options.push([kind, group])
+    }
+    // Разложить без соседей одного вида уже нельзя — берём самый большой вид.
+    const pool = options.length
+      ? options
+      : [...groups].filter(([, group]) => group.length > 0).sort((a, b) => b[1].length - a[1].length).slice(0, 1)
+    const total = pool.reduce((sum, [, group]) => sum + group.length, 0)
+    let pick = random() * total
+    let chosen = pool[pool.length - 1]
+    for (const option of pool) {
+      pick -= option[1].length
+      if (pick < 0) {
+        chosen = option
+        break
+      }
+    }
+    out.push(chosen[1].pop() as T)
+    prev = chosen[0]
+  }
+  return out
+}
+
 /**
  * Круг: без повторов, пока не выйдут все, а дальше — тем же порядком.
  *
@@ -105,20 +183,19 @@ export function createDeck<T>(source: readonly T[], options: DeckOptions<T> = {}
  * показывали, поэтому круг переживает и возвращение в заход, и смену
  * набора: открылось больше движений — сначала пойдут новые, а не повтор
  * первых пяти; стало меньше — круг идёт только по оставшимся.
+ *
+ * kind — вид элемента. С ним ещё не показанные идут так, чтобы соседи были
+ * разного вида: у движений это шаги, ноги и руки (src/data/loops.ts). Почти
+ * половина каталога — шаги с разными руками, и в чисто случайном порядке
+ * они шли по два-три подряд: тестер видел, что «через каждые три упражнения
+ * дублируется упражнение шагов вперёд» (27.09.2026). Порядок первого круга
+ * повторяется и дальше, поэтому разнесённые виды остаются разнесёнными.
  */
 export function createRotation<T>(
   source: readonly T[],
-  options: { random?: () => number; dealt?: readonly T[] } = {},
+  options: { random?: () => number; dealt?: readonly T[]; kind?: (item: T) => string } = {},
 ): Deck<T> {
   const random = options.random ?? Math.random
-  // Порядок для ещё не показанных — перемешанный один раз.
-  const order = source.slice()
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1))
-    const tmp = order[i]
-    order[i] = order[j]
-    order[j] = tmp
-  }
   // Когда элемент показывали последний раз: номер выдачи, -1 — ни разу.
   const shownAt = new Map<T, number>()
   let count = 0
@@ -127,6 +204,17 @@ export function createRotation<T>(
     shownAt.set(card, count++)
     own = card
   }
+  // Порядок для ещё не показанных — перемешанный один раз. Показанные идут
+  // по давности, их место в этом списке ничего не решает.
+  const unseen = source.filter((card) => !shownAt.has(card))
+  const seen = source.filter((card) => shownAt.has(card))
+  const kindOf = options.kind
+  const order = [
+    ...(kindOf
+      ? spreadByKind(unseen, kindOf, random, own === undefined ? undefined : kindOf(own))
+      : shuffled(unseen, random)),
+    ...seen,
+  ]
 
   return {
     next(): T | undefined {
