@@ -11,6 +11,7 @@ import { Navigate, useLocation, useNavigate, useParams, type NavigateOptions } f
 import { DEFAULT_STREAM, getStream } from '../data/streams'
 import { useFlow, type FlowSession } from '../flow/FlowSession'
 import { loadBootstrap, offerDue, trialBlocks, useTrialState } from '../lib/trial'
+import { keepAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
 import { OFFLINE_WAITING, Waiting } from '../screens/Account'
 import { useSession } from './SessionProvider'
@@ -78,7 +79,9 @@ export function homeTarget(signedIn: boolean, flow?: FlowSession | null): string
  *
  * Первым делом, пока касание ещё идёт, — разблокировка медиа
  * (src/media/unlock.ts): во вьюхе Telegram на iPhone ролики и музыка,
- * запущенные позже, после отсчёта, без неё застывают. Потом переход — по
+ * запущенные позже, после отсчёта, без неё застывают. В том же касании —
+ * запрет гасить экран (src/media/keepAwake.ts), только вошедшему: гостя
+ * кнопка уводит на вход или регистрацию, а не в тренировку. Потом переход — по
  * умолчанию туда же, куда ведёт flowTarget.
  */
 export function useFlowStart(): (to?: string, options?: NavigateOptions) => void {
@@ -89,6 +92,7 @@ export function useFlowStart(): (to?: string, options?: NavigateOptions) => void
   return useCallback(
     (to?: string, options?: NavigateOptions) => {
       unlockMedia()
+      if (signedIn) keepAwake()
       navigate(to ?? flowTarget(signedIn, flow), options)
     },
     [navigate, signedIn, flow],

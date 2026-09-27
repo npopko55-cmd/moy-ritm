@@ -8,6 +8,7 @@ import { loopPoster, loopSrc } from '../data/loops'
 import { startState, useFlow } from '../flow/FlowSession'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { player } from '../lib/screens'
+import { holdAwake, releaseAwake } from '../media/keepAwake'
 import { useMusic } from '../music/MusicProvider'
 import '../components/Logo.css'
 import './Countdown.css'
@@ -75,6 +76,17 @@ export default function Countdown() {
       if (!toPlayer.current) setMusicPlaying(false)
     }
   }, [resume, start, setMusicPlaying])
+
+  // Экран не гаснет и на отсчёте (src/media/keepAwake.ts): взяло его касание
+  // «Влиться в поток», здесь — подтверждение. Отсчёт дошёл до конца — экран
+  // дальше держит плеер; ушли куда-то ещё — отпускаем.
+  useEffect(() => {
+    if (resume) return
+    holdAwake()
+    return () => {
+      if (!toPlayer.current) releaseAwake()
+    }
+  }, [resume])
 
   // Пять секунд отсчёта — единственная пауза, когда можно качать без спешки:
   // к открытию плеера постеры первых движений и первые два ролика уже в кэше.

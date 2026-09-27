@@ -32,6 +32,7 @@ import { DEFAULT_STREAM } from '../data/streams'
 import { formatDate } from '../lib/date'
 import { forgetAccessBefore, paymentArrived, readAccessBefore } from '../lib/payment'
 import { useResendConfirmation } from '../lib/useResendConfirmation'
+import { keepAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
 import { AccountShell, FormError, FormOk, errorText } from './Account'
 import './PaymentSuccess.css'
@@ -237,8 +238,15 @@ export default function PaymentSuccess() {
           <Ring done />
         </div>
         <nav className="account__links">
-          {/* Касание заодно разблокирует ролики и музыку — см. src/media/unlock.ts. */}
-          <Link to={`/start/${DEFAULT_STREAM.id}`} onClick={() => unlockMedia()}>
+          {/* Касание заодно разблокирует ролики и музыку (src/media/unlock.ts)
+              и не даёт экрану гаснуть в тренировке (src/media/keepAwake.ts). */}
+          <Link
+            to={`/start/${DEFAULT_STREAM.id}`}
+            onClick={() => {
+              unlockMedia()
+              keepAwake()
+            }}
+          >
             Влиться в поток
           </Link>
           <Link to="/">На главную</Link>

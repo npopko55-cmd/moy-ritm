@@ -44,6 +44,7 @@ import { loadMoveInterval } from '../lib/settings'
 import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { uuid } from '../lib/uuid'
+import { holdAwake, keepAwake, releaseAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
 import {
   isNotAllowed,
@@ -862,6 +863,22 @@ export default function Player() {
   }, [playing, empty, setMusicPlaying])
 
   /**
+   * Экран не гаснет, пока тренировка идёт (src/media/keepAwake.ts): иначе
+   * через полминуты без касаний телефон гасил экран, вкладка пряталась, и
+   * тренировка вставала на паузу посреди захода. Сам экран берут касания —
+   * «Влиться в поток», «Играть», «Продолжить», — здесь это подтверждение.
+   * Пауза, уход из плеера и открытие плеера на паузе экран отпускают.
+   */
+  useEffect(() => {
+    if (!playing || empty) {
+      releaseAwake()
+      return
+    }
+    holdAwake()
+    return releaseAwake
+  }, [playing, empty])
+
+  /**
    * Уход из плеера тоже останавливает музыку: человек ушёл в меню, а не
    * остался в потоке. Трек при этом не перематывается — вернувшись, он
    * продолжится с той же секунды и с плавным входом.
@@ -998,9 +1015,13 @@ export default function Player() {
    * Всё это — касание, и первой строкой идёт разблокировка медиа, пока
    * WebKit ещё считает его жестом. Следом, в том же касании, запускаем ролик
    * на виду; музыку, которую раньше не пустили, разблокировка запускает сама.
+   * В том же касании — и запрет гасить экран (src/media/keepAwake.ts): замок
+   * экрана Safari даёт только из жеста, а запасное видео со звуковой
+   * дорожкой без жеста не пускают вьюхи.
    */
   const continueFlow = useCallback(() => {
     unlockMedia()
+    keepAwake()
     setNeedTap(false)
     void playVideo(buffers[activeRef.current]).catch(() => undefined)
     // Музыку — тоже в касании, а не эффектом после перерисовки: после
