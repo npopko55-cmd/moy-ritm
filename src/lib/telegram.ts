@@ -8,7 +8,16 @@
  *
  * Скрипт Telegram (telegram-web-app.js) подключается только в этом случае и
  * только динамически: обычному посетителю сайта он не нужен, и в основной
- * бандл его код не попадает.
+ * бандл его код не попадает. Скрипт — своя копия в public/ (скачана с
+ * https://telegram.org/js/telegram-web-app.js 28.09.2026 без правок): у части
+ * людей в России telegram.org не открывается или открывается минутами, а мини-ап
+ * ждал его и висел. Даже свой скрипт ждём не дольше SCRIPT_TIMEOUT_MS, и
+ * ничто важное от него не зависит:
+ *   • «готово» и «развернуть» уходят клиенту сразу при старте, напрямую
+ *     (postRaw), — тем же путём, каким их шлёт сам скрипт;
+ *   • ссылки на сайт без скрипта открываются тем же прямым событием;
+ *   • догрузился позже — цвета, запрет свайпа, кнопка «Назад» и события
+ *     всё равно включаются (whenTelegram).
  *
  * Оплаты внутри мини-апа нет — так требуют правила Telegram. Кнопки оплаты
  * там открывают сайт во внешнем браузере: тарифы (openTariffsOnSite) или
@@ -17,6 +26,8 @@
  * Ссылка t.me/<бот>/<app>?startapp=<значение> открывает мини-ап с параметром
  * запуска (telegramStartParam): им приходит токен воронки, как в /go/<токен>.
  */
+
+import { asset } from './asset'
 
 type BackButton = {
   show(): void
@@ -39,13 +50,21 @@ type WebApp = {
   BackButton?: BackButton
 }
 
+/** Мост, который клиенты Telegram (мобильные и настольные) дают странице. */
+type WebviewProxy = { postEvent(eventType: string, eventData: string): void }
+
 declare global {
   interface Window {
     Telegram?: { WebApp?: WebApp }
+    TelegramWebviewProxy?: WebviewProxy
   }
 }
 
-const SCRIPT_URL = 'https://telegram.org/js/telegram-web-app.js'
+/** Своя копия скрипта Telegram — со своего домена, а не с telegram.org. */
+const SCRIPT_URL = asset('telegram-web-app.js')
+
+/** Дольше скрипт не ждём: ждущие получают null и обходятся без него. */
+const SCRIPT_TIMEOUT_MS = 3000
 
 /** Параметры запуска на эту вкладку: перезагрузка внутри мини-апа их не теряет. */
 const SESSION_KEY = 'moy-ritm.tg'
@@ -180,6 +199,52 @@ export function telegramLog(what: string, error?: unknown): void {
 }
 
 /**
+ * Версия клиента Telegram из параметров запуска (tgWebAppVersion) не ниже
+ * `min`. Неизвестна — считаем старой: так же, как сам скрипт (он тогда 6.0).
+ */
+function versionAtLeast(min: string): boolean {
+  let version = ''
+  try {
+    version = new URLSearchParams(launchParams ?? '').get('tgWebAppVersion') ?? ''
+  } catch {
+    return false
+  }
+  if (!version) return false
+  const a = version.split('.').map((n) => parseInt(n, 10) || 0)
+  const b = min.split('.').map((n) => parseInt(n, 10) || 0)
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0)
+    if (diff !== 0) return diff > 0
+  }
+  return true
+}
+
+/**
+ * Событие клиенту Telegram без его скрипта — тем же путём и в том же виде,
+ * что WebView.postEvent в telegram-web-app.js: мобильные и настольные клиенты
+ * дают странице window.TelegramWebviewProxy (данные — строкой JSON), веб-версия
+ * открывает мини-ап в рамке и слушает postMessage с JSON {eventType,
+ * eventData}. false — передать некуда.
+ */
+function postRaw(eventType: string, eventData: unknown = ''): boolean {
+  if (!IN_TELEGRAM) return false
+  try {
+    const proxy = window.TelegramWebviewProxy
+    if (proxy && typeof proxy.postEvent === 'function') {
+      proxy.postEvent(eventType, JSON.stringify(eventData))
+      return true
+    }
+    if (window.parent != null && window.parent !== window) {
+      window.parent.postMessage(JSON.stringify({ eventType, eventData }), '*')
+      return true
+    }
+  } catch (e) {
+    telegramLog(`postEvent ${eventType}`, e)
+  }
+  return false
+}
+
+/**
  * Скрипт Telegram разбирает параметры запуска из location.hash в момент
  * выполнения: без них он считает себя клиентом версии 6.0 и отключает
  * кнопку «Назад», цвета и запрет свайпа. Если роутер к моменту подключения
@@ -212,35 +277,6 @@ function putLaunchHashBack(): () => void {
   }
 }
 
-let loading: Promise<WebApp | null> | null = null
-
-/** Подключить скрипт Telegram. Вне мини-апа — сразу null, скрипт не качается. */
-export function loadTelegram(): Promise<WebApp | null> {
-  if (!IN_TELEGRAM) return Promise.resolve(null)
-  loading ??= new Promise<WebApp | null>((resolve) => {
-    const ready = window.Telegram?.WebApp
-    if (ready) {
-      resolve(ready)
-      return
-    }
-    const cleanUp = putLaunchHashBack()
-    const script = document.createElement('script')
-    script.src = SCRIPT_URL
-    script.async = true
-    script.onload = () => {
-      cleanUp()
-      resolve(window.Telegram?.WebApp ?? null)
-    }
-    script.onerror = () => {
-      cleanUp()
-      telegramLog('скрипт telegram-web-app.js не загрузился')
-      resolve(null)
-    }
-    document.head.appendChild(script)
-  })
-  return loading
-}
-
 /** Метод может отсутствовать в старом клиенте или бросить — мини-ап от этого не должен падать. */
 function safely(what: string, fn: () => void): void {
   try {
@@ -250,15 +286,87 @@ function safely(what: string, fn: () => void): void {
   }
 }
 
+let loading: Promise<WebApp | null> | null = null
+
+/** Что выполнить, когда скрипт появится, — даже если он пришёл после таймаута. */
+const whenLoaded = new Set<(app: WebApp) => void>()
+
+function arrived(app: WebApp): void {
+  const pending = [...whenLoaded]
+  whenLoaded.clear()
+  for (const run of pending) safely('скрипт догрузился', () => run(app))
+}
+
+/**
+ * Подключить скрипт Telegram. Вне мини-апа — сразу null, скрипт не качается.
+ *
+ * Ждём не дольше SCRIPT_TIMEOUT_MS: не пришёл — null, и ждущие обходятся без
+ * него. Сама загрузка при этом не обрывается: пришёл позже — отложенное через
+ * whenTelegram выполнится, а следующие вызовы получат его сразу.
+ */
+export function loadTelegram(): Promise<WebApp | null> {
+  if (!IN_TELEGRAM) return Promise.resolve(null)
+  const ready = window.Telegram?.WebApp
+  if (ready) return Promise.resolve(ready)
+  loading ??= new Promise<WebApp | null>((resolve) => {
+    const cleanUp = putLaunchHashBack()
+    const script = document.createElement('script')
+    script.src = SCRIPT_URL
+    script.async = true
+    const timer = window.setTimeout(() => {
+      telegramLog(`скрипт telegram-web-app.js не пришёл за ${SCRIPT_TIMEOUT_MS} мс — работаем без него`)
+      resolve(null)
+    }, SCRIPT_TIMEOUT_MS)
+    script.onload = () => {
+      window.clearTimeout(timer)
+      cleanUp()
+      const app = window.Telegram?.WebApp ?? null
+      if (app) arrived(app)
+      resolve(app)
+    }
+    script.onerror = () => {
+      window.clearTimeout(timer)
+      cleanUp()
+      telegramLog('скрипт telegram-web-app.js не загрузился')
+      resolve(null)
+    }
+    document.head.appendChild(script)
+  })
+  return loading
+}
+
+/**
+ * Выполнить, когда скрипт Telegram на месте: сразу, если он уже загружен,
+ * иначе — когда догрузится, сколько бы это ни заняло. Возвращает отмену.
+ */
+function whenTelegram(run: (app: WebApp) => void): () => void {
+  if (!IN_TELEGRAM) return () => undefined
+  const ready = window.Telegram?.WebApp
+  if (ready) {
+    safely('whenTelegram', () => run(ready))
+    return () => undefined
+  }
+  whenLoaded.add(run)
+  void loadTelegram()
+  return () => {
+    whenLoaded.delete(run)
+  }
+}
+
 /**
  * Первое, что делаем в мини-апе: сообщить Telegram, что страница готова,
  * развернуть её на весь экран, покрасить шапку и фон под сайт и запретить
  * закрытие свайпом вниз — иначе плеер закрывался бы посреди движения.
+ *
+ * «Готово» и «развернуть» уходят сразу, не дожидаясь скрипта: без первого
+ * Telegram держит свою заглушку загрузки, без второго мини-ап открыт на
+ * полэкрана. Со скриптом они уходят ещё раз — повтор клиенту не мешает.
  */
 export function startTelegram(): void {
   if (!IN_TELEGRAM) return
-  void loadTelegram().then((app) => {
-    if (!app) return
+  postRaw('web_app_ready')
+  postRaw('web_app_expand')
+  whenTelegram((app) => {
     safely('ready', () => app.ready())
     safely('expand', () => app.expand())
     safely('setHeaderColor', () => app.setHeaderColor?.(SITE_BG))
@@ -268,26 +376,59 @@ export function startTelegram(): void {
 }
 
 /**
- * Событие Telegram: activated — мини-ап снова развернули после того, как его
- * свернули или ушли в другое приложение. Старый клиент такого события не
- * знает — подписка просто молчит. Вне мини-апа ничего не делает.
+ * События Telegram:
+ *   • activated — мини-ап снова развернули после того, как его свернули или
+ *     ушли в другое приложение;
+ *   • deactivated — мини-ап свернули: вкладка при этом может остаться «на
+ *     виду» (visibilityState), и без события тренировка шла бы дальше.
+ *
+ * Подписка на каждое событие у скрипта одна на всю страницу, а обработчики
+ * живут здесь: так их можно снимать и в клиентах без offEvent. Старый
+ * клиент таких событий не знает — подписка просто молчит. Вне мини-апа
+ * ничего не делает. Возвращает отписку.
  */
-export function onTelegramEvent(event: 'activated', handler: () => void): void {
-  if (!IN_TELEGRAM) return
-  void loadTelegram().then((app) => {
-    if (app) safely(`onEvent ${event}`, () => app.onEvent?.(event, handler))
-  })
+type TelegramEvent = 'activated' | 'deactivated'
+
+const handlers = new Map<TelegramEvent, Set<() => void>>()
+
+export function onTelegramEvent(event: TelegramEvent, handler: () => void): () => void {
+  if (!IN_TELEGRAM) return () => undefined
+  let list = handlers.get(event)
+  if (!list) {
+    const own = new Set<() => void>()
+    handlers.set(event, own)
+    list = own
+    whenTelegram((app) =>
+      app.onEvent?.(event, () => {
+        for (const fn of [...own]) safely(`событие ${event}`, fn)
+      }),
+    )
+  }
+  list.add(handler)
+  return () => {
+    handlers.get(event)?.delete(handler)
+  }
 }
 
 /**
  * Адрес сайта во внешнем браузере — вместо оплаты внутри мини-апа.
- * Скрипт не загрузился — обычная ссылка в новой вкладке.
+ *
+ * Скрипт не ждём: кнопка оплаты срабатывает сразу. Скрипта нет (ещё грузится
+ * или не пришёл) — то же событие web_app_open_link напрямую; клиент старше
+ * 6.1 его не знает — обычная ссылка в новой вкладке, как у самого скрипта.
  */
 function openOnSite(url: string): void {
-  void loadTelegram().then((app) => {
-    if (app) safely('openLink', () => app.openLink(url))
-    else window.open(url, '_blank', 'noopener')
-  })
+  const app = window.Telegram?.WebApp
+  if (app) {
+    try {
+      app.openLink(url)
+      return
+    } catch (e) {
+      telegramLog('openLink', e)
+    }
+  }
+  if (versionAtLeast('6.1') && postRaw('web_app_open_link', { url })) return
+  window.open(url, '_blank', 'noopener')
 }
 
 /** Тарифы сайта во внешнем браузере. */
@@ -305,14 +446,14 @@ export function openPayOnSite(code: string): void {
 
 /**
  * Системная кнопка «Назад» Telegram: видна не на главной и ведёт назад по
- * истории. Возвращает функцию отписки.
+ * истории. Скрипт догрузился позже — кнопка появится тогда же. Возвращает
+ * функцию отписки.
  */
 export function syncBackButton(visible: boolean, onBack: () => void): () => void {
   let off = () => undefined as void
-  let cancelled = false
-  void loadTelegram().then((app) => {
-    const button = app?.BackButton
-    if (!button || cancelled) return
+  const cancel = whenTelegram((app) => {
+    const button = app.BackButton
+    if (!button) return
     safely('BackButton', () => {
       if (visible) {
         button.onClick(onBack)
@@ -324,7 +465,7 @@ export function syncBackButton(visible: boolean, onBack: () => void): () => void
     })
   })
   return () => {
-    cancelled = true
+    cancel()
     off()
   }
 }
