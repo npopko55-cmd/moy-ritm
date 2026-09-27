@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useRef } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider'
 import { flowLabel, useFlowStart } from '../auth/guards'
 import { useFlow } from '../flow/FlowSession'
@@ -59,6 +59,40 @@ export default function Landing() {
    */
   const resend = useResendConfirmation()
 
+  /*
+   * «О нас» — раздел о проекте: три строки «Музыка ведёт», «Просто начать»,
+   * «Для вас» под героем. Отдельной страницы «О нас» нет, а ссылка раньше
+   * вела на якорь, которого на странице не было, — и никуда не вела.
+   *
+   * Касание прокручивает к разделу и коротко подсвечивает его: на широком
+   * экране лендинг умещается целиком, и без подсветки казалось бы, что
+   * ничего не произошло. С других страниц сюда ведёт адрес /#about — он
+   * делает то же самое при открытии.
+   */
+  const about = useRef<HTMLUListElement>(null)
+  const showAbout = useCallback(() => {
+    const el = about.current
+    if (!el) return
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' })
+    if (calm || typeof el.animate !== 'function') return
+    el.animate(
+      [
+        { backgroundColor: 'rgba(255, 227, 240, 0)', boxShadow: '0 0 0 0 rgba(255, 227, 240, 0)' },
+        { backgroundColor: 'rgba(255, 227, 240, 0.95)', boxShadow: '0 0 0 14px rgba(255, 227, 240, 0.95)' },
+        { backgroundColor: 'rgba(255, 227, 240, 0)', boxShadow: '0 0 0 0 rgba(255, 227, 240, 0)' },
+      ],
+      { duration: 1600, easing: 'ease-in-out' },
+    )
+  }, [])
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash !== '#about') return
+    // Кадр на раскладку: шрифты и маскот могли ещё сдвигать высоту героя.
+    const timer = window.setTimeout(showAbout, 120)
+    return () => window.clearTimeout(timer)
+  }, [hash, showAbout])
+
   // Маскот: анимация подгружается сама, сразу после первой отрисовки.
   const mascotImage = useRef<HTMLImageElement>(null)
   const mascotVideo = useRef<HTMLVideoElement>(null)
@@ -99,16 +133,36 @@ export default function Landing() {
     <div className="landing">
       <WaveBg opacity={0.85} />
 
-      <header className="landing__header">
+      <header className={`landing__header ${me ? 'landing__header--member' : ''}`}>
         <Logo />
 
-        <nav className="landing__nav">
-          <a href="#about">О нас</a>
+        {/* Вошедшему здесь же «Мой прогресс»: с главной в статистику иначе
+            было не попасть. На телефоне и планшете навигация шапки спрятана,
+            но у вошедшего она встаёт второй строкой под логотипом — без
+            «Тарифов», как и раньше (Landing.css). */}
+        <nav className={`landing__nav ${me ? 'landing__nav--member' : ''}`}>
+          <a
+            href={asset('#about')}
+            onClick={(e) => {
+              e.preventDefault()
+              showAbout()
+            }}
+          >
+            О нас
+          </a>
           {/* Тарифы — отдельная страница. href настоящий (Pages живёт
               в подпапке), клик перехватываем, чтобы не перезагружать сайт. */}
-          <a href={asset('tariffs')} onClick={(e) => { e.preventDefault(); navigate('/tariffs') }}>
+          <a
+            className="landing__nav-tariffs"
+            href={asset('tariffs')}
+            onClick={(e) => {
+              e.preventDefault()
+              navigate('/tariffs')
+            }}
+          >
             Тарифы
           </a>
+          {me && <Link to="/progress">Мой прогресс</Link>}
         </nav>
 
         <div className="landing__actions">
@@ -175,7 +229,8 @@ export default function Landing() {
             </span>
           </button>
 
-          <ul className="hero__features">
+          {/* Раздел «О нас» — на него ведёт ссылка в шапке и адрес /#about. */}
+          <ul className="hero__features" id="about" ref={about}>
             {FEATURES.map((f) => (
               <li key={f.title} className="feature">
                 <span className={`feature__icon feature__icon--${f.tone}`}>{f.icon}</span>

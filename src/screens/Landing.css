@@ -12,7 +12,14 @@
 .landing > *:not(.wave-bg) { position: relative; z-index: 1; }
 
 /* ——— Шапка ——— */
+/*
+ * Навигация и кнопки — в строках одной высоты (--bar) у верхнего края, и
+ * всё внутри них стоит по центру этой строки: ссылки, почта и кнопки — на
+ * одной линии, вровень со знаком логотипа. Раньше ссылкам и кнопкам
+ * подбирали разные отступы сверху, и почта сидела ниже «О нас» и «Тарифов».
+ */
 .landing__header {
+  --bar: 48px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: start;
@@ -24,11 +31,14 @@
 
 .landing__nav {
   display: flex;
+  align-items: center;
   gap: 42px;
-  padding-top: 12px;
+  min-height: var(--bar);
   font-size: 15.5px;
+  line-height: 1.2;
   color: var(--ink-800);
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .landing__nav a { transition: color .15s ease; }
@@ -39,14 +49,14 @@
 
 .landing__actions {
   display: flex;
+  align-items: center;
   gap: 12px;
   justify-content: flex-end;
-  padding-top: 4px;
+  min-height: var(--bar);
 }
 
-/* Кто вошёл: имя, а если его нет — почта. Ведёт в профиль (пока в настройки).
-   Высоту не задаём — растяжка флексом равняет её по соседним кнопкам, и
-   шапка вышедшего остаётся ровно такой же, как была. */
+/* Кто вошёл: имя, а если его нет — почта. Ведёт в профиль. Стоит по центру
+   строки, как и кнопки рядом. */
 .landing__who {
   display: inline-flex;
   align-items: center;
@@ -54,11 +64,23 @@
   padding: 0 4px;
   font-size: 15px;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--ink-800);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   transition: color .15s ease;
+}
+
+/*
+ * 1024–1279: у вошедшего в шапке три ссылки, почта и две кнопки. Зазоры
+ * ужимаем, а почту обрезаем раньше — иначе на 1024 (iPad боком) шапка
+ * вылезала бы за край. Полный адрес остаётся в подсказке (title).
+ */
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+  .landing__header { gap: 16px; }
+  .landing__nav { gap: 24px; }
+  .landing__who { max-width: 150px; }
 }
 
 @media (hover: hover) {
@@ -167,7 +189,10 @@
 }
 
 /* ——— Три преимущества ——— */
+/* Это и раздел «О нас»: на него ведёт ссылка в шапке. Скругление видно
+   только в короткой подсветке после касания (Landing.tsx). */
 .hero__features {
+  border-radius: var(--r-lg);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(22px, 2.4vh, 36px);
@@ -246,6 +271,34 @@
   }
 
   .landing__nav { display: none; }
+
+  /*
+   * Вошедшему навигация нужна и здесь: «Мой прогресс» — единственный путь
+   * с главной в статистику (мини-ап открывается как раз на ней). Встаёт
+   * второй строкой под логотипом и кнопками. «Тарифов» здесь нет, как и
+   * раньше: на тарифы зовёт блок разблокировки в тренировке.
+   */
+  .landing__nav--member {
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    gap: 24px;
+    min-height: 0;
+    font-size: 14.5px;
+  }
+
+  .landing__nav--member .landing__nav-tariffs { display: none; }
+
+  /* Строка ссылок встаёт вплотную под первой: поле касания ссылок и так
+     даёт ей воздух, зазор сетки добавил бы лишнего. */
+  .landing__header.landing__header--member { row-gap: 0; }
+
+  /* Ссылкам — поле под палец, а не под курсор. */
+  .landing__nav--member a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
 
   .verify-note {
     max-width: none;
