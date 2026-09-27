@@ -463,6 +463,48 @@
   color: var(--gray-400);
 }
 
+/*
+ * (i) у «Время в движении сегодня» — кнопка, а не картинка: касание
+ * раскрывает и прячет пояснение строкой прямо в карточке. Поле касания
+ * 32 px, но отрицательные поля не дают ему раздуть строку заголовка.
+ */
+.stat__info {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -9px -9px -9px 0;
+  border-radius: 50%;
+  color: var(--gray-400);
+  transition: color .15s ease, background-color .15s ease;
+}
+
+.stat__info[aria-expanded='true'] { color: var(--pink-500); background: var(--pink-50); }
+
+@media (hover: hover) {
+  .stat__info:hover { color: var(--pink-500); }
+}
+
+/* Пояснение — обычная строка карточки, без регистра и разрядки заголовка. */
+.stat__note {
+  margin-top: 6px;
+  font-size: clamp(12px, 1.2vh, 13.5px);
+  line-height: 1.4;
+  color: var(--gray-500);
+}
+
+.stat__note[hidden] { display: none; }
+
+/*
+ * Невысокий экран с тремя колонками: колонка статистики там по высоте окна
+ * и расти ей некуда. Пока пояснение открыто, оно встаёт вместо недельного
+ * графика — иначе нижняя карточка ушла бы за край.
+ */
+@media (min-width: 1024px) and (max-height: 759.98px) {
+  .stat--chart.has-note .week { display: none; }
+}
+
 .stat__big {
   display: block;
   font-family: var(--font-head);

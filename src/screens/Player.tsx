@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import {
@@ -1083,6 +1083,10 @@ export default function Player() {
 
   /* ─────────────  Цифры для правой колонки  ───────────── */
 
+  /** Пояснение к «Время в движении сегодня»: раскрывается прямо в карточке. */
+  const [timeNote, setTimeNote] = useState(false)
+  const timeNoteId = useId()
+
   const todaySeconds = (summary?.today_seconds ?? 0) + pendingSeconds + openSeconds
   const week = summary?.week ?? emptyWeek()
   const isToday = (date: string) => date === (summary?.local_today ?? week[week.length - 1].local_date)
@@ -1284,11 +1288,27 @@ export default function Player() {
 
         {/* Время за сегодня и неделя одной карточкой: раньше это были два
             блока с одной и той же цифрой в разном виде. */}
-        <section className="stat stat--accent stat--chart">
+        <section className={`stat stat--accent stat--chart ${timeNote ? 'has-note' : ''}`}>
           <header className="stat__head">
             <span>Время в движении сегодня</span>
-            <Info size={15} />
+            {/* Знак (i) раньше был картинкой и на касание не отвечал. Теперь
+                это кнопка: раскрывает и прячет пояснение строкой прямо в
+                карточке — окон поверх экрана в продукте нет. */}
+            <button
+              type="button"
+              className="stat__info"
+              aria-expanded={timeNote}
+              aria-controls={timeNoteId}
+              aria-label={timeNote ? 'Скрыть пояснение' : 'Что считается во времени в движении'}
+              onClick={() => setTimeNote((open) => !open)}
+            >
+              <Info size={15} />
+            </button>
           </header>
+          <p id={timeNoteId} className="stat__note" hidden={!timeNote}>
+            Считаются минуты, когда вы двигаетесь в плеере. Пауза и другие вкладки не считаются.
+            День — по вашему часовому поясу.
+          </p>
           <strong className="stat__big">{mmss(todaySeconds)}</strong>
           <div className="week">
             {week.map((d, i) => {
