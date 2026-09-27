@@ -36,12 +36,25 @@
 /* ——— Кольцо из штрихов ——— */
 .countdown__ring {
   position: relative;
-  width: min(48vh, 72vw, 560px);
-  width: min(48dvh, 72vw, 560px);
+  /* var(--vh) — dvh, а где его нет, vh (tokens.css). */
+  width: min(calc(48 * var(--vh)), 72vw, 560px);
   aspect-ratio: 1;
   margin-top: clamp(8px, 1.5vh, 24px);
   display: grid;
   place-items: center;
+}
+
+/* Без aspect-ratio (iOS 14, старые вьюхи) кольцо сплющивалось до высоты
+   цифры: высоту квадрату даёт распорка с padding-top: 100%, цифра — в той же
+   ячейке сетки. Где aspect-ratio есть, правило не действует. */
+@supports not (aspect-ratio: 1 / 1) {
+  .countdown__ring::before {
+    content: '';
+    grid-area: 1 / 1;
+    padding-top: 100%;
+  }
+
+  .countdown__center { grid-area: 1 / 1; }
 }
 
 .countdown__ticks {
@@ -151,7 +164,7 @@
   .countdown .logo__tagline { display: none; }
 
   .countdown__title { margin-top: 4px; font-size: 16px; }
-  .countdown__ring { width: min(52dvh, 36vw, 220px); margin-top: 4px; }
+  .countdown__ring { width: min(calc(52 * var(--vh)), 36vw, 220px); margin-top: 4px; }
   .countdown__number { font-size: 60px; }
   .countdown__caption { font-size: 12px; }
 

@@ -224,8 +224,10 @@
 
 /* ——— Визуал справа ——— */
 .hero__visual {
-  --figure-h: min(780px, calc(100vh - 250px));
-  --figure-h: min(780px, calc(100dvh - 250px));
+  /* var(--vh) — dvh, а где его нет, vh (tokens.css). Парой «vh, потом dvh»
+     пользовательское свойство не спасти: второе объявление выигрывает, даже
+     если браузер его не понимает, и высота фигуры пропадала. */
+  --figure-h: min(780px, calc(100 * var(--vh) - 250px));
   position: relative;
   display: grid;
   place-items: end center;
@@ -356,7 +358,7 @@
   .hero__lead { grid-area: lead; font-size: clamp(15px, 1.9vh, 19px); margin-bottom: 26px; }
   /* align-self: start — лишняя высота от фото уходит вниз, а не под кнопку. */
   .hero__cta { grid-area: cta; justify-self: start; align-self: start; }
-  .hero__visual { grid-area: visual; --figure-h: min(560px, calc(100dvh - 230px)); }
+  .hero__visual { grid-area: visual; --figure-h: min(560px, calc(100 * var(--vh) - 230px)); }
 
   .hero__features {
     grid-area: feat;
@@ -423,7 +425,7 @@
 
   .hero__visual {
     order: 5;
-    --figure-h: min(44dvh, 380px);
+    --figure-h: min(calc(44 * var(--vh)), 380px);
     min-height: var(--figure-h);
     margin: 18px 0 4px;
   }
@@ -464,6 +466,17 @@
   isolation: isolate;
   width: min(calc(var(--figure-h) * 672 / 934), 100%);
   aspect-ratio: 672 / 934;
+}
+
+/* Без aspect-ratio (iOS 14, старые вьюхи) блок был нулевой высоты, и постер
+   с анимацией (они absolute) не показывались вовсе: высоту даёт распорка с
+   padding-top в пропорции кадра. Где aspect-ratio есть, правило не действует. */
+@supports not (aspect-ratio: 1 / 1) {
+  .hero__mascot::before {
+    content: '';
+    display: block;
+    padding-top: calc(934 / 672 * 100%);
+  }
 }
 
 /*

@@ -219,13 +219,31 @@
 .stage__figure {
   position: relative;
   /* Круг забирает всю высоту, что остаётся под фразой. Кнопок «назад» и
-     «вперёд» под ним больше нет, поэтому места ему досталось заметно больше. */
-  width: min(calc(100vh - var(--stage-chrome)), 100%);
-  width: min(calc(100dvh - var(--stage-chrome)), 100%);
+     «вперёд» под ним больше нет, поэтому места ему досталось заметно больше.
+     var(--vh) — dvh, а где его нет, vh (tokens.css). */
+  width: min(calc(100 * var(--vh) - var(--stage-chrome)), 100%);
   aspect-ratio: 1;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
+}
+
+/*
+ * Браузеры без aspect-ratio (iOS 14, вьюхи на Chrome до 88): квадрат
+ * схлопывался в ноль по высоте, и круг с роликом пропадал. Высоту даёт
+ * невидимая распорка с padding-top: 100% — проценты отступа считаются от
+ * ширины; диск с роликами встаёт в ту же ячейку сетки. Кольцо, ноты и
+ * кнопка «Нажмите, чтобы начать» и так лежат поверх (absolute). Где
+ * aspect-ratio есть, правило не действует.
+ */
+@supports not (aspect-ratio: 1 / 1) {
+  .stage__figure::before {
+    content: '';
+    grid-area: 1 / 1;
+    padding-top: 100%;
+  }
+
+  .stage__disc { grid-area: 1 / 1; }
 }
 
 .stage__ring { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -416,7 +434,7 @@
 
   /* Обёртка обтягивает круг, кнопка встаёт в её угол. Ширина считается
      тем же выражением, что раньше стояло у самого круга. */
-  .stage__area { width: min(calc(100dvh - var(--stage-chrome)), 100%); }
+  .stage__area { width: min(calc(100 * var(--vh) - var(--stage-chrome)), 100%); }
   .stage__figure { width: 100%; }
 
   .stage__pause {
@@ -735,7 +753,7 @@
      Предел по ширине поднят с 70vw: без ленты по бокам круга пусто. */
   .stage__figure {
     --stage-chrome: calc(414px + var(--pause-row));
-    width: min(78vw, calc(100dvh - var(--stage-chrome)), 100%);
+    width: min(78vw, calc(100 * var(--vh) - var(--stage-chrome)), 100%);
   }
 
   .stage__pause,
@@ -858,7 +876,7 @@
      86vw → 92vw, по высоте 52dvh → 58dvh. Строка с паузой из предела по
      высоте по-прежнему вычитается, чтобы не отодвигать статистику под
      нижнюю панель. */
-  .stage__figure { width: min(92vw, calc(58dvh - var(--pause-row)), 100%); }
+  .stage__figure { width: min(92vw, calc(58 * var(--vh) - var(--pause-row)), 100%); }
 
   /* Подпись рядом с кнопкой снова видна: в строке под кругом ей есть где
      встать — раньше её прятали, потому что круг занимал всю ширину. */
@@ -928,8 +946,8 @@
   .player--banner .stage__figure {
     width: min(
       92vw,
-      calc(58dvh - var(--pause-row)),
-      max(200px, calc(100dvh - 340px - env(safe-area-inset-top) - env(safe-area-inset-bottom))),
+      calc(58 * var(--vh) - var(--pause-row)),
+      max(200px, calc(100 * var(--vh) - 340px - env(safe-area-inset-top) - env(safe-area-inset-bottom))),
       100%
     );
   }
@@ -1000,7 +1018,7 @@
 
   /* Круг здесь слева, и плашка его не сдвигает: предел телефона в портрете
      (правило выше) снимаем — та же ширина, что без плашки. */
-  .player--banner .stage__figure { width: min(calc(86dvh - var(--pause-row)), 40vw, 100%); }
+  .player--banner .stage__figure { width: min(calc(86 * var(--vh) - var(--pause-row)), 40vw, 100%); }
 
   /* На 390 px высоты полноразмерная строка съела бы круг: здесь она ниже,
      вместе с уменьшенной кнопкой. */
@@ -1010,7 +1028,7 @@
   /* Ряд кнопок под кругом убрали, а следом и ленту потоков — освободившуюся
      высоту забирает круг (было 62dvh, потом 76dvh); строку с паузой из этой
      высоты вычитаем. */
-  .stage__figure { width: min(calc(86dvh - var(--pause-row)), 40vw, 100%); }
+  .stage__figure { width: min(calc(86 * var(--vh) - var(--pause-row)), 40vw, 100%); }
   .stage__note { display: none; }
 
   .stage__pause,
