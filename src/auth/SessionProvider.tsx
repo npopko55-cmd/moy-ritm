@@ -50,6 +50,7 @@ import { onAppReturn } from '../lib/appReturn'
 import { flushBeforeSignOut } from '../lib/chunks'
 import { forgetFunnelToken, launchFunnel, readFunnelToken, saveFunnelToken } from '../lib/funnel'
 import { saveMoveInterval } from '../lib/settings'
+import { useSitePaymentWatch } from '../lib/sitePayment'
 import { linkTelegramFromBot } from '../lib/tgLink'
 import { IN_TELEGRAM, telegramInitData, telegramLog } from '../lib/telegram'
 
@@ -286,6 +287,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }),
     [reload],
   )
+
+  // Мини-ап отправил человека оплачивать на сайт — четверть часа перечитываем
+  // доступ сами, чтобы после оплаты он открылся сразу (src/lib/sitePayment.ts).
+  useSitePaymentWatch(reload, meRef)
 
   /**
    * Привязать Telegram после регистрации или входа, если мини-ап ответил

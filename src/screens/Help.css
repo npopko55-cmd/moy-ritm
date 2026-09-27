@@ -64,5 +64,13 @@
   .help__tg { width: 100%; }
 }
 
+/* «Не открывается оплата? Выключите VPN…» — тихой строкой под кнопкой. */
+.help__vpn {
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--gray-500);
+}
+
 /* Оферта и политика — тихой строкой под карточками. */
 .help__legal { margin-top: clamp(22px, 3vh, 32px); }

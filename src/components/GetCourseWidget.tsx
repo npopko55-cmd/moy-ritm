@@ -50,9 +50,14 @@ type Props = {
    * чужом iframe, и её сбоев при отправке отсюда не видно.
    */
   backup?: ReactNode
+  /**
+   * Тихая строка под формой — и пока она грузится, и когда пришла. В
+   * запасном блоке (fallback) своя подсказка, поэтому там этой строки нет.
+   */
+  note?: ReactNode
 }
 
-export default function GetCourseWidget({ widget, prefill, fallback, backup }: Props) {
+export default function GetCourseWidget({ widget, prefill, fallback, backup, note }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const [stage, setStage] = useState<Stage>('loading')
   const { src, element_id: id } = widget
@@ -138,6 +143,7 @@ export default function GetCourseWidget({ widget, prefill, fallback, backup }: P
       {stage === 'loading' && <WidgetSkeleton />}
       {stage === 'ready' && backup}
       {stage === 'failed' && fallback}
+      {stage !== 'failed' && note}
     </div>
   )
 }

@@ -132,6 +132,33 @@
   .checkout__backup a:hover { color: var(--pink-600); }
 }
 
+/* «Не открывается оплата? Выключите VPN…» — мелко под формой и кнопкой
+   оплаты; в запасном блоке, когда форма не пришла, — заметнее. */
+.checkout__vpn {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gray-400);
+  text-align: center;
+}
+
+.checkout__vpn.is-loud {
+  margin-top: 14px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+/* Мини-ап: на сайте входить той же почтой и паролем. */
+.checkout__login {
+  margin: -4px 0 14px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-700);
+}
+
+.checkout__login b { font-weight: 700; word-break: break-all; }
+
 /* Подтверждение почты и ошибки — спокойной плашкой, как на тарифах. */
 .checkout__msg {
   padding: clamp(14px, 2vh, 20px) clamp(14px, 2vh, 20px);

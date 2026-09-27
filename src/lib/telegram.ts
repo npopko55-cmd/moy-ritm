@@ -72,11 +72,22 @@ const SESSION_KEY = 'moy-ritm.tg'
 /** Сайт, куда мини-ап уводит платить: во внешнем браузере. */
 const SITE_URL = 'https://ritmritm.ru'
 
+/**
+ * Метка в адресе сайта, открытого из мини-апа: ?miniapp=1. По ней сайт после
+ * оплаты зовёт вернуться в Telegram (cameFromMiniApp), а вход подсказывает
+ * ту же почту и пароль.
+ */
+const MINIAPP_PARAM = 'miniapp'
+
 /** Куда ведут кнопки оплаты в мини-апе: тарифы на сайте, во внешнем браузере. */
-export const SITE_TARIFFS_URL = `${SITE_URL}/tariffs`
+export const SITE_TARIFFS_URL = `${SITE_URL}/tariffs?${MINIAPP_PARAM}=1`
 
 /** Страница оплаты выбранного тарифа на сайте: /pay/<код>. */
-export const sitePayUrl = (code: string): string => `${SITE_URL}/pay/${encodeURIComponent(code)}`
+export const sitePayUrl = (code: string): string =>
+  `${SITE_URL}/pay/${encodeURIComponent(code)}?${MINIAPP_PARAM}=1`
+
+/** Бот «Моего ритма»: из браузера после оплаты — обратно в Telegram. */
+export const BOT_URL = 'https://t.me/ritmritm_bot'
 
 /** Цвет шапки и фона Telegram — фон сайта (--bg в tokens.css). */
 const SITE_BG = '#ffffff'
@@ -152,6 +163,107 @@ function readUrlStartParam(): string {
 }
 
 const urlStartParam = readUrlStartParam()
+
+/* ─────────────  Сайт, открытый из мини-апа  ───────────── */
+
+/** Когда сайт открыли из мини-апа (метка ?miniapp=1) — в этом браузере. */
+const MINIAPP_VISIT_KEY = 'moy-ritm.miniapp_visit'
+
+/** Дольше метка не живёт: оплата — дело одного вечера, а не недели. */
+const MINIAPP_VISIT_MS = 24 * 60 * 60_000
+
+/**
+ * Метка ?miniapp=1 — один раз при загрузке, до того как роутер уйдёт на
+ * вход, а виджет оплаты перепишет адрес своими полями. Запоминаем её в
+ * localStorage (GetCourse вернёт на /payment/success в ту же вкладку, но
+ * вход и подтверждение почты могут увести в другую) и убираем из адреса.
+ */
+function captureMiniAppVisit(): void {
+  if (IN_TELEGRAM) return
+  try {
+    const url = new URL(window.location.href)
+    if (url.searchParams.get(MINIAPP_PARAM) !== '1') return
+    try {
+      localStorage.setItem(MINIAPP_VISIT_KEY, String(Date.now()))
+    } catch {
+      /* приватный режим — после оплаты позовём в поток, как всех */
+    }
+    url.searchParams.delete(MINIAPP_PARAM)
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+  } catch {
+    /* адрес не разобрался — метки нет */
+  }
+}
+
+captureMiniAppVisit()
+
+/** Человек открыл сайт из мини-апа (кнопкой «Оформить на сайте»). */
+export function cameFromMiniApp(): boolean {
+  if (IN_TELEGRAM) return false
+  try {
+    const at = Number(localStorage.getItem(MINIAPP_VISIT_KEY))
+    return Number.isFinite(at) && at > 0 && Date.now() - at < MINIAPP_VISIT_MS
+  } catch {
+    return false
+  }
+}
+
+/** Оплата прошла — метка больше не нужна. */
+export function forgetMiniAppVisit(): void {
+  try {
+    localStorage.removeItem(MINIAPP_VISIT_KEY)
+  } catch {
+    /* нечего забывать */
+  }
+}
+
+/* ─────────────  Мини-ап ждёт оплату с сайта  ───────────── */
+
+/** Когда из мини-апа ушли оформлять доступ на сайт. Переживает перезагрузку мини-апа. */
+const SITE_PAY_KEY = 'moy-ritm.tg.site_pay_at'
+
+let sitePayAt: number | null = null
+const sitePayListeners = new Set<() => void>()
+
+/** Ушли оформлять доступ на сайт — ожидание оплаты (src/lib/sitePayment.ts). */
+function markSitePayment(): void {
+  sitePayAt = Date.now()
+  try {
+    sessionStorage.setItem(SITE_PAY_KEY, String(sitePayAt))
+  } catch {
+    /* хватит памяти страницы */
+  }
+  for (const fn of [...sitePayListeners]) safely('оплата на сайте', fn)
+}
+
+/** Когда в последний раз уходили оформлять доступ на сайт; null — не уходили. */
+export function sitePaymentAt(): number | null {
+  if (sitePayAt !== null) return sitePayAt
+  try {
+    const saved = Number(sessionStorage.getItem(SITE_PAY_KEY))
+    return Number.isFinite(saved) && saved > 0 ? saved : null
+  } catch {
+    return null
+  }
+}
+
+/** Оплата пришла — ждать больше нечего. */
+export function forgetSitePayment(): void {
+  sitePayAt = null
+  try {
+    sessionStorage.removeItem(SITE_PAY_KEY)
+  } catch {
+    /* нечего забывать */
+  }
+}
+
+/** Подписка на уход оформлять доступ на сайт. Зовётся в самом касании. */
+export function onSitePayment(fn: () => void): () => void {
+  sitePayListeners.add(fn)
+  return () => {
+    sitePayListeners.delete(fn)
+  }
+}
 
 /** Хук-обёртка над тем же флагом: так экраны не зависят от того, откуда он. */
 export function useInTelegram(): boolean {
@@ -434,8 +546,12 @@ export function onTelegramEvent(event: TelegramEvent, handler: () => void): () =
  * Скрипт не ждём: кнопка оплаты срабатывает сразу. Скрипта нет (ещё грузится
  * или не пришёл) — то же событие web_app_open_link напрямую; клиент старше
  * 6.1 его не знает — обычная ссылка в новой вкладке, как у самого скрипта.
+ *
+ * Уход запоминаем: мини-ап ждёт оплату и сам перечитывает доступ
+ * (src/lib/sitePayment.ts).
  */
 function openOnSite(url: string): void {
+  markSitePayment()
   const app = window.Telegram?.WebApp
   if (app) {
     try {

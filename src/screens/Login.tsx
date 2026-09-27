@@ -10,6 +10,7 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react
 import { IS_DEMO } from '../api/client'
 import { safeNext } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
+import { cameFromMiniApp } from '../lib/telegram'
 import {
   AccountShell,
   Field,
@@ -31,6 +32,9 @@ export default function Login() {
 
   // Почта пришла готовой — фокус сразу в пароль. Считается один раз, при открытии.
   const [prefilled] = useState(() => emailFromState(location.state))
+  // Сайт открыли из мини-апа кнопкой «Оформить на сайте»: аккаунт у человека
+  // уже есть, в Telegram. Подсказываем входить им, а не заводить второй.
+  const [fromMiniApp] = useState(cameFromMiniApp)
   const [email, setEmail] = useState(prefilled)
   const [password, setPassword] = useState('')
   const [bad, setBad] = useState({ email: '', password: '' })
@@ -62,7 +66,10 @@ export default function Login() {
   }
 
   return (
-    <AccountShell title="Вход" lead="Почта и пароль — и снова в поток.">
+    <AccountShell
+      title="Вход"
+      lead={fromMiniApp ? 'Та же почта и пароль, что в Telegram.' : 'Почта и пароль — и снова в поток.'}
+    >
       <Form onSubmit={submit}>
         <Field
           label="Почта"

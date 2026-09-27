@@ -14,7 +14,7 @@
 import { useSession } from '../auth/SessionProvider'
 import { Telegram } from '../components/Icons'
 import LegalLinks from '../components/LegalLinks'
-import { TELEGRAM_URL } from '../data/support'
+import { TELEGRAM_URL, VPN_HINT } from '../data/support'
 import PageShell, { Card } from './Page'
 import './Help.css'
 
@@ -74,6 +74,9 @@ export default function Help() {
           <Telegram size={22} />
           Написать в Telegram
         </a>
+        {/* Самая частая беда с оплатой решается без переписки — строкой прямо
+            под кнопкой, а не спрятанной в вопросах ниже. */}
+        <p className="help__vpn">{VPN_HINT}</p>
       </Card>
 
       <Card title="Частые вопросы">

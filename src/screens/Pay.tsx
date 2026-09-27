@@ -26,6 +26,7 @@ import { ApiError, type Checkout, type CheckoutTariff } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import GetCourseWidget, { WidgetSkeleton } from '../components/GetCourseWidget'
 import { Clock, Shield } from '../components/Icons'
+import { VPN_HINT } from '../data/support'
 import { rub } from '../data/tariffs'
 import { plural } from '../lib/date'
 import { rememberAccessBefore } from '../lib/payment'
@@ -128,7 +129,7 @@ export default function Pay() {
 
   let payment
   if (inTelegram) {
-    payment = <InTelegram code={code} />
+    payment = <InTelegram code={code} email={me?.user.email ?? ''} />
   } else if (load.kind === 'verify') {
     payment = <VerifyEmail email={me?.user.email ?? ''} />
   } else if (load.kind === 'error') {
@@ -156,6 +157,7 @@ export default function Pay() {
           <PayLink
             url={page_url}
             note="Форма оплаты не загрузилась. Оплатить можно на странице GetCourse — почта там уже подставлена."
+            vpn="loud"
           />
         }
         backup={
@@ -166,6 +168,7 @@ export default function Pay() {
             </a>
           </p>
         }
+        note={<p className="checkout__vpn">{VPN_HINT}</p>}
       />
     ) : (
       <PayLink
@@ -252,9 +255,10 @@ function TariffCardSkeleton() {
 
 /**
  * Переход на страницу оплаты GetCourse — обычной ссылкой в этой же вкладке:
- * без виджета это единственный путь, с виджетом — запасной.
+ * без виджета это единственный путь, с виджетом — запасной. Под кнопкой —
+ * подсказка про VPN: в запасном блоке (форма не пришла) заметнее.
  */
-function PayLink({ url, note }: { url: string; note: string }) {
+function PayLink({ url, note, vpn = 'quiet' }: { url: string; note: string; vpn?: 'quiet' | 'loud' }) {
   const { access } = useSession()
   return (
     <div className="checkout__link">
@@ -262,6 +266,7 @@ function PayLink({ url, note }: { url: string; note: string }) {
       <a className="form__submit" href={url} onClick={() => rememberAccessBefore(access)}>
         Перейти к оплате
       </a>
+      <p className={`checkout__vpn ${vpn === 'loud' ? 'is-loud' : ''}`}>{VPN_HINT}</p>
     </div>
   )
 }
@@ -317,13 +322,20 @@ function VerifyEmail({ email }: { email: string }) {
   )
 }
 
-/** Мини-ап Telegram: оплаты внутри нет, открываем эту страницу на сайте. */
-function InTelegram({ code }: { code: string }) {
+/**
+ * Мини-ап Telegram: оплаты внутри нет, открываем эту страницу на сайте.
+ * Во внешнем браузере человек ещё не вошёл — подсказываем, что входить той же
+ * почтой и паролем: иначе он заводил второй аккаунт или бросал оплату.
+ */
+function InTelegram({ code, email }: { code: string; email: string }) {
   return (
     <div className="checkout__link">
       <p className="checkout__note">
         В Telegram оплата не работает — таковы его правила. Оформите доступ на сайте: этот тариф
         откроется сразу.
+      </p>
+      <p className="checkout__login">
+        Войдите на сайте той же почтой и паролем{email ? <>: <b>{email}</b></> : null}
       </p>
       <button className="form__submit" type="button" onClick={() => openPayOnSite(code)}>
         Оформить на сайте

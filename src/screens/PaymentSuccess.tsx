@@ -31,6 +31,7 @@ import { useSession } from '../auth/SessionProvider'
 import { DEFAULT_STREAM } from '../data/streams'
 import { formatDate } from '../lib/date'
 import { forgetAccessBefore, paymentArrived, readAccessBefore } from '../lib/payment'
+import { BOT_URL, cameFromMiniApp, forgetMiniAppVisit } from '../lib/telegram'
 import { useResendConfirmation } from '../lib/useResendConfirmation'
 import { keepAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
@@ -63,6 +64,9 @@ export default function PaymentSuccess() {
   const navigate = useNavigate()
   const { me, access: sessionAccess, reload } = useSession()
   const [framed] = useState(inOwnFrame)
+  // Пришёл из мини-апа («Оформить на сайте»): тренируется он в Telegram, и
+  // после оплаты зовём туда, а не в поток на сайте. Читаем один раз.
+  const [fromMiniApp] = useState(cameFromMiniApp)
   // RequireAuth пускает сюда только вошедших, так что профиль есть.
   const verified = me?.user.email_verified !== false
   const resend = useResendConfirmation()
@@ -147,12 +151,17 @@ export default function PaymentSuccess() {
   }, [])
 
   // Оплата прошла — показали и ушли в поток. Запомненный срок больше не нужен.
+  // Пришедшего из мини-апа в поток на сайте не уводим: его ждёт Telegram.
   useEffect(() => {
     if (stage !== 'paid' || framed) return
     forgetAccessBefore()
+    if (fromMiniApp) {
+      forgetMiniAppVisit()
+      return
+    }
     const id = window.setTimeout(() => navigate(`/start/${DEFAULT_STREAM.id}`), LEAVE_MS)
     return () => window.clearTimeout(id)
-  }, [stage, navigate])
+  }, [stage, navigate, fromMiniApp])
 
   const again = useCallback(() => {
     stop()
@@ -224,6 +233,36 @@ export default function PaymentSuccess() {
     )
   }
 
+  if (stage === 'paid' && fromMiniApp) {
+    return (
+      <AccountShell title="Оплата прошла" lead="Вернитесь в Telegram — доступ уже открыт">
+        <div className="pay">
+          <Ring done />
+          {access?.paid_until && (
+            <p className="pay__hint">Доступ до {formatDate(access.paid_until)}.</p>
+          )}
+        </div>
+        <div className="form__actions">
+          <a className="form__submit" href={BOT_URL}>
+            Вернуться в Telegram
+          </a>
+        </div>
+        <nav className="account__links">
+          <Link
+            to={`/start/${DEFAULT_STREAM.id}`}
+            onClick={() => {
+              unlockMedia()
+              keepAwake()
+            }}
+          >
+            Заниматься здесь
+          </Link>
+          <Link to="/">На главную</Link>
+        </nav>
+      </AccountShell>
+    )
+  }
+
   if (stage === 'paid') {
     return (
       <AccountShell
@@ -286,6 +325,9 @@ export default function PaymentSuccess() {
         <p className="pay__hint">
           Деньги уже у платёжной системы. Мы ждём от неё подтверждения и сразу откроем доступ.
         </p>
+        {fromMiniApp && (
+          <p className="pay__hint">Когда оплата пройдёт, вернитесь в Telegram — доступ откроется и там.</p>
+        )}
         <FormError>{error}</FormError>
       </div>
     </AccountShell>

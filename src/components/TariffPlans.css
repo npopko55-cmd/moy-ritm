@@ -166,6 +166,17 @@
 }
 
 /* ——— Строка об оферте под карточками ——— */
+/* Мини-ап: подсказка, что на сайте входить той же почтой и паролем. */
+.tariffs__site-login {
+  margin-top: clamp(12px, 1.4vw, 16px);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-700);
+  text-align: center;
+}
+
+.tariffs__site-login b { font-weight: 700; word-break: break-all; }
+
 .tariffs__oferta {
   margin-top: clamp(12px, 1.4vw, 16px);
   font-size: 12.5px;

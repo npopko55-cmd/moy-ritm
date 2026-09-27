@@ -30,7 +30,7 @@ import './TariffPlans.css'
 
 export default function TariffPlans() {
   const navigate = useNavigate()
-  const { access } = useSession()
+  const { me, access } = useSession()
   const inTelegram = useInTelegram()
 
   // null — ещё грузим: в это время в карточках стоит скелетон.
@@ -96,6 +96,14 @@ export default function TariffPlans() {
               </li>
             ))}
       </ul>
+
+      {/* Мини-ап: оплата — на сайте, во внешнем браузере, где человек ещё не
+          вошёл. Без подсказки он заводил там второй аккаунт или бросал оплату. */}
+      {inTelegram && me && (
+        <p className="tariffs__site-login">
+          Оплата — на сайте. Войдите там той же почтой и паролем: <b>{me.user.email}</b>
+        </p>
+      )}
 
       <p className="tariffs__oferta">
         Оплачивая доступ, вы принимаете <Link to="/oferta">условия публичной оферты</Link>
