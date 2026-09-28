@@ -134,7 +134,7 @@ export type Tariff = {
   features: string[]
   is_recommended: boolean
   note: string | null
-  /** Текст владельца («−15%»), а не посчитанный процент. Пусто — бейджа нет. */
+  /** Текст владельца («−32%»), а не посчитанный процент. Пусто — бейджа нет. */
   discount_label: string | null
   per_month: number
   /** У самого короткого тарифа выгоды нет. */
