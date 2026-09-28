@@ -13,17 +13,29 @@ import { Link } from 'react-router-dom'
 import { ApiError } from '../api/types'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
+import { plural } from '../lib/date'
 import '../components/Logo.css'
 import './Account.css'
 
 export const MIN_PASSWORD = 8
 export const MAX_PASSWORD = 128
 
-/** «через 12 минут» / «через 40 секунд» — как человек и говорит. */
+const HOUR = 3600
+
+/**
+ * «через 40 секунд» / «через 12 минут» / «через 3 часа» — как человек и
+ * говорит; идёт после «Попробуйте». Округляем вверх: раньше срока сервер всё
+ * равно откажет. Дольше 12 часов (суточный лимит регистраций) — «завтра»:
+ * «через 834 мин» никто не пересчитывает.
+ */
 export function retryText(seconds?: number): string {
   if (!seconds || seconds < 1) return 'чуть позже'
-  if (seconds < 90) return `через ${seconds} сек`
-  return `через ${Math.ceil(seconds / 60)} мин`
+  const s = Math.ceil(seconds)
+  if (s > 12 * HOUR) return 'завтра'
+  if (s < 60) return `через ${plural(s, 'секунду', 'секунды', 'секунд')}`
+  const minutes = Math.ceil(s / 60)
+  if (minutes < 60) return `через ${plural(minutes, 'минуту', 'минуты', 'минут')}`
+  return `через ${plural(Math.ceil(s / HOUR), 'час', 'часа', 'часов')}`
 }
 
 /**
