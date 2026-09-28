@@ -6,7 +6,7 @@ import { useFlow } from '../flow/FlowSession'
 import LegalLinks from '../components/LegalLinks'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
-import { ArrowRight, Bolt, Heart, MusicNote } from '../components/Icons'
+import { ArrowRight } from '../components/Icons'
 import { asset } from '../lib/asset'
 import { loopPoster, loopSrc } from '../data/loops'
 import { MASCOT_AS_IMAGE, useMascot } from '../lib/mascot'
@@ -18,24 +18,33 @@ import { DEFAULT_STREAM, WARM_MOVES } from '../data/streams'
 import '../components/Logo.css'
 import './Landing.css'
 
-const FEATURES = [
+/*
+ * Четыре шага под героем — как заниматься (тексты Димы, 28.09.2026).
+ *
+ * \n — единственное место переноса. На планшете и десктопе шаги стоят в ряд,
+ * и каждая строка ломается ровно здесь (white-space: pre-line): у всех
+ * четырёх по две строки заголовка и две строки под ним. На телефоне текст
+ * идёт в строку, а если не влезет, ломается здесь же: остальные пробелы
+ * неразрывные (NB), и предлог не повиснет в конце строки.
+ */
+const NB = '\u00a0'
+
+const STEPS = [
+  { tone: 'pink', title: `Заходите\nна${NB}сайт`, text: `Из${NB}дома\nили${NB}офиса` },
   {
-    icon: <MusicNote size={22} />,
-    tone: 'pink',
-    title: 'Музыка ведёт',
-    text: 'Энергия и настроение\nв каждом движении',
-  },
-  {
-    icon: <Bolt size={22} />,
     tone: 'orange',
-    title: 'Просто начать',
-    text: 'Один клик — и вы\nуже в движении',
+    title: `Подвигайтесь\nпод${NB}музыку`,
+    text: `Без${NB}переодеваний\nи${NB}подготовки`,
   },
   {
-    icon: <Heart size={22} />,
     tone: 'pink',
-    title: 'Для вас',
-    text: 'Движения и музыка\nна любой вкус',
+    title: `Возвращайтесь\nк${NB}своим${NB}делам`,
+    text: `С${NB}новыми${NB}силами\nи${NB}энергией`,
+  },
+  {
+    tone: 'orange',
+    title: 'Возвращайтесь\nснова',
+    text: `Когда${NB}появится\nсвободная${NB}минутка`,
   },
 ] as const
 
@@ -60,16 +69,17 @@ export default function Landing() {
   const resend = useResendConfirmation()
 
   /*
-   * «О нас» — раздел о проекте: три строки «Музыка ведёт», «Просто начать»,
-   * «Для вас» под героем. Отдельной страницы «О нас» нет, а ссылка раньше
-   * вела на якорь, которого на странице не было, — и никуда не вела.
+   * «О нас» — четыре шага под героем: «Заходите на сайт», «Подвигайтесь под
+   * музыку», «Возвращайтесь к своим делам», «Возвращайтесь снова» (STEPS).
+   * Отдельной страницы «О нас» нет, а ссылка раньше вела на якорь, которого
+   * на странице не было, — и никуда не вела.
    *
    * Касание прокручивает к разделу и коротко подсвечивает его: на широком
    * экране лендинг умещается целиком, и без подсветки казалось бы, что
    * ничего не произошло. С других страниц сюда ведёт адрес /#about — он
    * делает то же самое при открытии.
    */
-  const about = useRef<HTMLUListElement>(null)
+  const about = useRef<HTMLOListElement>(null)
   const showAbout = useCallback(() => {
     const el = about.current
     if (!el) return
@@ -106,7 +116,8 @@ export default function Landing() {
     const warmUp = () => {
       stopIdle = whenIdle(() => {
         // Код отсчёта, плеера и входа — отдельные куски: качаем их заранее,
-        // чтобы кнопка «Влиться в поток» не ждала скрипта на слабой сети.
+        // чтобы кнопки старта («Начать двигаться», «Влиться в поток» в шапке)
+        // не ждали скрипта на слабой сети.
         preloadWorkout()
         login.preload()
         prefetchImages(DEFAULT_STREAM.loops.slice(0, WARM_MOVES).map((l) => loopPoster(l.id)))
@@ -122,7 +133,7 @@ export default function Landing() {
   }, [])
 
   // Вошедшему — заранее спросить о пробном периоде воронки: охранник
-  // тренировки решает по нему, и «Влиться в поток» тогда не ждёт ответа.
+  // тренировки решает по нему, и кнопки старта тогда не ждут ответа.
   const userId = me?.user.id
   useEffect(() => {
     if (!userId) return
@@ -212,35 +223,50 @@ export default function Landing() {
           <p className="hero__kicker">Двигайтесь. Чувствуйте. Живите.</p>
 
           <h1 className="hero__title">
-            Ваш поток
+            Попробуйте фитнес
             <br />
-            движений под музыку
+            микродозами!
           </h1>
 
+          {/* Строки ломаются только между фразами, по смыслу: внутри фразы
+              переноса нет (.hero__phrase). На телефоне три строки, на
+              широком экране две: «…несколько раз в день / и набирайте
+              активность» (max-width в Landing.css). */}
           <p className="hero__lead">
-            Просто включайте и двигайтесь в ритме.
-            <br />В любое время. В любом месте.
+            <span className="hero__phrase">Занимайтесь по 2–5 минут</span>{' '}
+            <span className="hero__phrase">несколько раз в день</span>{' '}
+            <span className="hero__phrase">и набирайте активность</span>
           </p>
 
-          <button className="btn btn--pink-lg hero__cta" onClick={start}>
-            {flowLabel(flow)}
-            <span className="hero__cta-arrow">
-              <ArrowRight size={19} />
-            </span>
-          </button>
+          {/* Кнопка и строка под ней — один блок: на планшете они вместе
+              стоят в своей ячейке сетки, на телефоне встают на место по order.
+              Тренировка уже идёт — кнопка, как и в шапке, зовёт «Вернуться
+              в поток»; в шапке для нового захода остаётся «Влиться в поток». */}
+          <div className="hero__start">
+            <button className="btn btn--pink-lg hero__cta" onClick={start}>
+              {flow ? flowLabel(flow) : 'Начать двигаться'}
+              <span className="hero__cta-arrow">
+                <ArrowRight size={19} />
+              </span>
+            </button>
+            <p className="hero__note">
+              <span className="hero__phrase">Включайте в любой момент</span>{' '}
+              <span className="hero__phrase">и двигайтесь сколько хочется.</span>
+            </p>
+          </div>
 
           {/* Раздел «О нас» — на него ведёт ссылка в шапке и адрес /#about. */}
-          <ul className="hero__features" id="about" ref={about}>
-            {FEATURES.map((f) => (
-              <li key={f.title} className="feature">
-                <span className={`feature__icon feature__icon--${f.tone}`}>{f.icon}</span>
-                <div className="feature__body">
-                  <span className="feature__title">{f.title}</span>
-                  <span className="feature__text">{f.text}</span>
+          <ol className="hero__steps" id="about" ref={about}>
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="step">
+                <span className={`step__num step__num--${s.tone}`}>{i + 1}</span>
+                <div className="step__body">
+                  <span className="step__title">{s.title}</span>
+                  <span className="step__text">{s.text}</span>
                 </div>
               </li>
             ))}
-          </ul>
+          </ol>
         </div>
 
         <div className="hero__visual">
