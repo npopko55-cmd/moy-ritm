@@ -1617,5 +1617,160 @@ export function createDemoAdminApi(): AdminApi {
       const head = ['Дата', 'Почта', 'Telegram id', 'Воронка', 'День опроса', ...keys].join(';')
       return new Blob(['\ufeff' + [head, ...rows].join('\n')], { type: 'text/csv;charset=utf-8' })
     },
+
+    async paymentProblems(token, q) {
+      check(token)
+      return demoPaymentsPage(q)
+    },
+
+    async grantPayment(token, id, input) {
+      check(token)
+      return demoGrantPayment(id, input)
+    },
   }
+}
+
+/* ——— Оплаты без доступа (раздел «Оплаты») ———
+   Состояние — на весь модуль, а не внутри createDemoAdminApi: демо-админка
+   собирается заново на каждый вызов (lazyDemoAdminApi), и выданный доступ
+   иначе пропадал бы при следующей загрузке списка. */
+
+type PaymentProblem = import('./admin').PaymentProblem
+type PaymentProblems = import('./admin').PaymentProblems
+type PaymentProblemsQuery = import('./admin').PaymentProblemsQuery
+type PaymentGrantInput = import('./admin').PaymentGrantInput
+type PaymentGrantResult = import('./admin').PaymentGrantResult
+
+const DEMO_PAYMENT_TARIFFS = TARIFFS.map((t) => ({ code: t.code, name: t.name }))
+const demoTariffOf = (code: string) => DEMO_PAYMENT_TARIFFS.find((t) => t.code === code) ?? null
+const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString()
+
+type PaymentFields = Partial<PaymentProblem> & Pick<PaymentProblem, 'id' | 'received_at' | 'status'>
+
+const paymentRow = (fields: PaymentFields): PaymentProblem => ({
+  detail: null,
+  order_id: null,
+  order_number: null,
+  email: null,
+  offer_id: null,
+  offer_title: null,
+  tariff: null,
+  amount: null,
+  currency: 'RUB',
+  user: null,
+  access: null,
+  can_grant: true,
+  ...fields,
+})
+
+/** По строке на каждый случай раздела: всё, что владелец увидит в бою. */
+function demoPaymentProblems(): PaymentProblem[] {
+  return [
+    paymentRow({
+      id: 'demo-pay-1', received_at: hoursAgo(3), status: 'unmatched_user',
+      detail: 'не нашли человека: почта «marina.k@mail.ru», gc_user_id «302118», метка «»',
+      order_id: '897313536', order_number: '5501', email: 'marina.k@mail.ru',
+      offer_id: '5001', offer_title: 'Мой ритм — 1 месяц', tariff: demoTariffOf('month'), amount: 590,
+    }),
+    paymentRow({
+      id: 'demo-pay-2', received_at: hoursAgo(20), status: 'unknown_offer',
+      detail: 'оффер 7002 «Мой ритм — 3 месяца (рассрочка)» не привязан ни к одному тарифу',
+      order_id: '897400012', order_number: '5507', email: 'olga@example.com',
+      offer_id: '7002', offer_title: 'Мой ритм — 3 месяца (рассрочка)', amount: 1490,
+      user: { id: 'demo-user-olga', email: 'olga@example.com', email_verified: true },
+    }),
+    paymentRow({
+      id: 'demo-pay-3', received_at: hoursAgo(30), status: 'error',
+      detail: 'в запросе нет ID заказа: добавьте параметр order_id с подстановкой {object.id} в действие «Вызвать URL»',
+      order_number: '5512', email: 'irina@yandex.ru', offer_id: '5003', offer_title: 'Мой ритм — 6 месяцев',
+      tariff: demoTariffOf('half'), amount: 2490, can_grant: false,
+      user: { id: 'demo-user-irina', email: 'irina@yandex.ru', email_verified: false },
+    }),
+    paymentRow({
+      id: 'demo-pay-4', received_at: hoursAgo(50), status: 'unmatched_user',
+      detail: 'не нашли человека: почта «elena.s@bk.ru», gc_user_id «302540», метка «»',
+      order_id: '897288800', order_number: '5490', email: 'elena.s@bk.ru',
+      offer_id: '5004', offer_title: 'Мой ритм — 12 месяцев', tariff: demoTariffOf('year'), amount: 3990,
+      access: {
+        user_email: 'elena.smirnova@gmail.com',
+        paid_until: new Date(Date.now() + 360 * DAY_MS).toISOString(),
+        source: 'reconcile',
+      },
+      can_grant: false,
+    }),
+  ]
+}
+
+/** Чужие оплаты общего аккаунта GetCourse: видны только по чипу «Показать чужие». */
+function demoForeignPayments(): PaymentProblem[] {
+  const foreign = (id: string, hours: number, order: string, email: string) =>
+    paymentRow({
+      id, received_at: hoursAgo(hours), status: 'unknown_offer',
+      detail: 'оффер 3301 «Абонемент в онлайн-клуб «Шагай дома»» не привязан ни к одному тарифу',
+      order_id: order, email, offer_id: '3301', offer_title: 'Абонемент в онлайн-клуб «Шагай дома»', amount: 9990,
+    })
+  return [foreign('demo-pay-f1', 6, '897350001', 'tatiana@mail.ru'), foreign('demo-pay-f2', 26, '897350002', 'natasha@bk.ru')]
+}
+
+let demoPayments: { ours: PaymentProblem[]; foreign: PaymentProblem[] } | null = null
+
+const demoPaymentState = () => (demoPayments ??= { ours: demoPaymentProblems(), foreign: demoForeignPayments() })
+
+function demoPaymentsPage(q: PaymentProblemsQuery): PaymentProblems {
+  const state = demoPaymentState()
+  const inPeriod = (p: PaymentProblem) => {
+    const at = Date.parse(p.received_at)
+    if (q.from && at < dayStart(q.from)) return false
+    if (q.to && at >= dayStart(q.to) + DAY_MS) return false
+    return true
+  }
+  const ours = state.ours.filter(inPeriod)
+  const foreign = state.foreign.filter(inPeriod)
+  const items = (q.foreign ? [...ours, ...foreign] : ours).sort(
+    (a, b) => Date.parse(b.received_at) - Date.parse(a.received_at),
+  )
+  return { items, total: items.length, foreign_hidden: q.foreign ? 0 : foreign.length, tariffs: DEMO_PAYMENT_TARIFFS }
+}
+
+/** Ответы и отказы — как у бэкенда; аккаунта в демо нет только у адресов на «net…». */
+function demoGrantPayment(id: string, input: PaymentGrantInput): PaymentGrantResult {
+  const state = demoPaymentState()
+  const list = state.ours.some((p) => p.id === id) ? state.ours : state.foreign
+  const index = list.findIndex((p) => p.id === id)
+  if (index < 0) throw new ApiError(404, 'PAYMENT_EVENT_NOT_FOUND', 'Такой оплаты нет — обновите список')
+  const row = list[index]
+  if (row.status === 'processed') throw new ApiError(409, 'PAYMENT_EVENT_RESOLVED', 'Эта оплата уже разобрана')
+  if (!row.order_id) {
+    throw new ApiError(409, 'ORDER_ID_MISSING', 'В уведомлении нет ID заказа — доступ по нему выдаст сверка с GetCourse')
+  }
+  if (row.access) {
+    throw new ApiError(409, 'ORDER_ALREADY_GRANTED', `По этому заказу доступ уже выдан: ${row.access.user_email}`)
+  }
+  const email = normalize(input.email)
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    throw new ApiError(422, 'VALIDATION_ERROR', 'Проверьте почту аккаунта')
+  }
+  if (email.startsWith('net')) {
+    throw new ApiError(404, 'USER_NOT_FOUND', `Аккаунта с почтой ${email} нет: проверьте адрес или попросите человека зарегистрироваться`)
+  }
+  if (!row.tariff && !input.tariff_code) {
+    throw new ApiError(409, 'TARIFF_REQUIRED', 'Оффер не привязан ни к одному тарифу — выберите тариф')
+  }
+  const tariff = row.tariff ?? demoTariffOf(input.tariff_code ?? '')
+  if (!tariff) throw new ApiError(404, 'TARIFF_NOT_FOUND', 'Такого тарифа нет')
+
+  const days = TARIFFS.find((t) => t.code === tariff.code)?.duration_days ?? 30
+  const paidUntil = new Date(Date.now() + days * DAY_MS)
+  const next: PaymentProblem = {
+    ...row,
+    status: 'processed',
+    detail: `доступ выдан вручную: demo-admin → ${email}`,
+    tariff,
+    user: { id: `demo-user-${email}`, email, email_verified: true },
+    access: { user_email: email, paid_until: paidUntil.toISOString(), source: 'manual' },
+    can_grant: false,
+  }
+  list[index] = next
+  const until = paidUntil.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return { message: `Доступ выдан: ${email}, тариф «${tariff.name}», до ${until}`, problem: next }
 }

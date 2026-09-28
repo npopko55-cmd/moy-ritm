@@ -1,6 +1,6 @@
 /**
  * Админские ручки: аналитика воронок, посты и рассылки, опрос — только для
- * страницы /admin.
+ * страницы /admin. Там же оплаты без доступа и их ручной разбор.
  *
  * Отдельно от client.ts намеренно: у администратора свой токен и своя
  * жизнь. Токен лежит в sessionStorage (закрыл вкладку — вышел) и никогда не
@@ -245,6 +245,58 @@ export type SurveyData = {
 
 export type SurveyQuery = { funnel?: SurveyFunnel; point?: number }
 
+/* ——— Оплаты без доступа (раздел «Оплаты») ——— */
+
+/**
+ * Чем кончился разбор уведомления GetCourse: человек не найден, оффер не
+ * привязан к тарифу, уведомление не разобралось. processed — оплату уже
+ * разобрали руками, так строка приходит в ответе на выдачу доступа.
+ */
+export type PaymentProblemStatus = 'unmatched_user' | 'unknown_offer' | 'error' | 'processed'
+
+export type PaymentTariff = { code: string; name: string }
+
+export type PaymentProblem = {
+  id: string
+  received_at: string
+  status: PaymentProblemStatus
+  detail: string | null
+  order_id: string | null
+  order_number: string | null
+  /** Почта из заказа GetCourse — не обязательно та, с которой человек зарегистрирован. */
+  email: string | null
+  offer_id: string | null
+  offer_title: string | null
+  /** Тариф, к которому оффер привязан сейчас; null — не привязан. */
+  tariff: PaymentTariff | null
+  amount: number | null
+  currency: string | null
+  /** Аккаунт, который нашёлся по этой оплате сейчас; null — не нашёлся. */
+  user: { id: string; email: string; email_verified: boolean } | null
+  /** Доступ по этому заказу уже есть — выдавать нечего. */
+  access: { user_email: string; paid_until: string; source: string } | null
+  /** false — нет ID заказа или доступ по нему уже выдан. */
+  can_grant: boolean
+}
+
+export type PaymentProblems = {
+  /** Новые сверху, одна строка на заказ. */
+  items: PaymentProblem[]
+  total: number
+  /** Скрытые чужие оплаты общего аккаунта GetCourse: оффер не наш и человека у нас нет. */
+  foreign_hidden: number
+  /** Тарифы для выбора, когда оффер ни к одному не привязан. */
+  tariffs: PaymentTariff[]
+}
+
+/** Период — даты уведомления об оплате; foreign — показать и чужие оплаты. */
+export type PaymentProblemsQuery = Period & { foreign: boolean }
+
+/** Почта аккаунта, к которому привязать заказ; тариф — только если оффер не привязан. */
+export type PaymentGrantInput = { email: string; tariff_code: string | null }
+
+export type PaymentGrantResult = { message: string; problem: PaymentProblem }
+
 export interface AdminApi {
   readonly isDemo: boolean
   /** Токен администратора. 401 — неверная почта, пароль или это не админ. */
@@ -272,6 +324,11 @@ export interface AdminApi {
 
   survey(token: string, q: SurveyQuery): Promise<SurveyData>
   surveyCsv(token: string, q: SurveyQuery): Promise<Blob>
+
+  /** Оплаты из GetCourse, по которым доступ не открылся сам. */
+  paymentProblems(token: string, q: PaymentProblemsQuery): Promise<PaymentProblems>
+  /** Привязать заказ к аккаунту по его почте и выдать доступ; пишется в журнал админа. */
+  grantPayment(token: string, id: string, input: PaymentGrantInput): Promise<PaymentGrantResult>
 }
 
 const TIMEOUT_MS = 20_000
@@ -457,6 +514,20 @@ function createHttpAdminApi(rawBase: string): AdminApi {
       const res = await send('GET', `/admin/survey/export.csv${query({ funnel: q.funnel, point: q.point })}`, token)
       return res.blob()
     },
+
+    paymentProblems: (token, q) =>
+      json<PaymentProblems>(
+        send(
+          'GET',
+          `/admin/payments/problems${query({ from: q.from, to: q.to, foreign: String(q.foreign) })}`,
+          token,
+        ),
+      ),
+
+    grantPayment: (token, id, input) =>
+      json<PaymentGrantResult>(
+        send('POST', `/admin/payments/problems/${encodeURIComponent(id)}/grant`, token, input),
+      ),
   }
 }
 
@@ -488,6 +559,8 @@ function lazyDemoAdminApi(): AdminApi {
       impl().then((a) => a.postAudience(token, channel, segment, selling)),
     survey: (token, q) => impl().then((a) => a.survey(token, q)),
     surveyCsv: (token, q) => impl().then((a) => a.surveyCsv(token, q)),
+    paymentProblems: (token, q) => impl().then((a) => a.paymentProblems(token, q)),
+    grantPayment: (token, id, input) => impl().then((a) => a.grantPayment(token, id, input)),
   }
 }
 
