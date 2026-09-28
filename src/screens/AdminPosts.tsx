@@ -409,8 +409,9 @@ function PostEditor({ token, fail, channel, channelTitle, bot, initial, onClose 
 
   const cancel = () => run('cancel', async () => {
     if (!post) return
+    const wasSending = post.status === 'sending'
     setPost(await adminApi.cancelPost(token, post.id))
-    return 'Снят с расписания'
+    return wasSending ? 'Рассылка остановлена — оставшимся не уйдёт' : 'Снят с расписания'
   })
 
   const publishNow = () => run('publish', async () => {
@@ -719,9 +720,10 @@ function PostEditor({ token, fail, channel, channelTitle, bot, initial, onClose 
               {busy === 'schedule' ? 'Ставим…' : 'Запланировать'}
             </button>
           )}
-          {status === 'scheduled' && (
+          {/* Рассылку ботом можно остановить и на ходу: остаток очереди не уйдёт. */}
+          {(status === 'scheduled' || (bot && status === 'sending')) && (
             <button className="page__btn" type="button" disabled={!!busy} onClick={() => void cancel()}>
-              {busy === 'cancel' ? 'Отменяем…' : 'Отменить'}
+              {busy === 'cancel' ? 'Отменяем…' : status === 'sending' ? 'Остановить рассылку' : 'Отменить'}
             </button>
           )}
           {!template && (
