@@ -132,6 +132,49 @@
   border-top: 1px solid var(--gray-200);
 }
 
+/* «По письмам» — метки писем рассылки: маленькая таблица под шагами, отделена
+   той же чертой, что и плашка. На телефоне, если не влезла, прокручивается
+   вбок внутри своей рамки, как таблица людей. */
+.admin__letters {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.admin__letters-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink-900);
+}
+
+.admin__letters-note {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+.admin__letters .admin__scroll { margin-top: 10px; }
+
+/* Двойной класс — правила .admin__table ниже по файлу не перебьют. */
+.admin__table.admin__table--letters { min-width: 0; }
+
+.admin__table.admin__table--letters th,
+.admin__table.admin__table--letters td { padding: 8px 10px; }
+
+/* Узко (телефон) — заголовки в две строки, а не прокрутка вбок. */
+.admin__table.admin__table--letters th { white-space: normal; vertical-align: bottom; }
+
+.admin__letters-links { margin-top: 12px; }
+
+/* Треугольник раскрытия — родной, у summary остаётся display: list-item. */
+.admin__letters-links > summary {
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pink-600);
+}
+
 /* ——— Таблица людей ——— */
 .admin__tools {
   display: flex;
@@ -402,6 +445,8 @@
 /* Телефон: воронки одна под другой. */
 @media (max-width: 767.98px) {
   .admin__funnels { grid-template-columns: minmax(0, 1fr); }
+  .admin__table.admin__table--letters th,
+  .admin__table.admin__table--letters td { padding: 8px 6px; }
   .admin__pager span { text-align: center; }
   .posts__row { grid-template-columns: auto minmax(0, 1fr); }
   .posts__preview,

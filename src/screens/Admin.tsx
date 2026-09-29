@@ -13,7 +13,9 @@
  *   • две воронки рядом — «3 дня» и «Челлендж 21 день»: шаги от старта бота до
  *     оплаты, под каждой цифрой — процент от предыдущего шага, и ссылки с
  *     кнопкой «Скопировать»: главная — для канала, через бота, под ней —
- *     прямая на сайт (/go/<токен>). Бот не настроен — одна прямая;
+ *     прямая на сайт (/go/<токен>). Бот не настроен — одна прямая. Под
+ *     шагами — таблица «По письмам» (метки писем рассылки …_m1) и ссылки
+ *     для писем, каждая со своей кнопкой «Скопировать»;
  *   • таблица людей выбранной воронки с сортировкой и страницами, и она же —
  *     CSV-файлом.
  *
@@ -25,7 +27,7 @@
  * Разделы переключаются чипами вверху страницы; вход общий.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   adminApi,
@@ -142,6 +144,16 @@ function bannerShare(data: FunnelSummary): string | null {
     data.banner_click_share ?? (data.banner_seen > 0 ? (data.banner_clicked ?? 0) / data.banner_seen : null)
   return value === null ? '—' : `${Math.round(value * 100)}%`
 }
+
+/** Метка письма → подпись строки. Незнакомая метка — как есть. */
+const LETTER_TITLES: Record<string, string> = {
+  m1: 'Письмо 1',
+  m2: 'Письмо 2',
+  m3: 'Письмо 3',
+  '': 'Без метки',
+}
+
+const sourceTitle = (source: string) => LETTER_TITLES[source] ?? source
 
 /** Админке не место в поиске: noindex, пока страница открыта. */
 function useNoindex(): void {
@@ -522,7 +534,69 @@ function FunnelColumn({ funnel, title, data, loading }: ColumnProps) {
           </li>
         ))}
       </ol>
+
+      <Letters data={data} loading={loading} />
     </section>
+  )
+}
+
+/**
+ * «По письмам»: главные шаги по меткам писем рассылки (ссылки …_m1) и
+ * ссылки для писем. Период — тот же, что у всей сводки. Старый бэкенд
+ * полей не шлёт — строка об этом вместо таблицы.
+ */
+function Letters({ data, loading }: { data: FunnelSummary | null; loading: boolean }) {
+  const rows = data?.sources
+  const links = (data?.letter_links ?? []).filter((l) => l.bot_url || l.site_url)
+
+  return (
+    <div className="admin__letters">
+      <h3 className="admin__letters-title">По письмам</h3>
+      {rows === undefined ? (
+        <p className="admin__letters-note">
+          {loading ? 'Загружаем…' : 'Сервер пока не считает переходы по письмам.'}
+        </p>
+      ) : (
+        <div className="admin__scroll">
+          <table className="admin__table admin__table--letters">
+            <thead>
+              <tr>
+                <th>Метка</th>
+                <th className="is-num">Заходы</th>
+                <th className="is-num">Старты бота</th>
+                <th className="is-num">Регистрации</th>
+                <th className="is-num">Оплатили</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.source}>
+                  <td>{sourceTitle(r.source)}</td>
+                  <td className="is-num">{num(r.visits)}</td>
+                  <td className="is-num">{num(r.bot_starts)}</td>
+                  <td className="is-num">{num(r.registrations)}</td>
+                  <td className="is-num">{num(r.paid)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {links.length > 0 && (
+        <details className="admin__letters-links">
+          <summary>Ссылки для писем</summary>
+          {links.map((l) => (
+            <Fragment key={l.mark}>
+              {l.bot_url && <EntryLink label={`${sourceTitle(l.mark)} — через бота`} url={l.bot_url} />}
+              {l.site_url && (
+                <EntryLink label={`${sourceTitle(l.mark)} — запасная, на сайт`} url={l.site_url} />
+              )}
+            </Fragment>
+          ))}
+        </details>
+      )}
+    </div>
   )
 }
 

@@ -212,6 +212,10 @@ const FREE_TIER: FreeTier = DEFAULT_FREE_TIER
  */
 const DEMO_FUNNELS: Record<string, Funnel> = { hx4q7m2p: 'trial3d', tz9w3k6r: 'trial20' }
 
+/** Воронка по токену ссылки, как у бэкенда: хвост «_m1» — метка письма, на воронку не влияет. */
+const demoFunnelOf = (token: string | undefined): Funnel | null =>
+  (token && DEMO_FUNNELS[token.trim().split('_')[0]]) || null
+
 /** trial3d: столько дней открыты все движения. */
 const TRIAL_DAYS = 3
 /** «Все движения» — как ALL_EXERCISES_LIMIT бэкенда: плеер обрезает длиной списка. */
@@ -738,7 +742,7 @@ export function createDemoApi(): Api {
         created_at: new Date().toISOString(),
         verified: false,
         // Пришёл по ссылке воронки — метка остаётся при нём, как на бэкенде.
-        funnel: (body.funnel_token && DEMO_FUNNELS[body.funnel_token]) || null,
+        funnel: demoFunnelOf(body.funnel_token),
       }
       all[email] = user
       write('users', all)
@@ -1027,7 +1031,7 @@ export function createDemoApi(): Api {
     /* ——— Воронки ——— */
 
     async funnelVisit(token: string) {
-      const funnel = DEMO_FUNNELS[token]
+      const funnel = demoFunnelOf(token)
       if (!funnel) throw new ApiError(404, 'FUNNEL_NOT_FOUND', 'Такой ссылки нет')
       return { funnel } satisfies FunnelVisit
     },
@@ -1107,6 +1111,20 @@ const DEMO_FUNNEL_TABLE: DemoFunnel[] = [
   { funnel: 'trial3d', token: 'hx4q7m2p', people: 38, visitors: 131, botStarts: 214 },
   { funnel: 'trial20', token: 'tz9w3k6r', people: 33, visitors: 122, botStarts: 197 },
 ]
+
+/** Метки писем в демо и их доля в заходах и стартах бота («» — без метки). */
+const DEMO_SOURCES: { source: string; part: number }[] = [
+  { source: 'm1', part: 0.38 },
+  { source: 'm2', part: 0.24 },
+  { source: 'm3', part: 0.12 },
+  { source: '', part: 0.26 },
+]
+
+/** Метка письма выдуманного человека — по его номеру, при каждом открытии та же. */
+function demoSourceOf(p: FunnelUser): string {
+  const i = Number(p.user_id.split('-').pop()) || 0
+  return ['m1', 'm1', 'm2', 'm1', 'm3', 'm2', '', 'm1', '', 'm2'][i % 10]
+}
 
 function demoFunnelPeople(): FunnelUser[] {
   const rnd = seeded(20260922)
@@ -1359,6 +1377,8 @@ export function createDemoAdminApi(): AdminApi {
         const mine = all.filter((p) => inPeriod(p, period))
         // Визиты и старты бота — в той же доле, что и регистрации за период.
         const share = all.length ? mine.length / all.length : 0
+        const visitors = Math.round(f.visitors * share)
+        const botStarts = Math.round(f.botStarts * share)
         const paid = mine.filter((p) => p.paid)
         // Плашку «Открой все 40» видят те, у кого открыты не все движения:
         // в демо — те, кто начал шагать; нажимает примерно каждый шестой.
@@ -1368,8 +1388,8 @@ export function createDemoAdminApi(): AdminApi {
           funnel: f.funnel,
           token: f.token,
           bot_link: `https://t.me/ritmritm_bot?start=${f.token}`,
-          visitors: Math.round(f.visitors * share),
-          bot_starts: Math.round(f.botStarts * share),
+          visitors,
+          bot_starts: botStarts,
           registered: mine.length,
           email_verified: mine.filter((p) => p.email_verified).length,
           started: mine.filter((p) => p.active_days > 0).length,
@@ -1393,6 +1413,22 @@ export function createDemoAdminApi(): AdminApi {
           banner_seen: bannerSeen,
           banner_clicked: bannerClicked,
           banner_click_share: bannerSeen ? bannerClicked / bannerSeen : null,
+          // По письмам: люди — по своей метке, заходы и старты — долей от общих.
+          sources: DEMO_SOURCES.map(({ source, part }) => {
+            const own = mine.filter((p) => demoSourceOf(p) === source)
+            return {
+              source,
+              visits: Math.round(visitors * part),
+              bot_starts: Math.round(botStarts * part),
+              registrations: own.length,
+              paid: own.filter((p) => p.paid).length,
+            }
+          }),
+          letter_links: ['m1', 'm2', 'm3'].map((mark) => ({
+            mark,
+            bot_url: `https://t.me/ritmritm_bot?start=${f.token}_${mark}`,
+            site_url: `https://ritmritm.ru/go/${f.token}_${mark}`,
+          })),
         }
       })
     },

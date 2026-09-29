@@ -47,6 +47,34 @@ export type FunnelSummary = {
   banner_seen?: number
   banner_clicked?: number
   banner_click_share?: number | null
+  /**
+   * Те же шаги по меткам писем рассылки (ссылки вида …_m1). Строки m1–m3 и
+   * «без метки» ('') бэкенд присылает всегда; нет поля — бэкенд старый.
+   */
+  sources?: FunnelSourceRow[]
+  /** Готовые ссылки для писем m1–m3. Нет поля — бэкенд старый. */
+  letter_links?: FunnelLetterLink[]
+}
+
+/**
+ * Строка «По письмам»: метка письма (m1…), '' — без метки (старые ссылки).
+ * Заходы — уникальные браузеры, старты бота — уникальные люди Telegram, по
+ * дате события; регистрации и оплатившие — люди, зарегистрированные за
+ * период, по метке их регистрации.
+ */
+export type FunnelSourceRow = {
+  source: string
+  visits: number
+  bot_starts: number
+  registrations: number
+  paid: number
+}
+
+/** Ссылки письма: через бота и запасная на сайт. Пустая строка — собрать нечем. */
+export type FunnelLetterLink = {
+  mark: string
+  bot_url: string
+  site_url: string
 }
 
 /** Тариф в строке человека: бэкенд может прислать строкой или объектом. */
