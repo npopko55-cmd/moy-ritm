@@ -25,7 +25,7 @@ import { api } from '../api/client'
 import { ApiError, type Checkout, type CheckoutTariff } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import GetCourseWidget, { WidgetSkeleton } from '../components/GetCourseWidget'
-import { Clock, Shield } from '../components/Icons'
+import { Clock } from '../components/Icons'
 import { VPN_HINT } from '../data/support'
 import { rub } from '../data/tariffs'
 import { plural } from '../lib/date'
@@ -203,7 +203,10 @@ export default function Pay() {
   )
 }
 
-/** Выбранный тариф: название, цена, цена месяца и срок, условия оплаты. */
+/**
+ * Выбранный тариф: название, цена, цена месяца и срок, когда откроется доступ.
+ * Строку о разовой оплате владелец убрал 29.09.2026.
+ */
 function TariffCard({ tariff }: { tariff: CheckoutTariff }) {
   const days = plural(tariff.duration_days, 'день', 'дня', 'дней')
   // У месяца цена месяца — та же цена, повторять её незачем.
@@ -219,10 +222,6 @@ function TariffCard({ tariff }: { tariff: CheckoutTariff }) {
       </div>
       <p className="checkout__per">{per}</p>
       <ul className="checkout__terms">
-        <li>
-          <Shield size={16} />
-          Разовая оплата, без автосписаний
-        </li>
         <li>
           <Clock size={16} />
           Доступ откроется сам, обычно за несколько минут
@@ -242,9 +241,6 @@ function TariffCardSkeleton() {
       </div>
       <span className="checkout__sk checkout__sk--per" />
       <ul className="checkout__terms">
-        <li>
-          <span className="checkout__sk checkout__sk--term" />
-        </li>
         <li>
           <span className="checkout__sk checkout__sk--term" />
         </li>

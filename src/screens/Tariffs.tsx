@@ -5,9 +5,9 @@ import Logo from '../components/Logo'
 import TariffPlans from '../components/TariffPlans'
 import WaveBg from '../components/WaveBg'
 import {
+  Clock,
   Close,
   FloatNote,
-  Heart,
   Leaf,
   MusicNote,
   Phone,
@@ -31,11 +31,17 @@ import './Tariffs.css'
  * владелец вместо «Все движения без ограничений». «Все новые движения» и
  * «Всё, что появится дальше» он же попросил убрать. Серверный список
  * features страница не выводит — текст пунктов живёт здесь.
+ *
+ * Пункт о том, что деньги сами не спишутся, владелец убрал 29.09.2026:
+ * писать об этом не нужно. Ряд рассчитан на три колонки, поэтому на его
+ * месте — доступ, который открывается сам: та же строка с часами, что и в
+ * карточке на /pay. Не «сразу»: по оферте обычно это несколько минут,
+ * изредка до часа.
  */
 const PERKS = [
   { icon: <PlayCircle size={19} />, tone: 'pink', text: `${EXTRA_MOVES_LABEL}\nи больше разнообразия` },
   { icon: <Phone size={19} />, tone: 'blue', text: 'На любом\nустройстве' },
-  { icon: <Heart size={19} />, tone: 'pink', text: 'Без\nавтосписаний' },
+  { icon: <Clock size={19} />, tone: 'pink', text: 'Доступ открывается\nсам после оплаты' },
 ] as const
 
 /** Нижний ряд: почему это стоит своих денег. */

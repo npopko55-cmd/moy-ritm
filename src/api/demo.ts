@@ -297,7 +297,7 @@ function localDate(ms: number): string {
 const FEATURES = [
   `${EXTRA_MOVES_LABEL} и больше разнообразия`,
   'На любом устройстве',
-  'Без автосписаний',
+  'Доступ открывается сам после оплаты',
 ]
 
 const demoTariffs = (): Tariff[] =>
