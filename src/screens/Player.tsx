@@ -19,6 +19,7 @@ import {
   MusicNote,
   Pause,
   Play,
+  Shrink,
   Sparkle,
   SpeakerOff,
   SpeakerOn,
@@ -39,6 +40,13 @@ import { createChunkQueue, type ChunkQueue } from '../lib/chunks'
 import { createRotation, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { onAppReturn } from '../lib/appReturn'
+import {
+  closeFullscreen,
+  isPhoneScreen,
+  onFullscreenLost,
+  openFullscreen,
+  usePhoneScreen,
+} from '../lib/fullscreen'
 import { recentMoves, rememberMove } from '../lib/moveHistory'
 import { loadMoveInterval } from '../lib/settings'
 import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial } from '../lib/trial'
@@ -1054,9 +1062,75 @@ export default function Player() {
     [],
   )
 
+  /* ─────────────  Тренировка на весь экран (телефон)  ───────────── */
+
   /**
-   * Снять паузу: «Играть», пробел, «Продолжить сейчас» на экране паузы и
-   * «Нажмите, чтобы начать» в круге.
+   * На телефоне касание кружка уводит тренировку на весь экран (правка
+   * заказчика 30.09.2026). «Погружённый» вид: нижнее меню и логотип
+   * прячутся, круг растёт во всю ширину, а трек, звук, пауза и счётчики
+   * остаются (Player.css, .player--immersive). Поверх — системный режим:
+   * полноэкранный Telegram или браузер на Android (src/lib/fullscreen.ts);
+   * нет его — хватает и этого вида.
+   *
+   * Выход: «Свернуть»; пауза — экран паузы всегда в обычном виде, а
+   * «Продолжить сейчас» возвращает на весь экран; уход из плеера; выход
+   * из системного режима самим человеком. Спрятанная вкладка и свёрнутый
+   * мини-ап вид не снимают: вернувшись, человек видит тренировку на паузе,
+   * и под рукой и «Играть», и «Свернуть». На десктопе и планшете этого нет.
+   */
+  const phone = usePhoneScreen()
+  const [immersive, setImmersive] = useState(false)
+  // Для обработчиков касаний: они не должны пересоздаваться при смене вида.
+  const immersiveRef = useRef(false)
+  /** Пауза поставлена с «весь экран»: «Продолжить сейчас» вернёт туда же. */
+  const backToImmersive = useRef(false)
+
+  /** Весь экран. Звать в касании и синхронно: системный режим просит жест. */
+  const enterImmersive = useCallback(() => {
+    if (!immersiveRef.current) {
+      immersiveRef.current = true
+      setImmersive(true)
+      // Шапка ушла, круг вырос — тренировку показываем с самого верха.
+      window.scrollTo(0, 0)
+    }
+    // И когда вид уже включён: спрятанной вкладке система режим снимает,
+    // и следующее касание просит его снова. Включённый не трогается.
+    openFullscreen()
+  }, [])
+
+  /** Обычный вид с меню. Системный режим снимается, только если включали его мы. */
+  const leaveImmersive = useCallback(() => {
+    immersiveRef.current = false
+    setImmersive(false)
+    closeFullscreen()
+  }, [])
+
+  // Человек сам вышел из системного режима («Назад» на Android, меню
+  // Telegram) — весь экран закончился, показываем обычный вид.
+  useEffect(
+    () =>
+      onFullscreenLost(() => {
+        backToImmersive.current = false
+        immersiveRef.current = false
+        setImmersive(false)
+      }),
+    [],
+  )
+
+  // Уход из плеера — уход и из системного режима: прогресс, настройки и
+  // остальные экраны на весь экран не рассчитаны.
+  useEffect(() => closeFullscreen, [])
+
+  // Круга больше нет (движений не осталось) или экран перестал быть
+  // телефоном (окно стало шире) — обычный вид: правила раскладки «весь
+  // экран» есть только у телефона, и без круга в нём делать нечего.
+  useEffect(() => {
+    if (immersive && (!phone || empty)) leaveImmersive()
+  }, [immersive, phone, empty, leaveImmersive])
+
+  /**
+   * Снять паузу: «Играть», пробел, «Продолжить сейчас» на экране паузы,
+   * «Нажмите, чтобы начать» в круге и на телефоне — касание самого кружка.
    *
    * Всё это — касание, и первой строкой идёт разблокировка медиа, пока
    * WebKit ещё считает его жестом. Следом, в том же касании, запускаем ролик
@@ -1064,10 +1138,22 @@ export default function Player() {
    * В том же касании — и запрет гасить экран (src/media/keepAwake.ts): замок
    * экрана Safari даёт только из жеста, а запасное видео со звуковой
    * дорожкой без жеста не пускают вьюхи.
+   *
+   * fullscreen — касание кружка: на телефоне тренировка уходит на весь экран.
    */
-  const continueFlow = useCallback(() => {
+  const continueFlow = useCallback((fullscreen = false) => {
     unlockMedia()
     keepAwake()
+    // Весь экран — тоже в этом касании, сразу за разблокировкой и до любой
+    // перерисовки: системный полноэкранный режим дают только из жеста.
+    // Просит его касание кружка, а «Играть» и «Продолжить сейчас» лишь
+    // возвращают туда, где тренировка была: на весь экран, если с него ушли
+    // на паузу или прятали вкладку. Сравнение с true — строгое: обработчик
+    // кнопки мог бы передать сюда событие касания.
+    if ((fullscreen === true || immersiveRef.current || backToImmersive.current) && isPhoneScreen()) {
+      enterImmersive()
+    }
+    backToImmersive.current = false
     // Передумал уходить в «Мой прогресс» — переход отменяется.
     leaving.current = false
     // Касание — значит, человек вернулся, даже если Telegram не прислал
@@ -1087,7 +1173,7 @@ export default function Player() {
     }
     setShowPause(false)
     setPlaying(true)
-  }, [buffers, resumeMusic, beginFlow, stream.id, cameBack])
+  }, [buffers, resumeMusic, beginFlow, stream.id, cameBack, enterImmersive])
 
   /**
    * Кнопка звука. Всё — в самом касании, и решает сам проигрыватель
@@ -1111,12 +1197,37 @@ export default function Player() {
       // Пауза — тоже касание: если музыку раньше не пустили, разблокировка
       // даст ей разрешение, и «Продолжить» запустит её уже без отказа.
       unlockMedia()
+      // Экран паузы — всегда в обычном виде: весь экран снимаем сразу, в
+      // этом же касании, чтобы он не мелькнул поверх экрана паузы.
+      // «Продолжить сейчас» вернёт тренировку на весь экран.
+      if (immersiveRef.current) {
+        backToImmersive.current = true
+        leaveImmersive()
+      }
       setPlaying(false)
       setShowPause(true)
     } else {
       continueFlow()
     }
-  }, [continueFlow])
+  }, [continueFlow, leaveImmersive])
+
+  /**
+   * Касание кружка на телефоне — тренировка на весь экран. На паузе это
+   * ещё и «Играть»: касание запускает тренировку, как кнопка. Идёт —
+   * только весь экран, без паузы: кружок — большая мишень, задеть его
+   * посреди движения легко. На десктопе кружок касаний не ловит.
+   */
+  const pressCircle = useCallback(() => {
+    if (!isPhoneScreen()) return
+    if (playingRef.current) enterImmersive()
+    else continueFlow(true)
+  }, [continueFlow, enterImmersive])
+
+  /** «Свернуть» — обычный вид с меню. Тренировка при этом идёт дальше. */
+  const collapse = useCallback(() => {
+    backToImmersive.current = false
+    leaveImmersive()
+  }, [leaveImmersive])
 
   /**
    * Крестик на экране паузы.
@@ -1130,6 +1241,8 @@ export default function Player() {
    */
   const closePause = useCallback(() => {
     leaving.current = false
+    // Плеер на паузе — в обычном виде, с меню: весь экран остался в прошлом.
+    backToImmersive.current = false
     closeChunk()
     void queueRef.current?.flush()
     setShowPause(false)
@@ -1224,7 +1337,7 @@ export default function Player() {
         раскладка видна снова, только ролик стоит.
       */}
       <div
-        className={`player ${notice ? 'player--notice' : ''} ${sideUnlock ? 'player--locked' : ''} ${topBanner ? 'player--banner' : ''}`}
+        className={`player ${notice ? 'player--notice' : ''} ${sideUnlock ? 'player--locked' : ''} ${topBanner ? 'player--banner' : ''} ${immersive ? 'player--immersive' : ''}`}
         hidden={showPause}
       >
       <WaveBg opacity={0.28} />
@@ -1265,7 +1378,12 @@ export default function Player() {
         <div className="stage__area">
         {loop && nextLoop ? (
         <>
-        <div className="stage__figure">
+        {/* На телефоне кружок — ещё и кнопка: касание уводит тренировку на
+            весь экран (pressCircle). На десктопе он касаний не ловит. */}
+        <div
+          className={`stage__figure${phone ? ' is-tappable' : ''}`}
+          onClick={phone ? pressCircle : undefined}
+        >
           <svg className="stage__ring" viewBox="0 0 400 400" aria-hidden="true">
             <defs>
               <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
@@ -1297,7 +1415,17 @@ export default function Player() {
               окно, и уходит с первым же нажатием. */}
           {needTap && (
             <div className="stage__tap">
-              <button type="button" className="btn btn--pink-lg stage__tap-btn" onClick={continueFlow}>
+              {/* Кнопка лежит в кружке, и касание её — касание кружка: на
+                  телефоне тренировка тоже уходит на весь экран. Дальше к
+                  кружку касание не идёт, иначе запуск случился бы дважды. */}
+              <button
+                type="button"
+                className="btn btn--pink-lg stage__tap-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  continueFlow(true)
+                }}
+              >
                 <Play size={22} />
                 Нажмите, чтобы начать
               </button>
@@ -1480,6 +1608,21 @@ export default function Player() {
         )}
       </aside>
 
+      {/* «Свернуть» — есть только на весь экран: в углу над кругом, рядом с
+          карточкой трека (в ландшафте — на месте меню). Последней в разметке,
+          чтобы лежать поверх соседей по ячейке сетки. */}
+      {immersive && (
+        <button
+          type="button"
+          className="player__collapse"
+          onClick={collapse}
+          aria-label="Свернуть"
+          title="Свернуть"
+        >
+          <Shrink size={22} />
+        </button>
+      )}
+
       </div>
 
       {showPause && (
@@ -1489,7 +1632,9 @@ export default function Player() {
           todaySeconds={todaySeconds}
           summary={summary}
           locked={limited}
-          onResume={continueFlow}
+          // Обёртка, а не сама функция: событие касания не должно попасть
+          // в её параметр «на весь экран».
+          onResume={() => continueFlow()}
           onClose={closePause}
           onLater={leaveToProgress}
         />

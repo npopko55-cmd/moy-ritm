@@ -36,6 +36,9 @@ type BackButton = {
   offClick(cb: () => void): void
 }
 
+/** Отступы в пикселях: чёлка и системные полосы или кнопки самого Telegram. */
+type Insets = { top?: number; right?: number; bottom?: number; left?: number }
+
 /** Только то, чем пользуемся. Методы новых версий — необязательные. */
 type WebApp = {
   initData: string
@@ -47,6 +50,13 @@ type WebApp = {
   setBackgroundColor?(color: string): void
   disableVerticalSwipes?(): void
   onEvent?(event: string, handler: () => void): void
+  isVersionAtLeast?(version: string): boolean
+  /** Полноэкранный режим — с версии 8.0; в старой скрипт бросает ошибку. */
+  requestFullscreen?(): void
+  exitFullscreen?(): void
+  isFullscreen?: boolean
+  safeAreaInset?: Insets
+  contentSafeAreaInset?: Insets
   BackButton?: BackButton
 }
 
@@ -469,6 +479,8 @@ function whenTelegram(run: (app: WebApp) => void): () => void {
  * Первое, что делаем в мини-апе: сообщить Telegram, что страница готова,
  * развернуть её на весь экран, покрасить шапку и фон под сайт и запретить
  * закрытие свайпом вниз — иначе плеер закрывался бы посреди движения.
+ * Отступы под чёлку и кнопки Telegram с этого момента живут в CSS-переменных
+ * (applyInsets ниже).
  *
  * «Готово» и «развернуть» уходят сразу, не дожидаясь скрипта: без первого
  * Telegram держит свою заглушку загрузки, без второго мини-ап открыт на
@@ -484,13 +496,74 @@ export function startTelegram(): void {
   onTelegramEvent('activated', () => {
     active = true
   })
+  onTelegramEvent('safeAreaChanged', applyInsets)
+  onTelegramEvent('contentSafeAreaChanged', applyInsets)
   whenTelegram((app) => {
     safely('ready', () => app.ready())
     safely('expand', () => app.expand())
     safely('setHeaderColor', () => app.setHeaderColor?.(SITE_BG))
     safely('setBackgroundColor', () => app.setBackgroundColor?.(SITE_BG))
     safely('disableVerticalSwipes', () => app.disableVerticalSwipes?.())
+    applyInsets()
   })
+}
+
+/**
+ * Отступы Telegram — в CSS-переменные --tg-inset-* (tokens.css).
+ *
+ * В полноэкранном режиме страница уходит под чёлку, а сверху поверх неё
+ * лежат кнопки Telegram («Закрыть», меню). safeAreaInset — это чёлка и
+ * системные полосы, contentSafeAreaInset — кнопки Telegram; отступ — их
+ * сумма. Своя переменная, а не --tg-safe-area-inset-* от скрипта: её ставим
+ * мы и знаем когда. Вне полноэкранного режима кнопок поверх страницы нет —
+ * там это только полоса «домой» снизу, её же даёт и env().
+ */
+function applyInsets(): void {
+  const app = window.Telegram?.WebApp
+  if (!app) return
+  safely('safeAreaInset', () => {
+    const style = document.documentElement.style
+    for (const side of ['top', 'right', 'bottom', 'left'] as const) {
+      const px = (Number(app.safeAreaInset?.[side]) || 0) + (Number(app.contentSafeAreaInset?.[side]) || 0)
+      style.setProperty(`--tg-inset-${side}`, `${Math.max(0, px)}px`)
+    }
+  })
+}
+
+/**
+ * Полноэкранный режим Telegram (с версии 8.0): мини-ап занимает весь экран,
+ * шапка Telegram пропадает. Просит его тренировка на весь экран
+ * (src/lib/fullscreen.ts) — в самом касании.
+ *
+ * true — просьба ушла; ответ придёт событием fullscreenChanged или
+ * fullscreenFailed. Скрипт не пришёл или клиент старый — false: тренировка
+ * обходится своим «погружённым» видом.
+ */
+export function requestTelegramFullscreen(): boolean {
+  const app = window.Telegram?.WebApp
+  if (!app || typeof app.requestFullscreen !== 'function') return false
+  try {
+    if (!app.isVersionAtLeast?.('8.0')) return false
+    app.requestFullscreen()
+    return true
+  } catch (e) {
+    telegramLog('requestFullscreen', e)
+    return false
+  }
+}
+
+/** Выйти из полноэкранного режима Telegram. Нет его — ничего не делает. */
+export function exitTelegramFullscreen(): void {
+  const app = window.Telegram?.WebApp
+  if (!app || typeof app.exitFullscreen !== 'function') return
+  safely('exitFullscreen', () => {
+    if (app.isVersionAtLeast?.('8.0')) app.exitFullscreen?.()
+  })
+}
+
+/** Мини-ап сейчас на весь экран: попросили мы или так его открыл бот. */
+export function telegramIsFullscreen(): boolean {
+  return Boolean(window.Telegram?.WebApp?.isFullscreen)
 }
 
 /**
@@ -498,14 +571,25 @@ export function startTelegram(): void {
  *   • activated — мини-ап снова развернули после того, как его свернули или
  *     ушли в другое приложение;
  *   • deactivated — мини-ап свернули: вкладка при этом может остаться «на
- *     виду» (visibilityState), и без события тренировка шла бы дальше.
+ *     виду» (visibilityState), и без события тренировка шла бы дальше;
+ *   • fullscreenChanged, fullscreenFailed — полноэкранный режим включился,
+ *     выключился или не включился (src/lib/fullscreen.ts); сам режим —
+ *     в isFullscreen;
+ *   • safeAreaChanged, contentSafeAreaChanged — сменились отступы под чёлку
+ *     и кнопки Telegram (applyInsets выше).
  *
  * Подписка на каждое событие у скрипта одна на всю страницу, а обработчики
  * живут здесь: так их можно снимать и в клиентах без offEvent. Старый
  * клиент таких событий не знает — подписка просто молчит. Вне мини-апа
  * ничего не делает. Возвращает отписку.
  */
-type TelegramEvent = 'activated' | 'deactivated'
+type TelegramEvent =
+  | 'activated'
+  | 'deactivated'
+  | 'fullscreenChanged'
+  | 'fullscreenFailed'
+  | 'safeAreaChanged'
+  | 'contentSafeAreaChanged'
 
 const handlers = new Map<TelegramEvent, Set<() => void>>()
 

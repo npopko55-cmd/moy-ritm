@@ -123,7 +123,23 @@ export const Play = ({ size = 30, className }: I) => (
   </svg>
 )
 
-/* Кнопки «на весь экран» в плеере больше нет — вместе с ней ушёл и её знак. */
+/*
+ * Кнопки «на весь экран» в плеере больше нет: на телефон тренировка уходит
+ * на весь экран по касанию кружка. Обратно — кнопкой «Свернуть» с этим
+ * знаком: четыре уголка внутрь. Рисунок симметричный, и визуальный центр
+ * совпадает с центром кнопки.
+ */
+export const Shrink = ({ size = 22, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"
+      stroke="currentColor"
+      strokeWidth="2.1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
 
 /** Розовая волна: карточки итогов на экране паузы. */
 export const PulseWave = ({ size = 22, className }: I) => (

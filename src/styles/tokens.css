@@ -78,6 +78,16 @@
   --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   /* Рукописные подписи — пока только на странице тарифов. */
   --font-hand: 'Caveat', 'Segoe Script', cursive;
+
+  /* — Отступы Telegram — */
+  /* Чёлка и кнопки Telegram поверх страницы в его полноэкранном режиме:
+     safeAreaInset + contentSafeAreaInset. В мини-апе их ставит
+     src/lib/telegram.ts (applyInsets), вне его — ноль. Берутся вместе с
+     env(safe-area-inset-*) через max(): одну и ту же чёлку могут сообщить оба. */
+  --tg-inset-top: 0px;
+  --tg-inset-right: 0px;
+  --tg-inset-bottom: 0px;
+  --tg-inset-left: 0px;
 }
 
 /*

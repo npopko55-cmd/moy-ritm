@@ -228,6 +228,14 @@
   place-items: center;
 }
 
+/* На телефоне кружок — ещё и кнопка «на весь экран» (Player.tsx,
+   pressCircle). manipulation — без задержки на двойное касание. */
+.stage__figure.is-tappable {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /*
  * Браузеры без aspect-ratio (iOS 14, вьюхи на Chrome до 88): квадрат
  * схлопывался в ноль по высоте, и круг с роликом пропадал. Высоту даёт
@@ -1080,3 +1088,143 @@
 
 .stage__empty .unlock,
 .stage__empty .unlock-banner { width: min(100%, 340px); }
+
+/* ═══════════════════════════════════════════════════════════════
+   Тренировка на весь экран — только телефон. Класс .player--immersive
+   ставит касание кружка (Player.tsx) и только там, где есть правила
+   ниже: портрет до 768 и ландшафт ниже 500 px (src/lib/fullscreen.ts).
+   Поверх него — системный полноэкранный режим, если он есть: тогда
+   страница лежит под чёлкой и кнопками Telegram, и отступы берутся как
+   max(env(), --tg-inset-*) — одну и ту же чёлку сообщают оба.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Нижнее меню и логотип — это и есть «лишнее» на весь экран. */
+.player--immersive .logo,
+.player--immersive .side__menu { display: none; }
+
+/*
+ * «Свернуть»: круглая кнопка 48 px, поле касания — 64 px за счёт
+ * невидимой рамки. Выше соседей по ячейке — карточки трека в портрете.
+ */
+.player .player__collapse {
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--ink-800);
+  box-shadow: var(--shadow-card);
+  transition: transform .16s ease;
+}
+
+.player__collapse::before { content: ''; position: absolute; inset: -8px; }
+.player__collapse:active { transform: scale(0.95); }
+
+/* ——— Портрет ——— */
+@media (max-width: 767.98px) and (orientation: portrait) {
+  /*
+   * Сетка без меню: шапка (трек и «Свернуть»), круг, счётчики. Нижний
+   * отступ под панель вкладок больше не нужен. Боковые — прежние 12 px,
+   * от них и считается «во всю ширину».
+   */
+  .player.player--immersive {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "top   top"
+      "stage stage"
+      "s1    s2";
+    padding:
+      calc(8px + max(env(safe-area-inset-top), var(--tg-inset-top)))
+      calc(12px + max(env(safe-area-inset-right), var(--tg-inset-right)))
+      calc(12px + max(env(safe-area-inset-bottom), var(--tg-inset-bottom)))
+      calc(12px + max(env(safe-area-inset-left), var(--tg-inset-left)));
+  }
+
+  /* Плашки не пропадают, а уходят под счётчики — круг они не отодвигают.
+     Друг с другом они не встречаются (см. сетку одной колонки выше). */
+  .player.player--immersive.player--notice {
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "top   top"
+      "stage stage"
+      "s1    s2"
+      "note  note";
+  }
+
+  .player.player--immersive.player--banner {
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "top    top"
+      "stage  stage"
+      "s1     s2"
+      "banner banner";
+  }
+
+  .player.player--immersive.player--locked {
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "top    top"
+      "stage  stage"
+      "s1     s2"
+      "unlock unlock";
+  }
+
+  /* Логотипа нет — карточка трека от левого края; справа место под «Свернуть». */
+  .player--immersive .stats__top { padding-left: 0; padding-right: 60px; }
+
+  .player .player__collapse { grid-area: top; justify-self: end; align-self: center; }
+
+  /*
+   * Круг — во всю ширину сцены, а по высоте — сколько останется на первом
+   * экране: 136 px — верхний отступ, шапка с треком (52), зазор, фраза в
+   * две строки (до 48), зазор и запас снизу; ещё строка звука и паузы и
+   * отступы под чёлку и полоску «домой». Счётчики — ниже, до них листают.
+   * Меньше 220 px круг не становится: на совсем низком экране листается
+   * и он.
+   */
+  .player.player--immersive .stage__figure {
+    width: min(
+      100%,
+      max(
+        220px,
+        calc(
+          100 * var(--vh) - 136px - var(--pause-row)
+          - max(env(safe-area-inset-top), var(--tg-inset-top))
+          - max(env(safe-area-inset-bottom), var(--tg-inset-bottom))
+        )
+      )
+    );
+  }
+}
+
+/* ——— Ландшафт ——— */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  /* Сетка та же, что без «весь экран»: меню в правом верхнем углу
+     сменяет «Свернуть». Отступы — с чёлкой сбоку и кнопками Telegram сверху. */
+  .player.player--immersive {
+    padding:
+      calc(6px + max(env(safe-area-inset-top), var(--tg-inset-top)))
+      calc(10px + max(env(safe-area-inset-right), var(--tg-inset-right)))
+      calc(6px + max(env(safe-area-inset-bottom), var(--tg-inset-bottom)))
+      calc(10px + max(env(safe-area-inset-left), var(--tg-inset-left)));
+  }
+
+  .player .player__collapse { grid-area: menu; justify-self: end; align-self: start; }
+
+  /* Круг — вся высота без фразы (22), строки кнопок и отступов; по ширине
+     — до половины экрана: правый столбец со счётчиками остаётся. */
+  .player.player--immersive .stage__figure {
+    width: min(
+      calc(
+        100 * var(--vh) - var(--pause-row) - 40px
+        - max(env(safe-area-inset-top), var(--tg-inset-top))
+        - max(env(safe-area-inset-bottom), var(--tg-inset-bottom))
+      ),
+      50vw,
+      100%
+    );
+  }
+}
