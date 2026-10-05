@@ -149,18 +149,11 @@
   padding: 24px clamp(44px, 3.5vw, 72px) 48px;
 }
 
-.hero__kicker {
-  font-family: var(--font-head);
-  font-weight: 700;
-  font-size: clamp(14px, 1.5vh, 19px);
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-  color: var(--pink-600);
-  margin-bottom: 22px;
-}
-
 .hero__title {
-  font-size: clamp(34px, min(3.6vw, 6vh), 66px);
+  /* Три строки, самая длинная — «Бесконечный фитнес-эфир», 14,6 em.
+     Колонка — не уже 46vw минус поле, так что 3,1vw влезает с запасом;
+     по высоте (6vh) — чтобы на низком ноутбуке кнопка не уходила вниз. */
+  font-size: clamp(34px, min(3.1vw, 6vh), 60px);
   white-space: nowrap;
   font-weight: 800;
   line-height: 1.05;
@@ -169,34 +162,33 @@
   margin-bottom: 24px;
 }
 
+/* Фраза заголовка — своей строкой. Вторая и третья не рвутся внутри,
+   первая на узком экране может разойтись по пробелу между словами
+   (дефис в «фитнес-эфир» держит .hero__phrase). */
+.hero__line { display: block; }
+.hero__line + .hero__line { white-space: nowrap; }
+
 .hero__lead {
   font-size: clamp(16px, 1.9vh, 24px);
   line-height: 1.55;
   color: var(--gray-500);
   margin-bottom: 34px;
-  /* На широком экране — две строки: «Занимайтесь по 2–5 минут несколько
-     раз в день» занимает 24 em, вся фраза — 36 em. Если экран уже, чем
-     25 em, граница ни на что не влияет. */
-  max-width: 25em;
+  /* На широком экране — две строки: «Включайте в любой момент, повторяйте
+     за тренером» занимает 26,3 em, вторая строка — 20,1 em. Если экран
+     уже, чем 27 em, граница ни на что не влияет. */
+  max-width: 27em;
 }
 
-/* Фраза не рвётся внутри: подзаголовок и строка под кнопкой переносятся
-   только между фразами, по смыслу (Landing.tsx). */
+/* Фраза не рвётся внутри: заголовок и подзаголовок переносятся только
+   между фразами, по смыслу (Landing.tsx). */
 .hero__phrase { white-space: nowrap; }
 
-/* Кнопка и строка под ней. Колонкой флекса, а не строчным потоком: так
-   зазор между ними не зависит от высоты строки абзаца. */
+/* Блок кнопки. Флексом, а не строчным потоком: высота строки абзаца
+   не добавляет кнопке лишнего зазора снизу. */
 .hero__start {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: clamp(10px, 1.3vh, 16px);
-}
-
-.hero__note {
-  font-size: clamp(13px, 1.45vh, 17px);
-  line-height: 1.45;
-  color: var(--gray-500);
 }
 
 .hero__cta { padding-right: 12px; }
@@ -394,9 +386,8 @@
     flex: 0 1 auto;
     margin: auto 0;
     grid-template-columns: minmax(0, 1fr) minmax(0, 46%);
-    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-rows: auto auto 1fr auto;
     grid-template-areas:
-      "kicker visual"
       "title  visual"
       "lead   visual"
       "cta    visual"
@@ -411,12 +402,13 @@
   /* Копия распускается, чтобы шаги встали строкой под обе колонки: в колонке
      шириной 370 px им тесно. Порядок в DOM не меняется. */
   .hero__copy { display: contents; }
-  .hero__kicker { grid-area: kicker; }
-  .hero__title { grid-area: title; font-size: clamp(28px, 4.4vw, 40px); margin-bottom: 18px; }
+  /* Колонка текста — 54 % от (ширина − 68 px). Кегль — чтобы в неё
+     влезала «с простыми движениями» (13,4 em) с запасом в 3 %; первая
+     строка при этом расходится на две — заголовок в четыре строки. */
+  .hero__title { grid-area: title; font-size: clamp(24px, (100vw - 68px) / 25.6, 40px); margin-bottom: 18px; }
   .hero__lead { grid-area: lead; font-size: clamp(15px, 1.9vh, 19px); margin-bottom: 26px; }
   /* align-self: start — лишняя высота от фото уходит вниз, а не под кнопку. */
   .hero__start { grid-area: cta; align-self: start; }
-  .hero__note { font-size: clamp(13px, 1.5vh, 15px); }
   .hero__visual { grid-area: visual; --figure-h: min(560px, calc(100 * var(--vh) - 230px)); }
 
   /* В ряд на всю ширину: колонка шага 165–230 px, строки по \n, как на
@@ -474,21 +466,24 @@
 
   /* Порядок в DOM не меняем — переставляем order'ом. */
   .hero__copy { display: contents; }
-  .hero__kicker { order: 1; margin-bottom: 12px; font-size: 13px; }
   /*
-   * Заголовок — в две строки и на 320 px: «Попробуйте фитнес» шириной
-   * 10,6 em, поэтому кегль не больше (ширина − поля) / 10,9, с запасом
-   * в 3 %. От 380 px ограничение не действует — там прежние 8,4vw.
+   * Заголовок — в четыре строки: «Бесконечный / фитнес-эфир / с простыми
+   * движениями / под музыку». Самая длинная неразрывная строка —
+   * «с простыми движениями», 13,4 em, поэтому кегль не больше
+   * (ширина − поля) / 13,8, с запасом в 3 %, и на 320 px ничего не режется.
    */
   .hero__title {
     order: 2;
-    font-size: clamp(24px, min(8.4vw, (100vw - 32px) / 10.9), 40px);
+    font-size: clamp(18px, (100vw - 32px) / 13.8, 34px);
     margin-bottom: 14px;
   }
-  .hero__lead { order: 3; font-size: clamp(15px, 4.2vw, 18px); margin-bottom: 20px; }
+  /* Самая длинная неразрывная фраза — «и набирайте больше активности
+     за день.», 20,1 em: кегль не больше (ширина − поля) / 20,7, иначе на
+     320–360 px она вылезла бы за поле. */
+  .hero__lead { order: 3; font-size: clamp(14px, (100vw - 32px) / 20.7, 18px); margin-bottom: 20px; }
 
-  /* Кнопка на всю ширину, строка под ней — по центру кнопки. */
-  .hero__start { order: 4; align-items: stretch; gap: 10px; }
+  /* Кнопка на всю ширину. */
+  .hero__start { order: 4; align-items: stretch; }
 
   .hero__cta {
     width: 100%;
@@ -496,8 +491,6 @@
     padding: 15px 22px;
     font-size: 17px;
   }
-
-  .hero__note { font-size: clamp(12.5px, 3.6vw, 14px); text-align: center; }
 
   .hero__visual {
     order: 5;

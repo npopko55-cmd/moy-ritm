@@ -282,6 +282,33 @@ export type FunnelVisit = { funnel: Funnel }
 export type BannerAction = 'shown' | 'click'
 export type BannerPlace = 'player' | 'pause'
 
+/**
+ * Отчёт о сбое ролика в плеере (POST /player/faults) — чтобы жалоба «застыло
+ * на втором упражнении» объясняла себя сама. Ни почты, ни токенов: только
+ * состояние элемента и окружения. User-Agent сервер берёт из заголовка.
+ */
+export type PlayerFault = {
+  /** video_giveup — сторож сдался; video_not_allowed — пуск отклонён без касания. */
+  kind: 'video_giveup' | 'video_not_allowed'
+  buffer: number | null
+  step: number | null
+  loop_id: string | null
+  /** Имя отказа последнего play(): NotAllowedError, AbortError… */
+  error: string | null
+  ready_state: number
+  network_state: number
+  paused: boolean
+  unlocked: boolean
+  page_visible: boolean
+  save_data: boolean | null
+  net_type: string | null
+  tg_platform: string | null
+  tg_version: string | null
+  standalone: boolean | null
+  immersive: boolean | null
+  extra: Record<string, string | number | boolean | null> | null
+}
+
 /** Один кусок движения. `client_chunk_id` плеер придумывает сам до отправки. */
 export type Chunk = {
   client_chunk_id: string

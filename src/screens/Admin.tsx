@@ -754,7 +754,7 @@ function People({ token, fail }: { token: string; fail: Fail }) {
               <th className="is-num">Дней шагал</th>
               <th className="is-num">Всего в движении</th>
               <th className="is-num">Шагов</th>
-              <th className="is-num">Засчитано тренировок (от 3 мин)</th>
+              <th className="is-num">Засчитано тренировок (от 1 мин)</th>
               <th>Последний заход</th>
               <th>Оплата</th>
             </tr>

@@ -1051,6 +1051,11 @@ export function createDemoApi(): Api {
       return { ok: true }
     },
 
+    // Диагностика роликов нужна только боевому бэкенду: в демо её некуда слать.
+    async playerFault() {
+      return undefined
+    },
+
     /* ——— Telegram Mini App ——— */
 
     // Мини-ап открывается только с боевого сайта: в демо Telegram выключен —
@@ -1496,7 +1501,7 @@ export function createDemoAdminApi(): AdminApi {
       return {
         date_from: period.from ?? null,
         date_to: period.to ?? null,
-        active_day_min_seconds: 180,
+        active_day_min_seconds: 60,
         session_gap_seconds: 1800,
         window_days: 21,
         funnels: [column('trial3d', 0.8), column('trial20', 1.1), column('none', 1)],

@@ -349,6 +349,10 @@ export function createHttpApi(rawBase: string): Api {
 
     playerBootstrap: () => request<PlayerBootstrap>('GET', '/player/bootstrap'),
 
+    // keepalive — отчёт уходит, даже если человек тут же закрыл мини-ап.
+    playerFault: (fault) =>
+      request<void>('POST', '/player/faults', { body: fault, keepalive: true }),
+
     sendChunks: (chunks: Chunk[], options) =>
       request<ChunksResponse>('POST', '/activity/chunks', {
         body: { chunks },

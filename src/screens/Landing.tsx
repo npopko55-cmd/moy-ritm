@@ -116,7 +116,7 @@ export default function Landing() {
     const warmUp = () => {
       stopIdle = whenIdle(() => {
         // Код отсчёта, плеера и входа — отдельные куски: качаем их заранее,
-        // чтобы кнопки старта («Начать двигаться», «Влиться в поток» в шапке)
+        // чтобы кнопки старта («Включить эфир», «Влиться в поток» в шапке)
         // не ждали скрипта на слабой сети.
         preloadWorkout()
         login.preload()
@@ -220,39 +220,41 @@ export default function Landing() {
 
       <main className="landing__hero">
         <div className="hero__copy">
-          <p className="hero__kicker">Двигайтесь. Чувствуйте. Живите.</p>
-
+          {/* Заголовок ломается только по смыслу: каждая фраза — своей
+              строкой (.hero__line в Landing.css), «фитнес-эфир» не рвётся по
+              дефису, «с» не повисает в конце строки. На десктопе три строки,
+              на узком экране первая может разойтись на «Бесконечный /
+              фитнес-эфир» — тогда четыре. */}
           <h1 className="hero__title">
-            Попробуйте фитнес
-            <br />
-            микродозами!
+            <span className="hero__line">
+              <span className="hero__phrase">Бесконечный</span>{' '}
+              <span className="hero__phrase">фитнес-эфир</span>
+            </span>{' '}
+            <span className="hero__line">с простыми движениями</span>{' '}
+            <span className="hero__line">под музыку</span>
           </h1>
 
           {/* Строки ломаются только между фразами, по смыслу: внутри фразы
               переноса нет (.hero__phrase). На телефоне три строки, на
-              широком экране две: «…несколько раз в день / и набирайте
-              активность» (max-width в Landing.css). */}
+              широком экране две: «…повторяйте за тренером / и набирайте
+              больше активности за день.» (max-width в Landing.css). */}
           <p className="hero__lead">
-            <span className="hero__phrase">Занимайтесь по 2–5 минут</span>{' '}
-            <span className="hero__phrase">несколько раз в день</span>{' '}
-            <span className="hero__phrase">и набирайте активность</span>
+            <span className="hero__phrase">Включайте в любой момент,</span>{' '}
+            <span className="hero__phrase">повторяйте за тренером</span>{' '}
+            <span className="hero__phrase">и набирайте больше активности за день.</span>
           </p>
 
-          {/* Кнопка и строка под ней — один блок: на планшете они вместе
-              стоят в своей ячейке сетки, на телефоне встают на место по order.
-              Тренировка уже идёт — кнопка, как и в шапке, зовёт «Вернуться
-              в поток»; в шапке для нового захода остаётся «Влиться в поток». */}
+          {/* Кнопка в своём блоке: на планшете он стоит в ячейке сетки, на
+              телефоне встаёт на место по order. Тренировка уже идёт — кнопка,
+              как и в шапке, зовёт «Вернуться в поток»; в шапке для нового
+              захода остаётся «Влиться в поток». */}
           <div className="hero__start">
             <button className="btn btn--pink-lg hero__cta" onClick={start}>
-              {flow ? flowLabel(flow) : 'Начать двигаться'}
+              {flow ? flowLabel(flow) : 'Включить эфир'}
               <span className="hero__cta-arrow">
                 <ArrowRight size={19} />
               </span>
             </button>
-            <p className="hero__note">
-              <span className="hero__phrase">Включайте в любой момент</span>{' '}
-              <span className="hero__phrase">и двигайтесь сколько хочется.</span>
-            </p>
           </div>
 
           {/* Раздел «О нас» — на него ведёт ссылка в шапке и адрес /#about. */}

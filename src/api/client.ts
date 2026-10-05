@@ -28,6 +28,7 @@ import type {
   PaymentCheck,
   PaymentLink,
   PlayerBootstrap,
+  PlayerFault,
   RegisterResponse,
   SessionRow,
   Settings,
@@ -121,6 +122,11 @@ export interface Api {
    * Показ бэкенд пишет не чаще раза в сутки по Москве, нажатие — каждое.
    */
   funnelBanner(action: BannerAction, place: BannerPlace): Promise<{ ok: boolean }>
+  /**
+   * Диагностика: сбой ролика в плеере. Зовётся только через
+   * reportPlayerFault (src/api/playerFault.ts) — тот глотает любые ошибки.
+   */
+  playerFault(fault: PlayerFault): Promise<void>
 
   /* ——— Telegram Mini App ——— */
   /**

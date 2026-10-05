@@ -74,11 +74,63 @@ export function videoPool(): Pair {
 }
 
 /**
+ * Разблокировки, начатые в касании и ещё не кончившиеся: элемент → его пуск.
+ *
+ * Пока пуск висит, его нельзя перебивать ни паузой, ни сменой src: перебитый
+ * пуск отклоняется с AbortError, воспроизведение так и не начинается, и
+ * разрешение элементу не достаётся. Так и ломалось второе движение: касание
+ * «Играть» запускало оба элемента, но скрытому плеер в той же перерисовке
+ * ставил паузу, его пуск обрывался — и через движение, когда этот элемент
+ * выходил на вид, вьюха отвечала NotAllowedError. Третье движение снова на
+ * первом элементе, и с ним всё было в порядке.
+ */
+const unlocking = new Map<HTMLVideoElement, Promise<void>>()
+
+/**
+ * Ролики, которые плеер поставил элементу, пока у того висела разблокировка.
+ * Присвоим, когда пуск кончится, — или через UNLOCK_WAIT_MS, если он завис.
+ */
+const deferredSrc = new Map<HTMLVideoElement, string>()
+
+/**
+ * Столько ждёт отложенный ролик. Заглушка — полтора килобайта, её пуск
+ * укладывается в десятки миллисекунд; дольше ждать неверный ролик на месте
+ * нового хуже, чем недоразблокированный элемент (его разблокирует касание
+ * «Нажмите, чтобы начать»).
+ */
+const UNLOCK_WAIT_MS = 1200
+
+/**
+ * Разблокировка кончилась (или её перестали ждать): элемент, которого плеер
+ * не просил играть, останавливаем, отложенный ролик ставим. Пуск, сменённый
+ * более новым, ничего не делает — за элемент теперь отвечает новый.
+ */
+function finishUnlock(video: HTMLVideoElement, run: Promise<void> | undefined): void {
+  if (!run || unlocking.get(video) !== run) return
+  unlocking.delete(video)
+  if (!wanted.has(video)) video.pause()
+  const src = deferredSrc.get(video)
+  if (src === undefined) return
+  deferredSrc.delete(video)
+  if (video.getAttribute('src') !== src) video.src = src
+}
+
+/**
  * Поставить ролик и постер. Тот же адрес второй раз не ставим: присвоение
  * src, даже прежнего, заново запускает загрузку, и ролик мигал бы.
+ *
+ * У элемента висит разблокировка — src откладываем (см. unlocking), постер
+ * ставим сразу: он пуск не перебивает.
  */
 export function setVideoSource(video: HTMLVideoElement, src: string, poster: string): void {
   if (video.getAttribute('poster') !== poster) video.poster = poster
+  const run = unlocking.get(video)
+  if (run) {
+    deferredSrc.set(video, src)
+    setTimeout(() => finishUnlock(video, run), UNLOCK_WAIT_MS)
+    return
+  }
+  deferredSrc.delete(video)
   if (video.getAttribute('src') !== src) video.src = src
 }
 
@@ -94,6 +146,9 @@ function start(video: HTMLVideoElement): Promise<void> {
 /** Запустить ролик. Обещание — как у play(): отказ браузера придёт в catch. */
 export function playVideo(video: HTMLVideoElement): Promise<void> {
   wanted.add(video)
+  // Плеер просит играть ролик, отложенный до конца разблокировки, — ставим
+  // его сейчас: показывать на виду прежний было бы неверно.
+  if (deferredSrc.has(video)) finishUnlock(video, unlocking.get(video))
   // У каждого пуска своя запись: отказ прежнего, перебитого пуска может
   // прийти позже, но ляжет в прежнюю запись, а не в эту.
   const attempt: Attempt = { error: null }
@@ -109,10 +164,26 @@ export function playVideo(video: HTMLVideoElement): Promise<void> {
   return started
 }
 
-/** Остановить ролик. */
+/**
+ * Остановить ролик. Висящую разблокировку не обрываем: элемент остановит
+ * она сама, когда пуск кончится (finishUnlock), — до тех пор он скрыт или
+ * ещё стоит на первом кадре.
+ */
 export function pauseVideo(video: HTMLVideoElement): void {
   wanted.delete(video)
+  if (unlocking.has(video)) return
   video.pause()
+}
+
+/** Имя отказа последнего play() элемента (для диагностики); null — отказа не было. */
+export function lastPlayError(video: HTMLVideoElement): string | null {
+  const error = attempts.get(video)?.error
+  return error ? errorName(error) : null
+}
+
+/** Разрешил ли браузер элементу играть (см. unlocked). */
+export function isUnlocked(video: HTMLVideoElement): boolean {
+  return unlocked.has(video)
 }
 
 /** Браузер не пустил медиа без касания. */
@@ -145,13 +216,16 @@ export function unlockVideos(): void {
     if (unlocked.has(video)) continue
     if (!video.getAttribute('src')) video.src = UNLOCK_SRC
     // Разблокировка — не просьба плеера: играть элемент оставит только он.
-    start(video).then(
+    // Пока пуск висит, пауза и смена src от плеера ждут его (см. unlocking);
+    // кончился — элемент останавливает finishUnlock, если плеер не просил.
+    const run: Promise<void> = start(video).then(
       () => {
         unlocked.add(video)
-        if (!wanted.has(video)) video.pause()
       },
       () => undefined,
     )
+    unlocking.set(video, run)
+    void run.then(() => finishUnlock(video, run))
   }
 }
 

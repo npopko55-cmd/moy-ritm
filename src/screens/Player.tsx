@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
+import { describeVideoFault, reportPlayerFault, type FaultContext } from '../api/playerFault'
 import {
   hasAccess,
   type DayStats,
@@ -74,6 +75,9 @@ const mmss = (total: number) =>
 
 /** Сверка с сервером: раз в минуту серверные цифры заменяют локальные. */
 const SYNC_MS = 60_000
+
+/** Отчёт о сбое ролика — не чаще раза в столько за заход. */
+const FAULT_REPORT_MS = 30_000
 
 /**
  * Кусок закрывается принудительно раз в минуту. Нужно только при интервале
@@ -725,6 +729,34 @@ export default function Player() {
   const activeRef = useRef(active)
   activeRef.current = active
 
+  /**
+   * Отчёт о сбое ролика (src/api/playerFault.ts): по нему видно, какой
+   * элемент, на каком движении и почему не пошёл. Не чаще раза в
+   * FAULT_REPORT_MS за заход — сторож и отказ пуска часто приходят парой.
+   */
+  const faultAt = useRef<number | null>(null)
+  const reportFault = useCallback(
+    (kind: FaultContext['kind'], index: number) => {
+      const now = performance.now()
+      if (faultAt.current !== null && now - faultAt.current < FAULT_REPORT_MS) return
+      faultAt.current = now
+      try {
+        reportPlayerFault(
+          describeVideoFault(buffers[index], {
+            kind,
+            buffer: index,
+            step: stepRef.current,
+            loopId: moveRef.current || null,
+            immersive: immersiveRef.current,
+          }),
+        )
+      } catch {
+        /* диагностика не должна мешать тренировке */
+      }
+    },
+    [buffers],
+  )
+
   const moveProgress = Math.min(1, inMove / moveInterval)
 
   // Секундный тик заведён один раз на всю тренировку и не пересоздаётся при
@@ -858,6 +890,7 @@ export default function Player() {
     const frame = requestAnimationFrame(() => {
       playVideo(on).catch((error: unknown) => {
         if (!alive || !isNotAllowed(error)) return
+        reportFault('video_not_allowed', active)
         setPlaying(false)
         setNeedTap(true)
       })
@@ -866,7 +899,7 @@ export default function Player() {
       alive = false
       cancelAnimationFrame(frame)
     }
-  }, [buffers, playing, empty, active, loopId])
+  }, [buffers, playing, empty, active, loopId, reportFault])
 
   /**
    * Сторож ролика (watchVideo в src/media/videoPool.ts). Кольцо, таймер и
@@ -892,11 +925,12 @@ export default function Player() {
         })
       },
       giveUp: () => {
+        reportFault('video_giveup', active)
         setPlaying(false)
         setNeedTap(true)
       },
     })
-  }, [buffers, playing, empty, visible, active, loopId])
+  }, [buffers, playing, empty, visible, active, loopId, reportFault])
 
   // Пауза тренировки останавливает и музыку. Без движений играть нечему.
   useEffect(() => {
