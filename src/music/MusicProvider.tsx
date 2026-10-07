@@ -41,12 +41,13 @@ type MusicValue = {
    */
   pauseNow: () => void
   /**
-   * Звук выключен — так начинается каждый заход в плеер (правка Никиты
-   * 07.10): браузер всё равно не пускает звук без касания, и человек сам
-   * включает его кнопкой «Звук». Плеер зовёт это, когда открывается и когда
-   * закрывается; внутри захода (пауза, окно гостя) выбор человека живёт.
+   * Звук снова включён — так начинается каждый заход в поток (Дима,
+   * Никита 07.10: «звук будет всегда включаться»). Выключенный кнопкой
+   * «Звук» живёт только до конца захода: плеер зовёт это, когда открывается
+   * и когда закрывается. Сам трек не запускает и играющий не трогает —
+   * пуск, как и раньше, за отсчётом и «Играть».
    */
-  muteForEntry: () => void
+  resetSoundForEntry: () => void
   start: () => void
   setPlaying: (on: boolean) => void
   /**
@@ -137,10 +138,18 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // запрос, отправленный раньше касания: музыка из-за него не встаёт.
   const musicSetting = (me?.settings.music_enabled ?? true) || wishHolds(musicWish.current, me)
   // Кнопка звука в плеере глушит музыку поверх настройки профиля. Нигде не
-  // запоминается: каждый заход в плеер и каждая загрузка страницы начинаются
-  // без звука (muteForEntry), включает его человек кнопкой «Звук».
-  const [soundOff, setSoundOff] = useState(true)
+  // запоминается (старый ключ moy-ritm.soundOff в браузере не читаем):
+  // каждый заход в поток и каждая загрузка страницы начинаются со звуком
+  // (resetSoundForEntry), выключает его человек кнопкой «Звук».
+  const [soundOff, setSoundOff] = useState(false)
   const enabled = musicSetting && !soundOff
+  // «Музыку» включили в настройках — это тоже просьба о звуке: снимаем и
+  // выключение кнопкой, иначе переключатель в настройках ничего бы не дал.
+  const settingWas = useRef(musicSetting)
+  useEffect(() => {
+    if (musicSetting && !settingWas.current) setSoundOff(false)
+    settingWas.current = musicSetting
+  }, [musicSetting])
   const target = (me?.settings.music_volume ?? DEFAULT_VOLUME) / 100
   // Ref, чтобы плавный вход читал свежую громкость, а не ту, что была при
   // создании обработчика.
@@ -552,14 +561,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     setPlayingState(false)
   }, [])
 
-  const muteForEntry = useCallback(() => {
-    // Состояние для обработчиков — сразу, как у кнопки звука.
-    enabledRef.current = false
-    onRef.current = false
-    startedInTap.current = false
-    setSoundOff(true)
-    stopFade()
-    audioRef.current?.pause()
+  const resetSoundForEntry = useCallback(() => {
+    // Только снимаем выключение кнопкой. Звук и так включён (переход с
+    // отсчёта в плеер) — ничего не меняется, музыка играет дальше без
+    // запинки. Пуска здесь нет: без касания браузер его всё равно не дал бы.
+    // Для обработчиков — сразу: разблокировка в касании «Влиться в поток»
+    // должна видеть звук уже включённым. «Музыка» выключена в профиле — так
+    // и остаётся.
+    enabledRef.current = musicSettingRef.current
+    setSoundOff(false)
   }, [])
 
   const start = useCallback(() => setPlayingState(true), [])
@@ -574,12 +584,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       toggleSound,
       resumeNow,
       pauseNow,
-      muteForEntry,
+      resetSoundForEntry,
       start,
       setPlaying,
       next,
     }),
-    [track, playing, blocked, enabled, toggleSound, resumeNow, pauseNow, muteForEntry, start, setPlaying, next],
+    [track, playing, blocked, enabled, toggleSound, resumeNow, pauseNow, resetSoundForEntry, start, setPlaying, next],
   )
   return <MusicContext.Provider value={value}>{children}</MusicContext.Provider>
 }
