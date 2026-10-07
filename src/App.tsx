@@ -71,9 +71,12 @@ export default function App() {
 
           {/* Ссылка входа тестовой воронки из Telegram: /go/<токен>. */}
           <Route path="/go/:token" element={<GoFunnel />} />
-          {/* Гостевой вход: плеер без регистрации, регистрацию предложит
-              окно посреди тренировки (src/lib/guest.ts). */}
-          <Route path="/play/:token" element={<PlayGuest />} />
+          {/* Гостевой вход: главная → отсчёт → плеер без регистрации,
+              регистрацию предложит окно посреди тренировки (src/lib/guest.ts,
+              src/screens/PlayGuest.tsx). */}
+          <Route path="/play/:token" element={<PlayGuest screen="home" />} />
+          <Route path="/play/:token/start" element={<PlayGuest screen="start" />} />
+          <Route path="/play/:token/live" element={<PlayGuest screen="live" />} />
 
           {/* Учётная запись. Адреса совпадают со ссылками в письмах —
               их строит бэкенд от PUBLIC_BASE_URL, см. docs/EMAILS.md. */}

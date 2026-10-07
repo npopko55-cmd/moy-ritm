@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider'
-import { guestFirstToken } from '../lib/guest'
+import { readFunnelGuest, readFunnelToken } from '../lib/funnel'
+import { guestFirstToken, guestStartPath } from '../lib/guest'
 import { flowLabel, useFlowStart } from '../auth/guards'
 import { useFlow } from '../flow/FlowSession'
 import LegalLinks from '../components/LegalLinks'
@@ -9,8 +10,8 @@ import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight } from '../components/Icons'
 import { asset } from '../lib/asset'
-import { loopPoster, loopSrc } from '../data/loops'
-import { MASCOT_AS_IMAGE, useMascot } from '../lib/mascot'
+import { LANDING_LOOP, loopPoster, loopSrc } from '../data/loops'
+import { useLandingLoop } from '../lib/landingLoop'
 import { prefetchFiles, prefetchImages, whenIdle } from '../lib/prefetch'
 import { login, preloadWorkout } from '../lib/screens'
 import { warmTrial } from '../lib/trial'
@@ -49,7 +50,11 @@ const STEPS = [
   },
 ] as const
 
-export default function Landing() {
+/**
+ * guestToken — главная гостя по ссылке /play/<токен> (src/screens/PlayGuest.tsx):
+ * та же страница, но «Включить эфир» запускает отсчёт и тренировку гостя.
+ */
+export default function Landing({ guestToken }: { guestToken?: string } = {}) {
   const navigate = useNavigate()
   const { me, signOut } = useSession()
 
@@ -59,12 +64,18 @@ export default function Landing() {
   // Сам переход — через useFlowStart: он же разблокирует медиа в касании.
   const { session: flow } = useFlow()
   const goFlow = useFlowStart()
+  // Гостевой контекст: ссылка /play/<токен> (guestToken) или запомненный с
+  // неё токен — человек ушёл с гостевой главной на / (логотип, «Тарифы» и
+  // назад). Метка когорты тогда та же, и кнопка не уводит на вход.
+  const [savedGuest] = useState(() => (readFunnelGuest() ? readFunnelToken() : null))
+  const ownGuest = guestToken ?? savedGuest
   // «Сначала гость» (GUEST_FIRST_ENABLED на бэкенде): невошедшего кнопки
   // старта ведут в гостевой режим trial3d с меткой site, а не на вход.
-  // Настройку спрашиваем один раз за открытие и только у невошедшего.
+  // Настройку спрашиваем один раз за открытие и только у невошедшего без
+  // своей гостевой ссылки.
   const [guestEntry, setGuestEntry] = useState<string | null>(null)
   useEffect(() => {
-    if (me) return
+    if (me || ownGuest) return
     let alive = true
     void guestFirstToken().then((token) => {
       if (alive) setGuestEntry(token)
@@ -72,8 +83,13 @@ export default function Landing() {
     return () => {
       alive = false
     }
-  }, [me])
-  const start = () => (!me && guestEntry ? navigate(`/play/${guestEntry}`) : goFlow())
+  }, [me, ownGuest])
+  // Гостю (правка Димы 06.10.2026) кнопка — сразу в отсчёт, а после него
+  // тренировка идёт сама: без «Играть» и без регистрации. Не на /play/<токен>:
+  // там эта же главная. Переход тоже через goFlow — касание разблокирует медиа,
+  // и после отсчёта ролик на iPhone пойдёт без нового касания.
+  const guest = me ? null : (ownGuest ?? guestEntry)
+  const start = () => goFlow(guest ? guestStartPath(guest) : undefined)
 
   /*
    * Почта не подтверждена — тонкая строка под шапкой. Не всплывашка:
@@ -113,15 +129,14 @@ export default function Landing() {
   const { hash } = useLocation()
   useEffect(() => {
     if (hash !== '#about') return
-    // Кадр на раскладку: шрифты и маскот могли ещё сдвигать высоту героя.
+    // Кадр на раскладку: шрифты могли ещё сдвигать высоту героя.
     const timer = window.setTimeout(showAbout, 120)
     return () => window.clearTimeout(timer)
   }, [hash, showAbout])
 
-  // Маскот: анимация подгружается сама, сразу после первой отрисовки.
-  const mascotImage = useRef<HTMLImageElement>(null)
-  const mascotVideo = useRef<HTMLVideoElement>(null)
-  const live = useMascot(mascotImage, mascotVideo)
+  // Круг с роликом: сам ролик подгружается после первой отрисовки, до него — постер.
+  const loopVideo = useRef<HTMLVideoElement>(null)
+  useLandingLoop(loopVideo)
 
   // Пока человек читает лендинг, канал свободен: тянем то, что понадобится
   // в плеере. До Pages 0,4–0,85 с на запрос, так что фора решает больше,
@@ -286,43 +301,28 @@ export default function Landing() {
           </ol>
         </div>
 
+        {/* Круг с роликом упражнения (правка Димы 06.10.2026: вместо
+            маскота — кружок, бесконечно по кругу). Как круг в плеере: ролик
+            целиком в круглой рамке на своём бежевом фоне. Адрес ролика ставит
+            useLandingLoop — до него в разметке только постер. */}
         <div className="hero__visual">
-          <div className="hero__blob" />
           <span className="hero__dot hero__dot--a" />
           <span className="hero__dot hero__dot--b" />
           <span className="hero__dot hero__dot--c" />
           <span className="hero__dot hero__dot--d" />
-          <div className={`hero__mascot ${live ? 'is-live' : ''}`}>
-            <img
-              className="hero__mascot-poster"
-              src={asset('mascot/warmup-poster.webp')}
-              alt=""
-              decoding="async"
+          <div className="hero__loop">
+            <video
+              className="hero__loop-video"
+              ref={loopVideo}
+              poster={loopPoster(LANDING_LOOP)}
+              muted
+              loop
+              autoPlay
+              playsInline
+              preload="none"
+              disablePictureInPicture
+              aria-hidden="true"
             />
-            {/*
-              Адрес анимации ставит хук — до него в разметке ничего не качается.
-              WebKit и мини-ап получают анимированный WebP, остальные — видео.
-            */}
-            {MASCOT_AS_IMAGE ? (
-              <img
-                className="hero__mascot-anim"
-                ref={mascotImage}
-                alt=""
-                decoding="async"
-                aria-hidden="true"
-              />
-            ) : (
-              <video
-                className="hero__mascot-anim"
-                ref={mascotVideo}
-                muted
-                loop
-                playsInline
-                preload="none"
-                poster={asset('mascot/warmup-poster.webp')}
-                aria-hidden="true"
-              />
-            )}
           </div>
         </div>
       </main>

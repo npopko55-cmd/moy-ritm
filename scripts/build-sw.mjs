@@ -75,9 +75,20 @@ function warmPosters() {
   return posters
 }
 
-// Анимация маскота: ролики и анимированный WebP. Постер (warmup-poster.webp)
-// под шаблон не подходит — он в предкэше.
-const MASCOT_MEDIA = /\.(webm|mov)$|-anim(-lg)?\.webp$/
+/**
+ * Постер ролика в круге на главной (src/lib/landingLoop.ts): круг виден в
+ * первом экране, и до ролика в нём стоит этот кадр. Какой ролик — из
+ * src/data/loops.ts (LANDING_LOOP), чтобы не держать id в двух местах. Сам
+ * ролик, как и все *.mp4, идёт мимо воркера (см. fetch ниже).
+ */
+function landingPoster() {
+  const src = readFileSync(join(ROOT, 'src/data/loops.ts'), 'utf8')
+  const id = /export const LANDING_LOOP = '([^']+)'/.exec(src)?.[1]
+  if (!id) throw new Error('build-sw: не нашёл LANDING_LOOP в src/data/loops.ts')
+  const poster = `loops/${id}.webp`
+  if (!filesIn('loops').includes(poster)) throw new Error(`build-sw: нет постера ${poster}`)
+  return poster
+}
 
 /**
  * Что не идёт в предкэш, хоть и лежит рядом: код админки (её открывает один
@@ -93,18 +104,22 @@ const precached = (f) => !NOT_PRECACHED.some((re) => re.test(f))
 
 // Предкэш — только то, без чего первый экран не покажется: разметка, бандлы
 // (чанки из assets/, в том числе экраны, которые грузятся по маршруту, — кроме
-// NOT_PRECACHED), шрифты, постер маскота и постеры первых движений. Фото
-// потоков сюда больше не идут: потоки скрыты и нигде не показываются. Сама
-// анимация маскота — ролики и анимированный WebP — тоже не идёт: она
-// мегабайтная, из вариантов браузеру нужен один, и тот кэшируется по ходу
-// (см. MASCOT ниже).
+// NOT_PRECACHED), шрифты, постер ролика в круге на главной, постер маскота
+// (24 КБ — героиня в окне регистрации гостя, src/components/GuestPrompt.tsx)
+// и постеры первых движений. Фото потоков сюда больше не идут: потоки скрыты
+// и нигде не показываются. Анимации маскота на главной больше нет (с 06.10.2026
+// там круг с роликом), и её ролики с анимированным WebP воркер не трогает
+// вовсе: прежний кэш myrithm-mascot-* удалит activate.
 const precache = [
-  'index.html',
-  ...filesIn('assets').filter(precached),
-  ...filesIn('fonts').filter(precached),
-  ...filesIn('mascot').filter((f) => f.endsWith('-poster.webp')),
-  ...warmPosters(),
-  'manifest.webmanifest',
+  ...new Set([
+    'index.html',
+    ...filesIn('assets').filter(precached),
+    ...filesIn('fonts').filter(precached),
+    ...filesIn('mascot').filter((f) => f.endsWith('-poster.webp')),
+    landingPoster(),
+    ...warmPosters(),
+    'manifest.webmanifest',
+  ]),
 ].sort()
 
 const urls = precache.map((f) => BASE + f)
@@ -113,7 +128,6 @@ const urls = precache.map((f) => BASE + f)
 // имя, и старый удаляется при активации воркера.
 const version = contentHash(precache)
 const musicVersion = contentHash(filesIn('music').filter((f) => f.endsWith('.m4a')))
-const mascotVersion = contentHash(filesIn('mascot').filter((f) => MASCOT_MEDIA.test(f)))
 
 const bytes = precache.reduce((sum, f) => {
   try {
@@ -128,9 +142,9 @@ const VERSION = '${version}'
 const BASE = '${BASE}'
 const PRECACHE = 'myrithm-precache-' + VERSION
 const MUSIC = 'myrithm-music-${musicVersion}'
-const MASCOT = 'myrithm-mascot-${mascotVersion}'
 // Кэша роликов больше нет (см. fetch ниже): прежний myrithm-loops-* удалит activate.
-const CURRENT = [PRECACHE, MUSIC, MASCOT]
+// Кэша анимации маскота тоже: на главной её больше нет, myrithm-mascot-* удалит activate.
+const CURRENT = [PRECACHE, MUSIC]
 const MUSIC_LIMIT = 13
 
 /** Сети, на которых второй поток того же файла ради кэша — плохая сделка. */
@@ -330,14 +344,6 @@ self.addEventListener('fetch', (e) => {
   // Музыка: тринадцать треков по 0,6–1,3 МБ, больше в кэше держать незачем.
   if (url.pathname.endsWith('.m4a')) {
     e.respondWith(media(e, req, MUSIC, MUSIC_LIMIT))
-    return
-  }
-
-  // Маскот с главной: несколько файлов, из них качается один — тот, что
-  // подошёл браузеру и ширине экрана. Со второго захода берём из кэша.
-  // Постер сюда не попадает: он в предкэше.
-  if (url.pathname.includes('/mascot/') && ${MASCOT_MEDIA}.test(url.pathname)) {
-    e.respondWith(media(e, req, MASCOT))
     return
   }
 

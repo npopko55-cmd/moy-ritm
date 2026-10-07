@@ -129,3 +129,14 @@ export function loopSrc(id: string): string {
 export function loopPoster(id: string): string {
   return asset(`loops/${id}.webp`)
 }
+
+/**
+ * Ролик в круге на главной (правка Димы 06.10.2026: вместо маскота — кружок с
+ * упражнением, бесконечно по кругу). «Шаг в сторону, рука вверх»: шаг вбок и
+ * рука вверх по очереди. Не step-arm-out и не step-arm-swing — в них размыта
+ * правая рука.
+ *
+ * Строку читает и scripts/build-sw.mjs — постер этого ролика в предкэше,
+ * поэтому вид объявления (одна строка, id в одинарных кавычках) не менять.
+ */
+export const LANDING_LOOP = 'side-step-reach'

@@ -6,6 +6,7 @@ import { FloatNote, MusicNote, Sparkle } from '../components/Icons'
 import { getStream, WARM_MOVES } from '../data/streams'
 import { loopPoster, loopSrc } from '../data/loops'
 import { startState, useFlow } from '../flow/FlowSession'
+import { guestLivePath } from '../lib/guest'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { player } from '../lib/screens'
 import { holdAwake, releaseAwake } from '../media/keepAwake'
@@ -39,7 +40,9 @@ function tickColor(t: number): string {
 
 export default function Countdown() {
   const navigate = useNavigate()
-  const { streamId } = useParams()
+  // token — отсчёт гостя (/play/<токен>/start, src/screens/PlayGuest.tsx):
+  // поток у него по умолчанию, а уводит отсчёт в плеер гостя.
+  const { streamId, token: guestToken } = useParams()
   const [left, setLeft] = useState(START_FROM)
   const { start, setPlaying: setMusicPlaying } = useMusic()
   // Отсчёт дошёл до конца и сам уводит в плеер: музыку тогда не трогаем.
@@ -50,6 +53,7 @@ export default function Countdown() {
   // getStream. Дальше по коду идёт уже существующий идентификатор.
   const stream = getStream(streamId)
   const target = stream.id
+  const playerPath = guestToken ? guestLivePath(guestToken) : `/player/${target}`
 
   /**
    * Тренировка этого потока уже идёт — отсчёта не будет.
@@ -105,14 +109,14 @@ export default function Countdown() {
       toPlayer.current = true
       // Отсчёт дошёл до нуля — единственный переход, после которого плеер
       // пускает тренировку сам (startState в src/flow/FlowSession.tsx).
-      navigate(`/player/${target}`, { replace: true, state: startState() })
+      navigate(playerPath, { replace: true, state: startState() })
       return
     }
     const t = setTimeout(() => setLeft((n) => n - 1), 1000)
     return () => clearTimeout(t)
-  }, [left, navigate, target, resume])
+  }, [left, navigate, playerPath, resume])
 
-  if (resume) return <Navigate to={`/player/${target}`} replace />
+  if (resume) return <Navigate to={playerPath} replace />
 
   return (
     <div className="countdown">

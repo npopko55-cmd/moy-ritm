@@ -283,24 +283,8 @@
   --figure-h: min(780px, calc(100 * var(--vh) - 250px));
   position: relative;
   display: grid;
-  place-items: end center;
+  place-items: center;
   min-height: var(--figure-h);
-}
-
-.hero__blob {
-  position: absolute;
-  width: calc(var(--figure-h) * 0.86);
-  height: calc(var(--figure-h) * 0.86);
-  border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -52%);
-  filter: blur(2px);
-  background:
-    radial-gradient(circle at 32% 26%, #ffe9f3 0%, rgba(255, 233, 243, 0) 62%),
-    radial-gradient(circle at 74% 34%, #efe6ff 0%, rgba(239, 230, 255, 0) 58%),
-    radial-gradient(circle at 52% 74%, #ffeede 0%, rgba(255, 238, 222, 0) 62%),
-    linear-gradient(150deg, #fdeaf4 0%, #f2e9ff 52%, #ffeedf 100%);
 }
 
 .hero__dot { position: absolute; border-radius: 50%; }
@@ -366,13 +350,6 @@
 
   /* На узком экране заголовок обязан переноситься. */
   .hero__title { white-space: normal; }
-
-  /* Пятно шире своей колонки наезжало бы на текст. */
-  .hero__blob {
-    width: min(calc(var(--figure-h) * 0.86), 100%);
-    height: auto;
-    aspect-ratio: 1;
-  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -517,81 +494,56 @@
   .step__title,
   .step__text { white-space: normal; }
 
-  /* Размытие на большом пятне дорого для слабого телефона. */
-  .hero__blob { filter: none; }
-
   .hero__dot--a { top: 20px; right: 8px; }
   .hero__dot--b { width: 18px; height: 18px; top: 92px; right: 0; }
   .hero__dot--c { bottom: 52px; left: 6px; }
   .hero__dot--d { width: 15px; height: 15px; bottom: 16px; left: 54px; }
 }
 
-/* ——— Маскот ——— */
+/* ——— Круг с роликом ——— */
 /*
- * Стоит там же, где стояло фото, и берёт ту же --figure-h: она задана на
- * .hero__visual и переопределена в каждом медиазапросе выше, так что высота
- * фигуры на всех экранах остаётся прежней.
+ * Стоит там же, где стояли маскот и цветное пятно под ним, и берёт ту же
+ * --figure-h: она задана на .hero__visual и переопределена в каждом
+ * медиазапросе выше. Диаметр — как у прежнего пятна, 0,86 высоты фигуры, но
+ * не шире своей колонки за вычетом розовой каймы: иначе на широком экране и
+ * планшете круг наезжал бы на текст.
  *
- * Ширина считается из пропорции кадра (672x934), а не задаётся отдельно.
- * Кадр шире прежнего снимка, поэтому в узкой колонке планшета он упирается
- * в её ширину — min(...,100%) ужимает блок, высота идёт следом за пропорцией.
- * Ровно так вёл себя <img> с max-width: 100%.
- *
- * isolation — чтобы тень (::after, z-index: -1) ушла под фигуру, но осталась
- * поверх цветного пятна .hero__blob.
+ * Внутри — как круг в плеере (.stage__disc в Player.css): ролик целиком в
+ * круглой рамке, на бежевом фоне самого ролика, без вырезки. Фон виден и до
+ * постера — круг не мигает пустотой.
  */
-.hero__mascot {
+.hero__loop {
+  --halo: clamp(6px, 0.9vw, 12px);
   position: relative;
-  isolation: isolate;
-  width: min(calc(var(--figure-h) * 672 / 934), 100%);
-  aspect-ratio: 672 / 934;
+  width: min(calc(var(--figure-h) * 0.86), calc(100% - 2 * var(--halo)));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f6efe8;
+  box-shadow:
+    inset 0 0 0 1px rgba(20, 22, 26, 0.04),
+    0 0 0 var(--halo) rgba(255, 227, 240, 0.85),
+    0 28px 60px -30px rgba(216, 17, 122, 0.35);
 }
 
-/* Без aspect-ratio (iOS 14, старые вьюхи) блок был нулевой высоты, и постер
-   с анимацией (они absolute) не показывались вовсе: высоту даёт распорка с
-   padding-top в пропорции кадра. Где aspect-ratio есть, правило не действует. */
+/* Без aspect-ratio (iOS 14, старые вьюхи) круг был бы нулевой высоты: высоту
+   даёт распорка с padding-top: 100% — проценты отступа считаются от ширины.
+   Где aspect-ratio есть, правило не действует. */
 @supports not (aspect-ratio: 1 / 1) {
-  .hero__mascot::before {
+  .hero__loop::before {
     content: '';
     display: block;
-    padding-top: calc(934 / 672 * 100%);
+    padding-top: 100%;
   }
 }
 
-/*
- * Постер и анимация лежат друг на друге — подмена идёт кадр в кадр, без скачка.
- * Анимация — <video> или <img> с анимированным WebP, см. src/lib/mascot.ts.
- */
-.hero__mascot-poster,
-.hero__mascot-anim {
+/* object-fit действует и на постер: первый кадр стоит ровно там же, где
+   потом пойдёт ролик, — подмена без скачка. */
+.hero__loop-video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  transition: opacity .4s ease;
-}
-
-/* До запуска анимация прозрачна; если её не будет — постер и останется. */
-.hero__mascot-anim { opacity: 0; }
-.hero__mascot.is-live .hero__mascot-anim { opacity: 1; }
-.hero__mascot.is-live .hero__mascot-poster { opacity: 0; }
-
-/*
- * Тень — отдельный эллипс под ногами. drop-shadow тут не годится: у фото он
- * считался один раз, а на видео пересчитывался бы каждый кадр по маске альфы.
- *
- * Числа сняты с кадра: ступни стоят на 98,9 % высоты и занимают 31,8 % ширины,
- * фигура за ролик с места не сходит. Эллипс шире ступней и по центру их линии.
- */
-.hero__mascot::after {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  left: 50%;
-  bottom: -1%;
-  width: 40%;
-  height: 4.4%;
-  transform: translateX(-50%);
-  background: radial-gradient(closest-side, rgba(20, 22, 26, .22), rgba(20, 22, 26, 0));
+  object-fit: cover;
+  pointer-events: none;
 }

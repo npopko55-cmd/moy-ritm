@@ -20,6 +20,21 @@ import { DEFAULT_STREAM } from '../data/streams'
 import { adoptGuestChunks } from './chunks'
 import { anonId } from './funnel'
 
+/*
+ * Адреса гостя (правка Димы 06.10.2026: «точно нужна главная»):
+ *   • /play/<токен>        — главная с объяснением сервиса (Landing);
+ *   • /play/<токен>/start  — отсчёт, как у вошедшего «Влиться в поток»;
+ *   • /play/<токен>/live   — плеер гостя: после отсчёта тренировка идёт сама.
+ * Токен с меткой когорты — в самом адресе, поэтому перезагрузка любого из
+ * трёх экранов её не теряет.
+ */
+
+/** Отсчёт гостя — сюда ведёт «Включить эфир» на главной в гостевом режиме. */
+export const guestStartPath = (token: string) => `/play/${token}/start`
+
+/** Плеер гостя — сюда уводит отсчёт. */
+export const guestLivePath = (token: string) => `/play/${token}/live`
+
 /** Куда вернуть человека после регистрации из окна: в обычный плеер. */
 export const GUEST_NEXT = `/player/${DEFAULT_STREAM.id}`
 
@@ -186,6 +201,8 @@ let config: Promise<string | null> | null = null
 /**
  * Строка гостевой ссылки для «Включить эфир» невошедшего или null — кнопка
  * ведёт как раньше. Один запрос за жизнь страницы и только с лендинга.
+ * Кнопка с этой строкой ведёт прямо в отсчёт гостя (guestStartPath), а не на
+ * /play/<токен>: там та же главная, и вышел бы круг «главная → главная».
  */
 export function guestFirstToken(): Promise<string | null> {
   config ??= api.guestConfig().then(
