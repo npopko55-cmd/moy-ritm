@@ -15,6 +15,8 @@
 import type { Api, PatchMeBody, PatchSettingsBody, RegisterBody } from './client'
 import {
   ApiError,
+  type GuestBootstrap,
+  type GuestConfig,
   type Checkout,
   type Chunk,
   type ChunksResponse,
@@ -369,11 +371,20 @@ export function createHttpApi(rawBase: string): Api {
 
     /* ——— Воронки ——— */
 
-    funnelVisit: (token, anonId) =>
+    funnelVisit: (token, anonId, guest) =>
       request<FunnelVisit>('POST', '/funnel/visit', {
-        body: { token, anon_id: anonId },
+        body: guest ? { token, anon_id: anonId, guest: true } : { token, anon_id: anonId },
         auth: false,
       }),
+
+    guestBootstrap: (token) =>
+      request<GuestBootstrap>('GET', `/player/guest-bootstrap?token=${encodeURIComponent(token)}`, {
+        auth: false,
+      }),
+
+    guestEvent: (body) => request<void>('POST', '/funnel/guest-event', { body, auth: false }),
+
+    guestConfig: () => request<GuestConfig>('GET', '/funnel/guest-config', { auth: false }),
 
     funnelOfferSeen: () => request<{ ok: boolean }>('POST', '/funnel/offer-seen'),
 

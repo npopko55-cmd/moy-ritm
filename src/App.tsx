@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './screens/Landing'
 import GoFunnel from './screens/GoFunnel'
+import PlayGuest from './screens/PlayGuest'
 import TelegramBridge from './components/TelegramBridge'
 import { SessionProvider } from './auth/SessionProvider'
 import { RequireAuth, RequireTrial } from './auth/guards'
@@ -70,6 +71,9 @@ export default function App() {
 
           {/* Ссылка входа тестовой воронки из Telegram: /go/<токен>. */}
           <Route path="/go/:token" element={<GoFunnel />} />
+          {/* Гостевой вход: плеер без регистрации, регистрацию предложит
+              окно посреди тренировки (src/lib/guest.ts). */}
+          <Route path="/play/:token" element={<PlayGuest />} />
 
           {/* Учётная запись. Адреса совпадают со ссылками в письмах —
               их строит бэкенд от PUBLIC_BASE_URL, см. docs/EMAILS.md. */}

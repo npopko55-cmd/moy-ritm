@@ -46,6 +46,8 @@ import {
   type FreeTier,
   type Funnel,
   type FunnelVisit,
+  type GuestBootstrap,
+  type GuestConfig,
   type Me,
   type MessageResponse,
   type PaymentCheck,
@@ -1049,6 +1051,30 @@ export function createDemoApi(): Api {
     async funnelBanner() {
       requireUser()
       return { ok: true }
+    },
+
+    // Гость в демо — тот же бесплатный уровень без аккаунта: десять движений
+    // (GUEST_EXERCISES бэкенда), пустая статистика, пробного периода нет.
+    async guestBootstrap(token: string) {
+      const funnel = demoFunnelOf(token)
+      if (!funnel) throw new ApiError(404, 'FUNNEL_NOT_FOUND', 'Такой ссылки нет')
+      const access = accessInfo('')
+      const tier: FreeTier = { stream_code: FREE_TIER.stream_code, exercise_limit: 10 }
+      return {
+        streams: demoStreams(access, tier),
+        settings: DEFAULT_SETTINGS,
+        access,
+        stats: summaryOf(''),
+        free_tier: tier,
+        trial: null,
+        guest: { funnel, mark: token.split('_')[1] ?? null },
+      } satisfies GuestBootstrap
+    },
+
+    async guestEvent() {},
+
+    async guestConfig() {
+      return { enabled: false, token: null } satisfies GuestConfig
     },
 
     // Диагностика роликов нужна только боевому бэкенду: в демо её некуда слать.

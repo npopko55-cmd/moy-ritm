@@ -14,15 +14,16 @@
  */
 
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { homeTarget } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
 import { useFlow } from '../flow/FlowSession'
+import { GUEST_LOGIN_PATH } from '../lib/guest'
 import { unlockMedia } from '../media/unlock'
 import { Clock, Gear, Home, Question, User } from './Icons'
 import './TabBar.css'
 
-export type Tab = 'workout' | 'progress' | 'profile' | 'settings' | 'help'
+export type Tab = 'workout' | 'progress' | 'profile' | 'settings' | 'help' | 'login'
 
 /**
  * Подписи короткие: пять вкладок встают в одну строку и на 320 px. Полное
@@ -37,6 +38,16 @@ const TABS: { id: Tab; icon: ReactNode; label: string; title: string; to?: strin
   { id: 'help', icon: <Question size={19} />, label: 'Помощь', title: 'Нужна помощь?', to: '/help' },
 ]
 
+/**
+ * Гость (ссылка /play/): кабинета у него нет — «Прогресс», «Профиль» и
+ * «Настройки» требуют входа. Вместо них «Войти»: вход вернёт его в плеер,
+ * а набранные гостем минуты перейдут в аккаунт (src/lib/guest.ts).
+ */
+const GUEST_TABS: typeof TABS = [
+  TABS[0],
+  { id: 'login', icon: <User size={19} />, label: 'Войти', title: 'Войти или зарегистрироваться', to: GUEST_LOGIN_PATH },
+]
+
 type Props = {
   /** Вкладка этого экрана — подсвечена и никуда не уводит. */
   current: Tab
@@ -44,18 +55,22 @@ type Props = {
   dock?: boolean
   /** Класс для раскладки экрана: плеер ставит панель своей сеткой. */
   className?: string
+  /** Гость: «Тренировка» и «Войти» вместо вкладок кабинета. */
+  guest?: boolean
 }
 
-export default function TabBar({ current, dock = false, className = '' }: Props) {
+export default function TabBar({ current, dock = false, className = '', guest = false }: Props) {
   const { me } = useSession()
+  const { pathname } = useLocation()
   const { session: flow } = useFlow()
 
   return (
     <ul className={`tabbar ${dock ? 'tabbar--dock' : ''} ${className}`}>
-      {TABS.map((tab) => {
+      {(guest ? GUEST_TABS : TABS).map((tab) => {
         const on = tab.id === current
         // «Тренировка» — главная: плеер на паузе, с кнопкой «Играть».
-        const to = tab.to ?? homeTarget(Boolean(me), flow)
+        // У гостя «Тренировка» — его же плеер: главная звала бы на вход.
+        const to = tab.to ?? (guest ? pathname : homeTarget(Boolean(me), flow))
         return (
           <li key={tab.id}>
             <Link

@@ -112,7 +112,6 @@ const urls = precache.map((f) => BASE + f)
 // Версии кэшей — хеши содержимого: поменялся хоть один файл — у кэша новое
 // имя, и старый удаляется при активации воркера.
 const version = contentHash(precache)
-const loopsVersion = contentHash(filesIn('loops').filter((f) => f.endsWith('.mp4')))
 const musicVersion = contentHash(filesIn('music').filter((f) => f.endsWith('.m4a')))
 const mascotVersion = contentHash(filesIn('mascot').filter((f) => MASCOT_MEDIA.test(f)))
 
@@ -128,10 +127,10 @@ const sw = `/* Сгенерировано scripts/build-sw.mjs — правки 
 const VERSION = '${version}'
 const BASE = '${BASE}'
 const PRECACHE = 'myrithm-precache-' + VERSION
-const LOOPS = 'myrithm-loops-${loopsVersion}'
 const MUSIC = 'myrithm-music-${musicVersion}'
 const MASCOT = 'myrithm-mascot-${mascotVersion}'
-const CURRENT = [PRECACHE, LOOPS, MUSIC, MASCOT]
+// Кэша роликов больше нет (см. fetch ниже): прежний myrithm-loops-* удалит activate.
+const CURRENT = [PRECACHE, MUSIC, MASCOT]
 const MUSIC_LIMIT = 13
 
 /** Сети, на которых второй поток того же файла ради кэша — плохая сделка. */
@@ -309,12 +308,18 @@ self.addEventListener('fetch', (e) => {
     return
   }
 
-  // Ролики: 4,8 МБ на все сорок пять — держим целиком: качаются они только
-  // по ходу тренировки, так что в кэше оказываются лишь те, что человек видел.
-  if (url.pathname.endsWith('.mp4')) {
-    e.respondWith(media(e, req, LOOPS))
-    return
-  }
+  // Ролики (и заглушки unlock.mp4, nosleep.mp4) воркер не трогает вовсе:
+  // их берёт сам браузер — из своего HTTP-кэша (nginx отдаёт им недельный
+  // Cache-Control, prefetchFiles прогревает его заранее) или из сети.
+  //
+  // Раньше ролики шли через media(): промах с Range — ответ сети, попадание —
+  // кусок, нарезанный воркером. Chrome сверяет происхождение всех ответов
+  // одного ролика, а у нарезанного new Response() адреса нет вовсе. Скрытый
+  // <video> докачивал ролик из сети, файл тем временем ложился в кэш, а при
+  // пуске на виду Chrome перезапрашивал его — и получал нарезку: «data source
+  // error» (код 2), после load() — «Format error» (код 4) на каждой попытке.
+  // Так второе движение и вставало на паузу (player_faults 05–06.10).
+  if (url.pathname.endsWith('.mp4')) return
 
   // Музыка: тринадцать треков по 0,6–1,3 МБ, больше в кэше держать незачем.
   if (url.pathname.endsWith('.m4a')) {

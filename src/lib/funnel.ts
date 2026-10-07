@@ -20,6 +20,8 @@ import { uuid } from './uuid'
 
 const ANON_KEY = 'moy-ritm.anon'
 const TOKEN_KEY = 'moy-ritm.funnel_token'
+/** Токен пришёл с гостевой ссылки /play/: регистрация пошлёт guest: true. */
+const GUEST_KEY = 'moy-ritm.funnel_guest'
 /** Токен из параметра запуска, визит по которому уже ушёл в этом открытии мини-апа. */
 const LAUNCH_KEY = 'moy-ritm.funnel_launch'
 
@@ -52,9 +54,12 @@ export function anonId(): string {
   }
 }
 
-export function saveFunnelToken(token: string): void {
+export function saveFunnelToken(token: string, guest = false): void {
   try {
     localStorage.setItem(TOKEN_KEY, token)
+    // Обычная ссылка /go после гостевой снимает пометку: человек пришёл не гостем.
+    if (guest) localStorage.setItem(GUEST_KEY, '1')
+    else localStorage.removeItem(GUEST_KEY)
   } catch {
     /* приватный режим — зарегистрируется без метки */
   }
@@ -68,9 +73,19 @@ export function readFunnelToken(): string | null {
   }
 }
 
+/** Запомненный токен — с гостевой ссылки /play/. */
+export function readFunnelGuest(): boolean {
+  try {
+    return localStorage.getItem(GUEST_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function forgetFunnelToken(): void {
   try {
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(GUEST_KEY)
   } catch {
     /* нечего забывать */
   }
@@ -93,16 +108,20 @@ export type FunnelVisitResult = 'ok' | 'not_found' | 'error'
 /** Один визит на токен за жизнь страницы: StrictMode не должен считать дважды. */
 const visits = new Map<string, Promise<FunnelVisitResult>>()
 
-/** Визит по ссылке воронки: POST /funnel/visit с анонимным id. Не падает. */
-export function visitFunnel(token: string): Promise<FunnelVisitResult> {
-  let job = visits.get(token)
+/**
+ * Визит по ссылке воронки: POST /funnel/visit с анонимным id. Не падает.
+ * `guest` — гостевая ссылка /play/: визит с meta.guest.
+ */
+export function visitFunnel(token: string, guest = false): Promise<FunnelVisitResult> {
+  const key = guest ? `guest:${token}` : token
+  let job = visits.get(key)
   if (!job) {
-    job = api.funnelVisit(token, anonId()).then(
+    job = api.funnelVisit(token, anonId(), guest).then(
       (): FunnelVisitResult => 'ok',
       (e: unknown): FunnelVisitResult =>
         e instanceof ApiError && e.status === 404 && e.code === 'FUNNEL_NOT_FOUND' ? 'not_found' : 'error',
     )
-    visits.set(token, job)
+    visits.set(key, job)
   }
   return job
 }

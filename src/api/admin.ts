@@ -47,6 +47,8 @@ export type FunnelSummary = {
   banner_seen?: number
   banner_clicked?: number
   banner_click_share?: number | null
+  /** Гости со ссылки /play/ — события за период. Старый бэкенд поля не шлёт. */
+  guests?: { visitors: number; started: number; prompted: number; clicked: number; registered: number }
   /**
    * Те же шаги по меткам писем рассылки (ссылки вида …_m1). Строки m1–m3 и
    * «без метки» ('') бэкенд присылает всегда; нет поля — бэкенд старый.

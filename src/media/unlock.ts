@@ -14,6 +14,7 @@
  * Android ничего не меняется: там это короткий пуск и остановка.
  */
 
+import { unlockChime } from './chime'
 import { unlockVideos } from './videoPool'
 
 /** Разблокировка музыки. Её ставит MusicProvider: проигрыватель живёт там. */
@@ -27,6 +28,9 @@ export function unlockMedia(): void {
   try {
     unlockVideos()
     unlockMusic?.()
+    // Сигнал смены упражнения (src/media/chime.ts): Web Audio на iPhone
+    // звучит, только если контекст запущен в касании.
+    unlockChime()
   } catch {
     /* разблокировка — подстраховка: кнопка должна сработать в любом случае */
   }

@@ -14,6 +14,13 @@
  * Буфер у каждого человека свой — ключ с его id. В одном браузере бывают
  * двое, и неотправленные минуты первого не должны уйти под аккаунтом второго.
  *
+ * У гостя (ссылка /play/, src/lib/guest.ts) аккаунта нет — его буфер под
+ * ключом `moy-ritm.chunks.guest`, и очередь его не отправляет: отправить не
+ * под кем. Зарегистрировался или вошёл в этом браузере — adoptGuestChunks
+ * переносит буфер под его id, и минуты уходят как обычные. Гостевые куски
+ * старше суток выбрасываются: сервер всё равно положил бы их на день
+ * переноса (правило 2 в backend/docs/STATS.md), а не на тот, когда двигались.
+ *
  * Источник истины — само хранилище: перед каждой записью буфер
  * перечитывается. Очередь закрытого плеера ещё может ждать ответа на свой
  * пакет, а плеер тем временем открыт снова и пишет новые куски; со своей
@@ -34,6 +41,17 @@ const PREFIX = 'moy-ritm.chunks'
 const LEGACY_KEY = PREFIX
 
 const keyOf = (userId: string) => `${PREFIX}.${userId}`
+
+/** Буфер гостя — один на браузер. */
+const GUEST_KEY = `${PREFIX}.guest`
+
+/** Гостевые куски живут не дольше суток. */
+const GUEST_MAX_AGE_MS = 86_400_000
+
+const fresh = (list: Chunk[]): Chunk[] => {
+  const since = Date.now() - GUEST_MAX_AGE_MS
+  return list.filter((c) => Date.parse(c.started_at) >= since)
+}
 
 /** Если localStorage недоступен — буфер в памяти, общий на вкладку. */
 const memory = new Map<string, Chunk[]>()
@@ -69,13 +87,15 @@ const BACKOFF = [5, 15, 60]
 const MIN_GAP_MS = 20_000
 
 function load(key: string): Chunk[] {
+  let list: Chunk[]
   try {
     const raw = localStorage.getItem(key)
-    const list = raw ? (JSON.parse(raw) as Chunk[]) : []
-    return Array.isArray(list) ? list.slice(-LIMIT) : []
+    const parsed = raw ? (JSON.parse(raw) as Chunk[]) : []
+    list = Array.isArray(parsed) ? parsed.slice(-LIMIT) : []
   } catch {
-    return memory.get(key) ?? []
+    list = memory.get(key) ?? []
   }
+  return key === GUEST_KEY ? fresh(list) : list
 }
 
 function save(key: string, list: Chunk[]): void {
@@ -139,6 +159,21 @@ export async function flushBeforeSignOut(userId: string, ms = 2000): Promise<voi
   await Promise.race([sending, new Promise((resolve) => window.setTimeout(resolve, ms))])
 }
 
+/**
+ * Гость стал аккаунтом в этом браузере: его куски (не старше суток) — в
+ * буфер человека, гостевой буфер пуст. Идентификаторы кусков прежние, так
+ * что повтор переноса ничего не удвоит. Уйдут с первым открытием плеера.
+ */
+export function adoptGuestChunks(userId: string): void {
+  const guest = load(GUEST_KEY)
+  if (!guest.length) return
+  const key = keyOf(userId)
+  const mine = load(key)
+  const known = new Set(mine.map((c) => c.client_chunk_id))
+  save(key, [...mine, ...guest.filter((c) => !known.has(c.client_chunk_id))].slice(-LIMIT))
+  save(GUEST_KEY, [])
+}
+
 export type ChunkQueue = {
   /** Положить закрытый кусок в буфер и попробовать отправить. */
   push(chunk: Chunk): void
@@ -162,8 +197,11 @@ export type ChunkQueue = {
 }
 
 type Options = {
-  /** Чей это буфер: у каждого человека свой ключ в хранилище. */
-  userId: string
+  /**
+   * Чей это буфер: у каждого человека свой ключ в хранилище. null — гость:
+   * куски копятся в гостевом буфере и не отправляются.
+   */
+  userId: string | null
   /** Свежая сводка с сервера: она всегда правее локального счётчика. */
   onSummary(summary: StatsSummary): void
   /** Доступ кончился прямо во время тренировки. */
@@ -173,7 +211,8 @@ type Options = {
 }
 
 export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: Options): ChunkQueue {
-  const key = keyOf(userId)
+  const guest = userId === null
+  const key = guest ? GUEST_KEY : keyOf(userId)
   dropLegacy()
   let timer: number | null = null
   /** Отправка, которая идёт сейчас: второй пакет параллельно не шлём, flush её дожидается. */
@@ -204,7 +243,7 @@ export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: 
 
   /** Следующая попытка не раньше, чем позволяет склейка. */
   const plan = () => {
-    if (load(key).length) schedule(lastTry + MIN_GAP_MS - Date.now())
+    if (!guest && load(key).length) schedule(lastTry + MIN_GAP_MS - Date.now())
   }
 
   /** Выбросить из буфера то, что уже не вернётся: принято либо забраковано. */
@@ -217,7 +256,8 @@ export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: 
    */
   function run(keepalive = false, force = false): Promise<void> {
     if (inflight) return inflight
-    if (stopped && !force) return Promise.resolve()
+    // Гостю отправлять не под кем: куски ждут регистрации (adoptGuestChunks).
+    if (guest || (stopped && !force)) return Promise.resolve()
     const buffer = load(key)
     if (!buffer.length) return Promise.resolve()
 
@@ -298,7 +338,7 @@ export function createChunkQueue({ userId, onSummary, onAccessLost, onChange }: 
         return run(keepalive, true)
       }
       if (!inflight) return now()
-      if (keepalive) {
+      if (keepalive && !guest) {
         // Вкладку прячут или закрывают, а прошлый пакет ещё в пути: его
         // ответа страница может и не дождаться. Весь буфер — сразу и с
         // keepalive; то, что уже ушло, сервер второй раз не засчитает.

@@ -282,6 +282,30 @@ export type FunnelVisit = { funnel: Funnel }
 export type BannerAction = 'shown' | 'click'
 export type BannerPlace = 'player' | 'pause'
 
+/* ——— Гостевой режим (ссылка /play/<токен>) ——— */
+
+/**
+ * Плеер гостя (GET /player/guest-bootstrap): та же форма, что у bootstrap,
+ * но `trial` — null, а в `guest` — воронка и метка ссылки.
+ */
+export type GuestBootstrap = PlayerBootstrap & { guest: { funnel: Funnel; mark: string | null } }
+
+/** Событие гостя: первый пуск тренировки и окно регистрации. */
+export type GuestAction = 'start' | 'prompt_shown' | 'prompt_cta' | 'prompt_close'
+
+/** Окно регистрации гостя: полное (первое) или короткое (повторы). */
+export type GuestPromptKind = 'full' | 'short'
+
+export type GuestEventBody = {
+  token: string
+  anon_id: string
+  action: GuestAction
+  kind?: GuestPromptKind
+}
+
+/** «Сначала гость» на лендинге: включено ли и строка для /play/<token>. */
+export type GuestConfig = { enabled: boolean; token: string | null }
+
 /**
  * Отчёт о сбое ролика в плеере (POST /player/faults) — чтобы жалоба «застыло
  * на втором упражнении» объясняла себя сама. Ни почты, ни токенов: только

@@ -6,6 +6,7 @@ import {
   hasAccess,
   type DayStats,
   type FreeTier,
+  type GuestPromptKind,
   type PlayerBootstrap,
   type Settings,
   type StatsSummary,
@@ -25,6 +26,7 @@ import {
   SpeakerOff,
   SpeakerOn,
 } from '../components/Icons'
+import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
 import Unlock from '../components/Unlock'
 import { DEFAULT_FREE_TIER, getStream } from '../data/streams'
@@ -38,6 +40,20 @@ import {
   type FlowSession,
 } from '../flow/FlowSession'
 import { createChunkQueue, type ChunkQueue } from '../lib/chunks'
+import { saveFunnelToken } from '../lib/funnel'
+import {
+  addGuestMoved,
+  GUEST_REGISTER_PATH,
+  guestFullShown,
+  guestMoved,
+  guestPromptDue,
+  guestThresholds,
+  lastGuestBootstrap,
+  loadGuestBootstrap,
+  markGuestPromptShown,
+  reportGuest,
+  reportGuestStart,
+} from '../lib/guest'
 import { createRotation, type Deck } from '../lib/deck'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { onAppReturn } from '../lib/appReturn'
@@ -54,6 +70,7 @@ import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial }
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { onTelegramEvent, telegramActive } from '../lib/telegram'
 import { uuid } from '../lib/uuid'
+import { playChime } from '../media/chime'
 import { holdAwake, keepAwake, releaseAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
 import {
@@ -129,12 +146,26 @@ type OpenChunk = { startedAt: number; seconds: number; stream: string; move: str
 const moveKind = (move: Loop) => move.kind
 
 export default function Player() {
-  const { streamId } = useParams()
+  const { streamId, token: guestToken } = useParams()
   const navigate = useNavigate()
   // Состояние записи истории: по нему видно, что плеер открыл отсчёт.
   const { state: routeState } = useLocation()
   const stream = getStream(streamId)
   const { access, me, reload } = useSession()
+
+  /**
+   * Гость — ссылка /play/<токен> без входа (src/lib/guest.ts). Плеер тот же,
+   * но всё, что требует входа, гостю не зовётся: сверка цифр, отчёт о сбое,
+   * плашки воронки, «Мой прогресс». Его минуты копятся в гостевом буфере, а
+   * окно регистрации встаёт поверх тренировки по секундам движения.
+   */
+  const guest = Boolean(guestToken) && !me
+  const guestRef = useRef(guest)
+  guestRef.current = guest
+  // Пороги окна — один раз на открытие (в разработке их можно уменьшить адресом).
+  const thresholds = useRef(guestThresholds()).current
+  // Открыть окно — из секундного тика, который не пересоздаётся: через ref.
+  const openPromptRef = useRef<(kind: GuestPromptKind, moved: number) => void>(() => undefined)
 
   /* ─────────────  Продолжение начатой тренировки  ───────────── */
 
@@ -181,7 +212,9 @@ export default function Player() {
    * само, в том числе сразу после «Вернуться в поток».
    */
   const [freeTier, setFreeTier] = useState<FreeTier>(
-    () => lastBootstrap(me?.user.id)?.free_tier ?? DEFAULT_FREE_TIER,
+    () =>
+      (guest ? lastGuestBootstrap(guestToken) : lastBootstrap(me?.user.id))?.free_tier ??
+      DEFAULT_FREE_TIER,
   )
   const limited = !hasAccess(access)
   const accessRef = useRef(access)
@@ -293,6 +326,9 @@ export default function Player() {
     setPlaying: setMusicPlaying,
     next: nextTrack,
   } = useMusic()
+  // Кнопка звука выключила музыку — молчит и сигнал смены упражнения.
+  const soundOnRef = useRef(soundOn)
+  soundOnRef.current = soundOn
 
   /* ─────────────  Порядок движений  ───────────── */
 
@@ -373,8 +409,10 @@ export default function Player() {
    * стоит на месте круга, и больше его нигде нет. С оплатой — нигде.
    */
   const opensAll = trialOpensAll(useTrial(), access)
-  const topBanner = limited && !empty && !opensAll
-  const sideUnlock = limited && !empty && opensAll
+  // Гостю плашек нет: «Открыть» ведёт на тарифы и пишет метрику — и то и
+  // другое требует входа. Его зовёт к регистрации своё окно.
+  const topBanner = limited && !empty && !opensAll && !guest
+  const sideUnlock = limited && !empty && opensAll && !guest
 
   const loop: Loop | null = empty ? null : moveAt(step)
   const nextLoop: Loop | null = empty ? null : moveAt(step + 1)
@@ -460,9 +498,10 @@ export default function Player() {
   const userId = me?.user.id
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId && !guest) return
     const q = createChunkQueue({
-      userId,
+      // Гость — null: куски копятся в гостевом буфере и ждут регистрации.
+      userId: userId ?? null,
       onSummary: setSummary,
       // Доступ кончился прямо во время тренировки: перечитываем профиль —
       // плеер сам перейдёт на бесплатный уровень и покажет разблокировку.
@@ -479,7 +518,7 @@ export default function Player() {
       q.stop()
       queueRef.current = null
     }
-  }, [userId, recount, reload, closeChunk])
+  }, [userId, guest, recount, reload, closeChunk])
 
   // Один кусок на движение. Уборка эффекта закрывает его при смене движения,
   // паузе, сворачивании вкладки и уходе с экрана.
@@ -616,11 +655,18 @@ export default function Player() {
     let alive = true
     void (async () => {
       try {
-        const data = await (userId ? loadBootstrap(userId) : api.playerBootstrap())
+        // Гость — свой ответ без входа: та же форма, доступа и цифр нет.
+        const data = await (guest && guestToken
+          ? loadGuestBootstrap(guestToken)
+          : userId
+            ? loadBootstrap(userId)
+            : api.playerBootstrap())
         if (!alive) return
         applyBoot(data)
-        if (hasAccess(data.access) !== hasAccess(accessRef.current)) void reload()
+        if (!guest && hasAccess(data.access) !== hasAccess(accessRef.current)) void reload()
       } catch {
+        // Гостю сводку спрашивать не у кого: остаются нули и его буфер.
+        if (guest) return
         try {
           const stats = await api.statsSummary()
           if (alive) setSummary(stats)
@@ -687,6 +733,8 @@ export default function Player() {
     localToday.current = now
     closeChunk()
     queueRef.current?.flush()
+    // Гостю «сегодня» считает его буфер: сводка требует входа.
+    if (guestRef.current) return
     void api
       .statsSummary()
       .then(setSummary)
@@ -703,6 +751,8 @@ export default function Player() {
   // Сверка раз в минуту: при расхождении правы цифры сервера, локальный
   // счётчик продолжает от них. Заодно ловим смену суток посреди тренировки.
   useEffect(() => {
+    // Гостю сверяться не с чем: сводка требует входа.
+    if (guest) return
     const id = setInterval(() => {
       checkDay()
       void api
@@ -711,7 +761,7 @@ export default function Player() {
         .catch(() => undefined)
     }, SYNC_MS)
     return () => clearInterval(id)
-  }, [checkDay])
+  }, [checkDay, guest])
 
   /* ─────────────  Ролики и таймер  ───────────── */
 
@@ -737,6 +787,8 @@ export default function Player() {
   const faultAt = useRef<number | null>(null)
   const reportFault = useCallback(
     (kind: FaultContext['kind'], index: number) => {
+      // POST /player/faults требует входа — гостю отчёт не шлём.
+      if (guestRef.current) return
       const now = performance.now()
       if (faultAt.current !== null && now - faultAt.current < FAULT_REPORT_MS) return
       faultAt.current = now
@@ -772,6 +824,18 @@ export default function Player() {
     setStep((s) => s + 1)
     setInMove(0)
     showPhrase()
+    // Сигнал «смена упражнения» (src/media/chime.ts) — поверх музыки. Только
+    // при смене по интервалу, поэтому на первом движении после старта его нет.
+    // Молчит, если тренировка на паузе, открыто окно гостя, звук выключен
+    // кнопкой или вкладка спрятана.
+    if (
+      playingRef.current &&
+      soundOnRef.current &&
+      !promptRef.current &&
+      document.visibilityState !== 'hidden'
+    ) {
+      playChime()
+    }
   }, [showPhrase])
 
   // Секундный тик: ведёт время тренировки, смену движения и открытый кусок.
@@ -780,6 +844,12 @@ export default function Player() {
     const id = setInterval(() => {
       sessionRef.current += 1
       setSessionSeconds(sessionRef.current)
+      // Гость: секунды движения копятся в этом браузере, по ним встаёт окно.
+      if (guestRef.current) {
+        const moved = addGuestMoved(1)
+        const due = guestPromptDue(moved, thresholds)
+        if (due) openPromptRef.current(due, moved)
+      }
       stepsRef.current += stepRate(moveRef.current)
       if (openRef.current) {
         openRef.current.seconds += 1
@@ -1308,6 +1378,64 @@ export default function Player() {
     })
   }, [closeChunk, navigate])
 
+  /* ─────────────  Гость: окно регистрации  ───────────── */
+
+  // Первый настоящий пуск тренировки гостем — один на браузер (src/lib/guest.ts).
+  useEffect(() => {
+    if (guest && playing && guestToken) reportGuestStart(guestToken)
+  }, [guest, playing, guestToken])
+
+  const [prompt, setPrompt] = useState<GuestPromptKind | null>(null)
+  const promptRef = useRef<GuestPromptKind | null>(null)
+  promptRef.current = prompt
+
+  /**
+   * Окно встаёт поверх тренировки и ставит её на паузу без экрана паузы:
+   * таймер, ролик и музыка стоят, кусок закрывается (эффекты по playing).
+   * Когда следующее окно, запоминает src/lib/guest.ts.
+   */
+  const openPrompt = useCallback(
+    (kind: GuestPromptKind, moved: number) => {
+      if (!guestToken || promptRef.current) return
+      markGuestPromptShown(kind, moved, thresholds)
+      promptRef.current = kind
+      setShowPause(false)
+      setPlaying(false)
+      setPrompt(kind)
+      reportGuest(guestToken, 'prompt_shown', kind)
+    },
+    [guestToken, thresholds],
+  )
+  openPromptRef.current = openPrompt
+
+  /**
+   * Крестик, Esc и «Продолжить без регистрации». Это касание: тренировка
+   * продолжается сразу, с разблокировкой медиа в том же обработчике.
+   */
+  const closePrompt = useCallback(() => {
+    const kind = promptRef.current
+    if (!kind) return
+    promptRef.current = null
+    setPrompt(null)
+    if (guestToken) reportGuest(guestToken, 'prompt_close', kind)
+    continueFlow()
+  }, [continueFlow, guestToken])
+
+  /** «Попробовать…» — регистрация с токеном воронки, как после /go; потом обратно в плеер. */
+  const promptCta = useCallback(() => {
+    const kind = promptRef.current
+    if (!guestToken || !kind) return
+    reportGuest(guestToken, 'prompt_cta', kind)
+    // Токен могла стереть другая ссылка: регистрация должна его получить.
+    saveFunnelToken(guestToken, true)
+    navigate(GUEST_REGISTER_PATH)
+  }, [guestToken, navigate])
+
+  /** «Вернусь позже» у гостя: «Мой прогресс» требует входа — вместо него окно. */
+  const laterGuest = useCallback(() => {
+    openPrompt(guestFullShown() ? 'short' : 'full', guestMoved())
+  }, [openPrompt])
+
   // Пока стоит экран паузы, плеер спрятан, и фокус с его кнопки пропадал бы
   // в никуда. Экран паузы забирает фокус себе, а закрываясь, возвращает его
   // на кнопку паузы.
@@ -1328,6 +1456,8 @@ export default function Player() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'Space' || e.repeat) return
+      // Открыто окно гостя — пробел принадлежит ему.
+      if (promptRef.current) return
       const el = document.activeElement
       if (el instanceof HTMLElement && (el.isContentEditable || /^(BUTTON|INPUT|TEXTAREA|SELECT|A)$/.test(el.tagName))) return
       e.preventDefault()
@@ -1394,7 +1524,7 @@ export default function Player() {
             панель вкладок, общая с «Прогрессом», «Профилем», «Настройками»
             и «Помощью» (src/components/TabBar.tsx). Здесь текущая вкладка —
             «Тренировка»; где панель стоит, решает сетка плеера (.side__menu). */}
-        <TabBar current="workout" className="side__menu" />
+        <TabBar current="workout" className="side__menu" guest={guest} />
       </aside>
 
       {/* ——— Центр ——— */}
@@ -1665,14 +1795,16 @@ export default function Player() {
           todaySteps={todaySteps}
           todaySeconds={todaySeconds}
           summary={summary}
-          locked={limited}
+          locked={limited && !guest}
           // Обёртка, а не сама функция: событие касания не должно попасть
           // в её параметр «на весь экран».
           onResume={() => continueFlow()}
           onClose={closePause}
-          onLater={leaveToProgress}
+          onLater={guest ? laterGuest : leaveToProgress}
         />
       )}
+
+      {guest && prompt && <GuestPrompt kind={prompt} onClose={closePrompt} onCta={promptCta} />}
     </>
   )
 }

@@ -112,7 +112,47 @@ function finishUnlock(video: HTMLVideoElement, run: Promise<void> | undefined): 
   const src = deferredSrc.get(video)
   if (src === undefined) return
   deferredSrc.delete(video)
-  if (video.getAttribute('src') !== src) video.src = src
+  assignSource(video, src)
+}
+
+/**
+ * Ролики, загруженные заново мимо кэша (reloadFresh): элемент → прежний
+ * адрес и адрес с ?r=. Плеер по-прежнему ставит элементу прежний адрес, и
+ * его нельзя принимать за новый ролик: присвоение вернуло бы испорченную
+ * загрузку.
+ */
+const fresh = new Map<HTMLVideoElement, { base: string; url: string }>()
+
+/** Адрес ролика элемента так, как его ставил плеер (без ?r= повтора). */
+function currentSource(video: HTMLVideoElement): string | null {
+  const attr = video.getAttribute('src')
+  const again = fresh.get(video)
+  return again && attr === again.url ? again.base : attr
+}
+
+/** Поставить src, если ролик другой: присвоение даже прежнего src заново запускает загрузку. */
+function assignSource(video: HTMLVideoElement, src: string): void {
+  if (currentSource(video) === src) return
+  fresh.delete(video)
+  video.src = src
+}
+
+/**
+ * Загрузить ролик элемента заново под другим адресом (тот же файл, ?r=…).
+ *
+ * Chrome держит загрузку ролика по адресу и после сбоя: load() того же src
+ * сразу кончается той же ошибкой («Format error», код 4), сколько ни пробуй.
+ * Новый адрес — новая загрузка, и мимо кэшей: ни сервис-воркер, ни HTTP-кэш
+ * такого адреса не видели, запрос уходит в сеть. nginx отдаёт файл, не глядя
+ * на запрос. Заглушку разблокировки и элемент без ролика не трогаем.
+ */
+function reloadFresh(video: HTMLVideoElement): boolean {
+  const base = currentSource(video)
+  if (!base || base === UNLOCK_SRC || unlocking.has(video)) return false
+  const url = `${base}${base.includes('?') ? '&' : '?'}r=${Date.now().toString(36)}`
+  fresh.set(video, { base, url })
+  video.src = url
+  return true
 }
 
 /**
@@ -131,7 +171,7 @@ export function setVideoSource(video: HTMLVideoElement, src: string, poster: str
     return
   }
   deferredSrc.delete(video)
-  if (video.getAttribute('src') !== src) video.src = src
+  assignSource(video, src)
 }
 
 /** play(), который всегда возвращает обещание: старые вьюхи отдают undefined. */
@@ -267,6 +307,9 @@ export type VideoWatch = {
  *   грузится, это не застрял; но грузится дольше LOADING_MS — один раз
  *   load() и снова play().
  *
+ * Ролик не загрузился (video.error или NETWORK_NO_SOURCE) — сначала один раз
+ * за движение загрузить его заново мимо кэша (reloadFresh), дальше как ниже.
+ *
  * Застрял — вернуть видимость (show) и в следующем кадре play(); стоящий, но
  * не на паузе ролик сначала останавливаем: play() у неостановленного ничего
  * не перезапускает. Не пошло за RESTARTS попыток подряд: причина —
@@ -284,6 +327,7 @@ export function watchVideo(video: HTMLVideoElement, { show, giveUp }: VideoWatch
   let reloadedSlow = false
   let restarts = 0
   let reloaded = false
+  let refreshed = false
   let done = false
   let frame = 0
 
@@ -355,6 +399,16 @@ export function watchVideo(video: HTMLVideoElement, { show, giveUp }: VideoWatch
         : failure
           ? `ошибка play(): ${errorName(failure)}`
           : 'paused'
+
+    // Ролик не загрузился (ошибка или «нет источника»): ни play(), ни load()
+    // того же адреса тут не помогут — сначала, один раз за движение, грузим
+    // его заново мимо кэша (reloadFresh). Не помогло — дальше как обычно.
+    const broken = video.error !== null || video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE
+    if (broken && !refreshed && reloadFresh(video)) {
+      refreshed = true
+      restart(`${reason}, загрузка заново мимо кэша`, false)
+      return
+    }
 
     if (restarts < RESTARTS) {
       restarts += 1

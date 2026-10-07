@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider'
+import { guestFirstToken } from '../lib/guest'
 import { flowLabel, useFlowStart } from '../auth/guards'
 import { useFlow } from '../flow/FlowSession'
 import LegalLinks from '../components/LegalLinks'
@@ -58,7 +59,21 @@ export default function Landing() {
   // Сам переход — через useFlowStart: он же разблокирует медиа в касании.
   const { session: flow } = useFlow()
   const goFlow = useFlowStart()
-  const start = () => goFlow()
+  // «Сначала гость» (GUEST_FIRST_ENABLED на бэкенде): невошедшего кнопки
+  // старта ведут в гостевой режим trial3d с меткой site, а не на вход.
+  // Настройку спрашиваем один раз за открытие и только у невошедшего.
+  const [guestEntry, setGuestEntry] = useState<string | null>(null)
+  useEffect(() => {
+    if (me) return
+    let alive = true
+    void guestFirstToken().then((token) => {
+      if (alive) setGuestEntry(token)
+    })
+    return () => {
+      alive = false
+    }
+  }, [me])
+  const start = () => (!me && guestEntry ? navigate(`/play/${guestEntry}`) : goFlow())
 
   /*
    * Почта не подтверждена — тонкая строка под шапкой. Не всплывашка:
@@ -239,7 +254,7 @@ export default function Landing() {
               широком экране две: «…повторяйте за тренером / и набирайте
               больше активности за день.» (max-width в Landing.css). */}
           <p className="hero__lead">
-            <span className="hero__phrase">Включайте в любой момент,</span>{' '}
+            <span className="hero__phrase">Включайтесь в любой момент,</span>{' '}
             <span className="hero__phrase">повторяйте за тренером</span>{' '}
             <span className="hero__phrase">и набирайте больше активности за день.</span>
           </p>

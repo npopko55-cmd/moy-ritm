@@ -23,6 +23,9 @@ import type {
   Chunk,
   ChunksResponse,
   FunnelVisit,
+  GuestBootstrap,
+  GuestConfig,
+  GuestEventBody,
   Me,
   MessageResponse,
   PaymentCheck,
@@ -47,6 +50,8 @@ export type RegisterBody = {
   timezone?: string
   /** Токен ссылки воронки (/go/<токен>), если человек пришёл по ней. */
   funnel_token?: string
+  /** Пришёл гостем со ссылки /play/: регистрация получит meta.guest. */
+  guest?: boolean
   /**
    * Согласие на обработку персональных данных (/consent) — галочка в форме
    * регистрации. Без неё запрос не уходит, поэтому здесь всегда true.
@@ -114,7 +119,16 @@ export interface Api {
    * посетителя из localStorage: по нему бэкенд считает уникальные визиты.
    * Незнакомый токен — 404 FUNNEL_NOT_FOUND.
    */
-  funnelVisit(token: string, anonId: string): Promise<FunnelVisit>
+  funnelVisit(token: string, anonId: string, guest?: boolean): Promise<FunnelVisit>
+  /**
+   * Плеер гостя по ссылке /play/<токен>. Входа не требует; та же форма, что
+   * playerBootstrap. Незнакомый токен — 404 FUNNEL_NOT_FOUND.
+   */
+  guestBootstrap(token: string): Promise<GuestBootstrap>
+  /** Событие гостя: пуск тренировки, окно регистрации. Входа не требует, 204. */
+  guestEvent(body: GuestEventBody): Promise<void>
+  /** Ведёт ли «Включить эфир» невошедшего в гостевой режим. Входа не требует. */
+  guestConfig(): Promise<GuestConfig>
   /** Предложение тарифов после 10-й тренировки показано. Требует входа. */
   funnelOfferSeen(): Promise<{ ok: boolean }>
   /**

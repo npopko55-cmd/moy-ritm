@@ -1,0 +1,263 @@
+/*
+ * Окно регистрации гостя (GuestPrompt.tsx).
+ *
+ * Телефон — лист снизу во всю ширину; от 600 px — карточка 420 px по центру.
+ * Окно не выше экрана: героиня и кнопка не сжимаются, прокручивается только
+ * середина, если уж не влезла (обычно влезает — на низких экранах всё мельче).
+ * Цвета и шрифты — токены сайта (styles/tokens.css), кнопка — btn--pink-lg.
+ */
+
+.gp {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(16, 17, 20, 0.55);
+  animation: gp-fade 0.2s ease-out;
+}
+
+.gp__sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: var(--white);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: 0 -10px 40px rgba(16, 17, 20, 0.18);
+  animation: gp-rise 0.26s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+/* ——— Героиня на градиенте ——— */
+
+.gp__hero {
+  position: relative;
+  flex: none;
+  display: flex;
+  justify-content: center;
+  height: clamp(118px, 24vh, 196px);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(135deg, var(--violet-600) 0%, var(--violet-500) 38%, var(--pink-500) 100%);
+}
+
+.gp__sheet--short .gp__hero { height: clamp(96px, 17vh, 150px); }
+
+.gp__heroine {
+  align-self: flex-end;
+  height: 118%;
+  width: auto;
+  margin-bottom: -14%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(60, 20, 90, 0.25));
+  pointer-events: none;
+  user-select: none;
+}
+
+.gp__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink-900);
+  box-shadow: 0 4px 14px rgba(16, 17, 20, 0.16);
+  cursor: pointer;
+}
+
+/* ——— Текст ——— */
+
+.gp__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 22px 0;
+  text-align: center;
+}
+
+.gp__title {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: clamp(20px, 5.4vw, 24px);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--ink-900);
+}
+
+.gp__lead {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--gray-600);
+}
+
+.gp__pill {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: var(--r-pill);
+  background: var(--grad-pink);
+  color: var(--white);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.gp__perks {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.gp__perk {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.gp__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--white);
+}
+
+.gp__icon--pink { background: var(--grad-pink-diag); }
+.gp__icon--violet { background: linear-gradient(135deg, var(--violet-600) 0%, var(--violet-500) 100%); }
+.gp__icon--orange { background: linear-gradient(135deg, var(--orange-500) 0%, var(--orange-400) 100%); }
+
+.gp__perk-text strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink-900);
+}
+
+.gp__perk-text span {
+  display: block;
+  margin-top: 1px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--gray-500);
+}
+
+.gp__plate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  background: var(--pink-50);
+  color: var(--pink-700);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.gp__plate svg { flex: none; }
+
+/* Фраза плашки не рвётся внутри: строка переносится только между
+   «3 дня бесплатно ·», «Без привязки карты ·» и «Без автосписаний», а не
+   оставляет одно слово висеть на второй строке. */
+.gp__phrase { white-space: nowrap; }
+
+/* ——— Кнопки ——— */
+
+.gp__foot {
+  flex: none;
+  padding: 14px 22px calc(16px + env(safe-area-inset-bottom, 0px) + var(--tg-inset-bottom));
+  background: var(--white);
+}
+
+.gp__cta {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 17px;
+}
+
+.gp__skip {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border: 0;
+  background: none;
+  color: var(--gray-600);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ——— Десктоп и планшет: карточка по центру ——— */
+
+@media (min-width: 600px) {
+  .gp { align-items: center; padding: 24px; }
+
+  .gp__sheet {
+    width: 420px;
+    max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
+    border-radius: var(--r-xl);
+    box-shadow: 0 24px 60px rgba(16, 17, 20, 0.28);
+  }
+
+  .gp__hero { height: 196px; }
+  .gp__sheet--short .gp__hero { height: 150px; }
+}
+
+/* ——— Низкий экран (320×568 и ландшафт): всё мельче, кнопка на месте ——— */
+
+@media (max-height: 640px) {
+  .gp__hero { height: clamp(78px, 15vh, 110px); }
+  .gp__sheet--short .gp__hero { height: clamp(70px, 13vh, 96px); }
+  .gp__body { padding: 14px 18px 0; }
+  .gp__title { font-size: 19px; }
+  .gp__lead { margin-top: 6px; font-size: 14px; line-height: 1.4; }
+  .gp__perks { gap: 8px; margin-top: 12px; }
+  .gp__perk { grid-template-columns: 32px 1fr; gap: 10px; }
+  .gp__icon { width: 32px; height: 32px; }
+  .gp__icon svg { width: 17px; height: 17px; }
+  .gp__perk-text strong { font-size: 14px; }
+  .gp__perk-text span { font-size: 12.5px; line-height: 1.35; }
+  .gp__plate { margin-top: 12px; padding: 7px 10px; font-size: 12.5px; }
+  .gp__foot { padding-top: 10px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + var(--tg-inset-bottom)); }
+  .gp__cta { padding: 14px 18px; font-size: 16px; }
+  .gp__skip { padding: 8px; font-size: 14px; }
+  .gp__close { top: 8px; right: 8px; width: 36px; height: 36px; }
+}
+
+@keyframes gp-fade {
+  from { opacity: 0; }
+}
+
+@keyframes gp-rise {
+  from { transform: translateY(24px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp, .gp__sheet { animation: none; }
+}

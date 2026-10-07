@@ -476,6 +476,16 @@ function FunnelColumn({ funnel, title, data, loading }: ColumnProps) {
     { label: 'Доля нажавших от видевших', value: data ? bannerShare(data) : null },
   ]
 
+  // Гости со ссылки /play/<токен> (гостевой режим).
+  const guests = data?.guests
+  const guestSteps: { label: string; value: number | null }[] = [
+    { label: 'Гости: зашли по ссылке /play/', value: guests?.visitors ?? null },
+    { label: 'Гости: начали тренировку', value: guests?.started ?? null },
+    { label: 'Гости: увидели окно регистрации', value: guests?.prompted ?? null },
+    { label: 'Гости: нажали «Попробовать»', value: guests?.clicked ?? null },
+    { label: 'Гости: зарегистрировались', value: guests?.registered ?? null },
+  ]
+
   return (
     <section className="page__card admin__funnel">
       <h2 className="page__card-title">{title}</h2>
@@ -519,6 +529,27 @@ function FunnelColumn({ funnel, title, data, loading }: ColumnProps) {
             )}
           </span>
         </li>
+      </ol>
+
+      {/* Гости со ссылки /play/ — своя цепочка: зашли → начали тренировку →
+          увидели окно регистрации → нажали «Попробовать» → зарегистрировались.
+          События за период, как визиты; процент — от предыдущего шага.
+          Старый бэкенд поля не шлёт — строки с «—». */}
+      <ol className="admin__steps admin__steps--banner">
+        {guestSteps.map((s, i) => {
+          const pct = s.value === null || i === 0 ? '' : share(s.value, guestSteps[i - 1].value)
+          return (
+            <li key={s.label} className={`admin__step ${s.value === null ? 'is-empty' : ''}`}>
+              <span className="admin__step-label">{s.label}</span>
+              <span className="admin__step-num">
+                <span className="admin__step-value">
+                  {loading ? '…' : s.value === null ? '—' : num(s.value)}
+                </span>
+                {!loading && pct && <span className="admin__step-pct">{pct}</span>}
+              </span>
+            </li>
+          )
+        })}
       </ol>
 
       {/* Плашка «Открой все 40» в плеере — не шаг воронки, а своя метрика:

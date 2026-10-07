@@ -48,7 +48,8 @@ import { api, type RegisterBody } from '../api/client'
 import { ApiError, type Access, type Me, type RegisterResponse } from '../api/types'
 import { onAppReturn } from '../lib/appReturn'
 import { flushBeforeSignOut } from '../lib/chunks'
-import { forgetFunnelToken, launchFunnel, readFunnelToken, saveFunnelToken } from '../lib/funnel'
+import { forgetFunnelToken, launchFunnel, readFunnelGuest, readFunnelToken, saveFunnelToken } from '../lib/funnel'
+import { finishGuest } from '../lib/guest'
 import { saveMoveInterval } from '../lib/settings'
 import { useSitePaymentWatch } from '../lib/sitePayment'
 import { linkTelegramFromBot } from '../lib/tgLink'
@@ -359,8 +360,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(
     async (body: RegisterBody) => {
       // Пришёл по ссылке воронки — метку получит бэкенд вместе с регистрацией.
+      // Пришёл гостем со ссылки /play/ — регистрация получит meta.guest.
       const funnelToken = readFunnelToken()
-      const res = await api.register(funnelToken ? { ...body, funnel_token: funnelToken } : body)
+      const guest = funnelToken !== null && readFunnelGuest()
+      const res = await api.register(
+        funnelToken ? { ...body, funnel_token: funnelToken, ...(guest ? { guest } : {}) } : body,
+      )
       // Занятая почта — 409 EMAIL_TAKEN, до этой строки она не доходит. Без
       // токенов отвечал только бэкенд до 28.09 (check_email): в контексте
       // тогда ничего не меняем.
@@ -368,6 +373,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         forgetFunnelToken()
         try {
           const next = await api.getMe()
+          // Минуты, набранные гостем в этом браузере, — теперь его (src/lib/guest.ts).
+          finishGuest(next.user.id)
           if (alive.current) setMe(next)
         } catch {
           // Аккаунт создан, и вход уже есть. Ошибку не показываем: повторная
@@ -387,6 +394,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string) => {
       await api.login(email, password)
       const next = await api.getMe()
+      // Вошёл после гостевой тренировки — её минуты уходят под его аккаунт.
+      finishGuest(next.user.id)
       setMe(next)
       linkTelegram()
       return next
