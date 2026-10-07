@@ -321,6 +321,12 @@ self.addEventListener('fetch', (e) => {
   // Так второе движение и вставало на паузу (player_faults 05–06.10).
   if (url.pathname.endsWith('.mp4')) return
 
+  // Сигнал смены движения (src/media/chime.ts, sounds/chime.m4a, 8 КБ) — тоже
+  // мимо воркера, до правила .m4a: иначе он лёг бы в кэш музыки и отдавался
+  // нарезкой. Берёт его браузер — из HTTP-кэша или сети. Нет сети и кэша —
+  // плеер играет запасной синтез.
+  if (url.pathname.startsWith(BASE + 'sounds/')) return
+
   // Музыка: тринадцать треков по 0,6–1,3 МБ, больше в кэше держать незачем.
   if (url.pathname.endsWith('.m4a')) {
     e.respondWith(media(e, req, MUSIC, MUSIC_LIMIT))

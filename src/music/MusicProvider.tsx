@@ -11,12 +11,7 @@ import {
 import { api } from '../api/client'
 import { ApiError, type Me } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import {
-  bumpSettingsRevision,
-  currentSettingsRevision,
-  loadSoundOff,
-  saveSoundOff,
-} from '../lib/settings'
+import { bumpSettingsRevision, currentSettingsRevision } from '../lib/settings'
 import { LONG_INTRO_SECONDS, TRACKS, type Track, shuffled, trackSrc } from '../data/music'
 import { setMusicUnlock } from '../media/unlock'
 import { isNotAllowed } from '../media/videoPool'
@@ -45,6 +40,13 @@ type MusicValue = {
    * вьюхе её можно и не дождаться: трек звучал бы в фоне.
    */
   pauseNow: () => void
+  /**
+   * Звук выключен — так начинается каждый заход в плеер (правка Никиты
+   * 07.10): браузер всё равно не пускает звук без касания, и человек сам
+   * включает его кнопкой «Звук». Плеер зовёт это, когда открывается и когда
+   * закрывается; внутри захода (пауза, окно гостя) выбор человека живёт.
+   */
+  muteForEntry: () => void
   start: () => void
   setPlaying: (on: boolean) => void
   /**
@@ -134,19 +136,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // Кнопка включила музыку, а профиль пришёл с «выключено» — это ответ на
   // запрос, отправленный раньше касания: музыка из-за него не встаёт.
   const musicSetting = (me?.settings.music_enabled ?? true) || wishHolds(musicWish.current, me)
-  // Кнопка звука в плеере глушит музыку поверх настройки профиля.
-  const [soundOff, setSoundOff] = useState(loadSoundOff)
+  // Кнопка звука в плеере глушит музыку поверх настройки профиля. Нигде не
+  // запоминается: каждый заход в плеер и каждая загрузка страницы начинаются
+  // без звука (muteForEntry), включает его человек кнопкой «Звук».
+  const [soundOff, setSoundOff] = useState(true)
   const enabled = musicSetting && !soundOff
-  // «Музыку» включили в настройках — это тоже просьба о звуке: снимаем и
-  // выключение кнопкой, иначе переключатель в настройках ничего бы не дал.
-  const settingWas = useRef(musicSetting)
-  useEffect(() => {
-    if (musicSetting && !settingWas.current) {
-      setSoundOff(false)
-      saveSoundOff(false)
-    }
-    settingWas.current = musicSetting
-  }, [musicSetting])
   const target = (me?.settings.music_volume ?? DEFAULT_VOLUME) / 100
   // Ref, чтобы плавный вход читал свежую громкость, а не ту, что была при
   // создании обработчика.
@@ -514,7 +508,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       enabledRef.current = false
       onRef.current = false
       setSoundOff(true)
-      saveSoundOff(true)
       stopFade()
       a.pause()
       return
@@ -523,7 +516,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     // Профиля нет — включать нечего (плеер открыт только после входа).
     if (!current && !musicSettingRef.current) return
     setSoundOff(false)
-    saveSoundOff(false)
     if (current && !current.settings.music_enabled) enableMusicSetting(current)
     enabledRef.current = true
     if (playingRef.current) {
@@ -560,6 +552,16 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     setPlayingState(false)
   }, [])
 
+  const muteForEntry = useCallback(() => {
+    // Состояние для обработчиков — сразу, как у кнопки звука.
+    enabledRef.current = false
+    onRef.current = false
+    startedInTap.current = false
+    setSoundOff(true)
+    stopFade()
+    audioRef.current?.pause()
+  }, [])
+
   const start = useCallback(() => setPlayingState(true), [])
   const setPlaying = useCallback((on: boolean) => setPlayingState(on), [])
 
@@ -572,11 +574,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       toggleSound,
       resumeNow,
       pauseNow,
+      muteForEntry,
       start,
       setPlaying,
       next,
     }),
-    [track, playing, blocked, enabled, toggleSound, resumeNow, pauseNow, start, setPlaying, next],
+    [track, playing, blocked, enabled, toggleSound, resumeNow, pauseNow, muteForEntry, start, setPlaying, next],
   )
   return <MusicContext.Provider value={value}>{children}</MusicContext.Provider>
 }

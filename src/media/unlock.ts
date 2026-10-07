@@ -28,8 +28,8 @@ export function unlockMedia(): void {
   try {
     unlockVideos()
     unlockMusic?.()
-    // Сигнал смены упражнения (src/media/chime.ts): Web Audio на iPhone
-    // звучит, только если контекст запущен в касании.
+    // Сигнал смены упражнения (src/media/chime.ts): его <audio> тоже
+    // получает разрешение играть только в касании.
     unlockChime()
   } catch {
     /* разблокировка — подстраховка: кнопка должна сработать в любом случае */

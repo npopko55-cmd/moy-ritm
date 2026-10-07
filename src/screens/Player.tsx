@@ -70,7 +70,7 @@ import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial }
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { onTelegramEvent, telegramActive } from '../lib/telegram'
 import { uuid } from '../lib/uuid'
-import { playChime } from '../media/chime'
+import { playChime, unlockChime } from '../media/chime'
 import { holdAwake, keepAwake, releaseAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
 import {
@@ -323,12 +323,24 @@ export default function Player() {
     toggleSound,
     resumeNow: resumeMusic,
     pauseNow: pauseMusicNow,
+    muteForEntry,
     setPlaying: setMusicPlaying,
     next: nextTrack,
   } = useMusic()
   // Кнопка звука выключила музыку — молчит и сигнал смены упражнения.
   const soundOnRef = useRef(soundOn)
   soundOnRef.current = soundOn
+
+  // Каждый заход в плеер — без звука (правка Никиты 07.10): новый вход в
+  // поток, перезагрузка, возврат из «Моего прогресса», гость по /play/.
+  // Звук включает человек кнопкой «Звук», а пауза и окно гостя внутри
+  // захода его выбор не трогают — плеер при них не закрывается. Уходя,
+  // плеер тоже выключает звук: отсчёт следующего захода не заиграет.
+  // До отрисовки — чтобы кнопка не мелькнула включённой.
+  useLayoutEffect(() => {
+    muteForEntry()
+    return muteForEntry
+  }, [muteForEntry])
 
   /* ─────────────  Порядок движений  ───────────── */
 
@@ -824,8 +836,9 @@ export default function Player() {
     setStep((s) => s + 1)
     setInMove(0)
     showPhrase()
-    // Сигнал «смена упражнения» (src/media/chime.ts) — поверх музыки. Только
-    // при смене по интервалу, поэтому на первом движении после старта его нет.
+    // Сигнал «смена упражнения» (src/media/chime.ts) — поверх музыки, тем же
+    // путём (<audio>). Только при смене по интервалу: звучит на каждой смене,
+    // начиная с первой на вторую, а на самом старте тренировки его нет.
     // Молчит, если тренировка на паузе, открыто окно гостя, звук выключен
     // кнопкой или вкладка спрятана.
     if (
@@ -1286,13 +1299,15 @@ export default function Player() {
    * не пустят; должен играть, но браузер не пустил (soundBlocked) —
    * нажатие запускает его, а не выключает.
    *
-   * Заодно касание разблокирует ролики. Только ролики: разблокировка музыки
-   * (unlockMedia) в том же касании спорила бы с кнопкой — выключаемый трек
-   * она запускала бы снова.
+   * Заодно касание разблокирует ролики и сигнал смены упражнения (после
+   * сворачивания мини-апа разрешение могло потеряться). Не музыку:
+   * разблокировка музыки (unlockMedia) в том же касании спорила бы с
+   * кнопкой — выключаемый трек она запускала бы снова.
    */
   const soundPlaying = soundOn && !soundBlocked
   const pressSound = useCallback(() => {
     unlockVideos()
+    unlockChime()
     toggleSound()
   }, [toggleSound])
 
@@ -1610,8 +1625,9 @@ export default function Player() {
         {/*
           Звук: зеркально паузе — в левом нижнем углу квадрата вокруг круга
           или слева в строке под кругом. Состояние видно сразу: динамик с
-          волнами на яркой кнопке — музыка играет; перечёркнутый на белой —
-          выключена или браузер её не пустил (тогда кнопка ещё и пульсирует).
+          волнами на яркой кнопке — музыка играет; перечёркнутый на белой с
+          подписью «Включить звук» — выключен (так начинается каждый заход)
+          или браузер его не пустил (тогда кнопка ещё и пульсирует).
         */}
         <div className="stage__sound">
           <button
@@ -1619,11 +1635,11 @@ export default function Player() {
             className={`ctrl ctrl--sound ${soundPlaying ? 'is-on' : ''} ${soundOn && soundBlocked ? 'is-blocked' : ''}`}
             onClick={pressSound}
             aria-pressed={soundPlaying}
-            aria-label={soundPlaying ? 'Выключить музыку' : 'Включить музыку'}
+            aria-label={soundPlaying ? 'Выключить звук' : 'Включить звук'}
           >
             {soundPlaying ? <SpeakerOn size={28} /> : <SpeakerOff size={28} />}
           </button>
-          <span>{soundPlaying ? 'Звук' : soundOn && soundBlocked ? 'Включить звук' : 'Без звука'}</span>
+          <span>{soundPlaying ? 'Звук' : 'Включить звук'}</span>
         </div>
 
         <div className="stage__pause">
