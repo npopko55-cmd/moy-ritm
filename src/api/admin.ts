@@ -50,6 +50,11 @@ export type FunnelSummary = {
   /** Гости со ссылки /play/ — события за период. Старый бэкенд поля не шлёт. */
   guests?: { visitors: number; started: number; prompted: number; clicked: number; registered: number }
   /**
+   * Гостевые ссылки /play/ по меткам (09.10.2026): только метки, где за
+   * период что-то было. Нет поля — бэкенд старый.
+   */
+  guest_links?: FunnelGuestLink[]
+  /**
    * Те же шаги по меткам писем рассылки (ссылки вида …_m1). Строки m1–m3 и
    * «без метки» ('') бэкенд присылает всегда; нет поля — бэкенд старый.
    */
@@ -70,6 +75,41 @@ export type FunnelSourceRow = {
   bot_starts: number
   registrations: number
   paid: number
+}
+
+/**
+ * Строка «Гостевые ссылки» (docs/FUNNELS.md бэкенда, «Гостевые ссылки в
+ * аналитике»): метка ссылки /play/<токен>_<метка>, '' — без метки. Шаги гостя
+ * (visitors…clicked) — уникальные браузеры по дате события; остальное — люди,
+ * зарегистрировавшиеся гостем по этой метке за период.
+ */
+export type FunnelGuestLink = {
+  source: string
+  visitors: number
+  started: number
+  prompted: number
+  clicked: number
+  registered: number
+  /** С какого показа окна зарегистрировались; unknown — регистрации до 09.10. */
+  by_prompt: {
+    no_prompt: number
+    prompt_1: number
+    prompt_2: number
+    prompt_3: number
+    prompt_4_plus: number
+    unknown: number
+  }
+  /** Когда — от первого гостевого захода, по дате в поясе человека. */
+  by_day: { same_day: number; next_day: number; later: number; unknown: number }
+  /** Начали заниматься: ≥ 1 засчитанной тренировки. */
+  trained: number
+  /** Пробный кончился без оплаты; у trial20 null. */
+  expired: number | null
+  /** Из них двигались после дня конца пробного; у trial20 null. */
+  free_after_trial: number | null
+  paid_users: number
+  revenue: number
+  currency: string
 }
 
 /** Ссылки письма: через бота и запасная на сайт. Пустая строка — собрать нечем. */
@@ -144,7 +184,16 @@ export type BehaviorReport = {
   session_gap_seconds: number
   window_days: number
   funnels: BehaviorColumn[]
+  /**
+   * Колонки гостевых ссылок /play/ по меткам (09.10.2026): люди, чья
+   * регистрация пришла гостем с меткой `source`; они же входят в колонку своей
+   * воронки. Нет поля — бэкенд старый.
+   */
+  guest_links?: BehaviorGuestColumn[]
 }
+
+/** Колонка гостевой ссылки: `funnel` — воронка ссылки, `source` — метка ('' — без метки). */
+export type BehaviorGuestColumn = BehaviorColumn & { source: string }
 
 /* ——— Посты в Telegram-каналы и рассылки ботом (docs/POSTS.md бэкенда) ——— */
 

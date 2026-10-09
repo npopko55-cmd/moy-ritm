@@ -394,7 +394,7 @@ export default function Player() {
       list.push(found)
     }
     orderRef.current = {
-      deck: createRotation(moves, { dealt: [...recentMoves(moves), ...list], kind: moveKind }),
+      deck: createRotation(moves, { dealt: [...recentMoves(moves), ...list], kind: moveKind, family: (m) => m.family }),
       list,
     }
   }
@@ -453,7 +453,7 @@ export default function Player() {
     const ids = new Set(moves.map((m) => m.id))
     if (shown.length > 0 && shown.every((m) => ids.has(m.id))) {
       orderRef.current = {
-        deck: createRotation(moves, { dealt: [...recentMoves(moves), ...shown], kind: moveKind }),
+        deck: createRotation(moves, { dealt: [...recentMoves(moves), ...shown], kind: moveKind, family: (m) => m.family }),
         list: shown,
       }
       // Порядок живёт в ref: перерисовка нужна, чтобы следующий ролик во
@@ -461,7 +461,7 @@ export default function Player() {
       setReorder((n) => n + 1)
       return
     }
-    orderRef.current = { deck: createRotation(moves, { dealt: recentMoves(moves), kind: moveKind }), list: [] }
+    orderRef.current = { deck: createRotation(moves, { dealt: recentMoves(moves), kind: moveKind, family: (m) => m.family }), list: [] }
     setStep(0)
     setInMove(0)
   }, [deckKey, moves])

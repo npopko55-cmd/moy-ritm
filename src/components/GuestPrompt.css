@@ -59,10 +59,19 @@
   user-select: none;
 }
 
+/*
+ * Крестик — чуть заметный (правка Димы 09.10.2026: «огромный яркий круг… я бы
+ * его убрал и оставил серенький крестик чуть заметный»). Белой подложки и тени
+ * больше нет: на градиенте героини видна только сама иконка 18 px — светло-
+ * серая и полупрозрачная, поэтому она не спорит с героиней и кнопкой внизу.
+ * Кнопка при этом прозрачная и по-прежнему 40×40: попадать пальцем так же
+ * легко. Фокус с клавиатуры — своё кольцо (без подложки браузерное на
+ * градиенте почти не видно). Окно одно на оба вида (полное и короткое).
+ */
 .gp__close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 8px;
+  right: 8px;
   display: grid;
   place-items: center;
   width: 40px;
@@ -70,10 +79,21 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--ink-900);
-  box-shadow: 0 4px 14px rgba(16, 17, 20, 0.16);
+  background: transparent;
+  color: rgba(236, 232, 244, 0.6);
   cursor: pointer;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gp__close svg { width: 18px; height: 18px; }
+
+.gp__close:hover { color: rgba(236, 232, 244, 0.9); }
+
+.gp__close:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: -4px;
+  color: rgba(236, 232, 244, 0.95);
 }
 
 /* ——— Текст ——— */
@@ -247,7 +267,8 @@
   .gp__foot { padding-top: 10px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + var(--tg-inset-bottom)); }
   .gp__cta { padding: 14px 18px; font-size: 16px; }
   .gp__skip { padding: 8px; font-size: 14px; }
-  .gp__close { top: 8px; right: 8px; width: 36px; height: 36px; }
+  /* Подложки нет — кнопку не уменьшаем: область нажатия остаётся 40×40. */
+  .gp__close { top: 4px; right: 4px; }
 }
 
 @keyframes gp-fade {

@@ -9,6 +9,10 @@
  *
  * Период — даты регистрации, как у сводки воронок. Всплывающих окон нет:
  * всё на странице.
+ *
+ * С 09.10.2026 справа от трёх колонок — гостевые ссылки /play/ по меткам
+ * («3 дня · dima-blog»): люди, зарегистрировавшиеся гостем по ссылке. Они же
+ * входят в колонку своей воронки — об этом строка под таблицей.
  */
 
 import { useEffect, useState } from 'react'
@@ -22,6 +26,9 @@ const COLUMNS: { group: BehaviorGroup; title: string; note?: string }[] = [
   { group: 'trial20', title: 'Челлендж', note: '21 день' },
   { group: 'none', title: 'Без воронки' },
 ]
+
+/** Подпись воронки в заголовке колонки гостевой ссылки. */
+const FUNNEL_TITLES: Record<string, string> = { trial3d: '3 дня', trial20: 'Челлендж' }
 
 type PeriodKind = 'all' | '7' | '30' | 'custom'
 
@@ -174,7 +181,23 @@ export default function AdminBehavior({ token, fail }: { token: string; fail: Fa
     }
   }, [token, kind, from, to, period.from, period.to, fail])
 
-  const columns = COLUMNS.map((c) => ({ ...c, data: report?.funnels.find((f) => f.funnel === c.group) ?? null }))
+  // Колонки воронок — всегда; гостевые ссылки — сколько прислал сервер
+  // (только те, по которым за период кто-то зарегистрировался).
+  const columns: ColumnData[] = [
+    ...COLUMNS.map((c) => ({
+      key: c.group,
+      title: c.title,
+      note: c.note,
+      data: report?.funnels.find((f) => f.funnel === c.group) ?? null,
+    })),
+    ...(report?.guest_links ?? []).map((g) => ({
+      key: `${g.funnel}:${g.source}`,
+      title: `${FUNNEL_TITLES[g.funnel] ?? g.funnel} · ${g.source || 'без метки'}`,
+      note: 'гостевая ссылка',
+      data: g,
+    })),
+  ]
+  const hasGuestLinks = columns.length > COLUMNS.length
 
   return (
     <>
@@ -217,7 +240,7 @@ export default function AdminBehavior({ token, fail }: { token: string; fail: Fa
               <tr>
                 <th>Метрика</th>
                 {columns.map((c) => (
-                  <th key={c.group} className="is-num">
+                  <th key={c.key} className="is-num">
                     {c.title}
                     {c.note && <span className="behavior__col-note">{c.note}</span>}
                   </th>
@@ -231,7 +254,7 @@ export default function AdminBehavior({ token, fail }: { token: string; fail: Fa
                   <span className="behavior__hint">Сколько человек пришло за период.</span>
                 </td>
                 {columns.map((c) => (
-                  <td key={c.group} className="is-num">
+                  <td key={c.key} className="is-num">
                     <span className="behavior__value">
                       {report ? c.data?.registered.toLocaleString('ru-RU') ?? '0' : '…'}
                     </span>
@@ -244,7 +267,7 @@ export default function AdminBehavior({ token, fail }: { token: string; fail: Fa
                 ))}
               {!report && !error && (
                 <tr>
-                  <td className="admin__empty" colSpan={COLUMNS.length + 1}>
+                  <td className="admin__empty" colSpan={columns.length + 1}>
                     Загружаем…
                   </td>
                 </tr>
@@ -252,12 +275,18 @@ export default function AdminBehavior({ token, fail }: { token: string; fail: Fa
             </tbody>
           </table>
         </div>
+        {hasGuestLinks && (
+          <p className="admin__period-note">
+            «· метка» — гостевые ссылки /play/: люди, зарегистрировавшиеся гостем по этой ссылке. Они
+            же входят в колонку своей воронки.
+          </p>
+        )}
       </Card>
     </>
   )
 }
 
-type ColumnData = { group: BehaviorGroup; data: BehaviorColumn | null }
+type ColumnData = { key: string; title: string; note?: string; data: BehaviorColumn | null }
 
 function BehaviorBlock({ title, rows, columns }: { title: string; rows: Metric[]; columns: ColumnData[] }) {
   return (
@@ -276,7 +305,7 @@ function BehaviorBlock({ title, rows, columns }: { title: string; rows: Metric[]
           {columns.map((c) => {
             const cell = c.data && c.data.registered > 0 ? m.cell(c.data) : null
             return (
-              <td key={c.group} className="is-num">
+              <td key={c.key} className="is-num">
                 {cell ? (
                   <>
                     <span className="behavior__value">{cell.value}</span>

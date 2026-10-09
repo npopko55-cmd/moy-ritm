@@ -39,60 +39,84 @@ export type Loop = {
    */
   stepsPerMinute: number
   kind: MoveKind
+  /**
+   * Семейство — движения, которые со стороны выглядят почти одинаково
+   * (09.10.2026). Круг плеера разносит членов одного семейства как можно
+   * дальше друг от друга и равномерно (createRotation в src/lib/deck.ts).
+   *
+   * Вида (kind) для этого мало: он разводит только соседей. Подписчица при
+   * смене раз в 30 секунд видела «одно и то же движение за 10 минут 4 раза»:
+   * все 21 движение были разными, но четыре из них — скрещивания рук
+   * (крест-накрест с шагом → через одно скрещивания с шагом → крест-накрест →
+   * скрещивания внизу).
+   *
+   * Семейства: crosses — скрещивания рук; punches — удары и стойка боксёра;
+   * reach — руки вверх и жим; knee — колено к локтю и подъёмы колен; twist —
+   * твист и скручивания с шагом; stepout — шаг в сторону или врозь с руками;
+   * run — бег; walk — ходьба и шаг на месте. Движение, не похожее ни на одно
+   * другое, — само себе семейство: family = собственный id.
+   *
+   * Новое движение — впишите семейство движения, на которое оно похоже со
+   * стороны (по рукам и общему рисунку, а не по ногам — ноги уже учитывает
+   * kind); не похоже ни на одно — его id. Скрытые движения (HIDDEN_MOVES в
+   * src/data/streams.ts) в круг не попадают, но семейство у них тоже вписано,
+   * чтобы при возвращении ничего не забыть.
+   */
+  family: string
 }
 
 export const LOOPS: Record<string, Loop> = {
-  'walk-in-place': { id: 'walk-in-place', title: 'Ходьба на месте', duration: 1.875, stepsPerMinute: 110, kind: 'steps' },
-  'arms-up': { id: 'arms-up', title: 'Руки вверх', duration: 1.917, stepsPerMinute: 60, kind: 'arms' },
-  'knee-lifts': { id: 'knee-lifts', title: 'Подъёмы колен', duration: 3.333, stepsPerMinute: 120, kind: 'legs' },
-  punches: { id: 'punches', title: 'Удары руками', duration: 1.917, stepsPerMinute: 60, kind: 'arms' },
+  'walk-in-place': { id: 'walk-in-place', title: 'Ходьба на месте', duration: 1.875, stepsPerMinute: 110, kind: 'steps', family: 'walk' },
+  'arms-up': { id: 'arms-up', title: 'Руки вверх', duration: 1.917, stepsPerMinute: 60, kind: 'arms', family: 'reach' },
+  'knee-lifts': { id: 'knee-lifts', title: 'Подъёмы колен', duration: 3.333, stepsPerMinute: 120, kind: 'legs', family: 'knee' },
+  punches: { id: 'punches', title: 'Удары руками', duration: 1.917, stepsPerMinute: 60, kind: 'arms', family: 'punches' },
   // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
-  'side-steps': { id: 'side-steps', title: 'Приставные шаги', duration: 3.125, stepsPerMinute: 110, kind: 'steps' },
+  'side-steps': { id: 'side-steps', title: 'Приставные шаги', duration: 3.125, stepsPerMinute: 110, kind: 'steps', family: 'side-steps' },
   // скрыт до перегенерации: рывок на стыке петли (src/data/streams.ts, HIDDEN_MOVES)
-  'diagonal-swings': { id: 'diagonal-swings', title: 'Махи по диагонали', duration: 1.833, stepsPerMinute: 40, kind: 'arms' },
-  'step-out-arms': { id: 'step-out-arms', title: 'Шаг в сторону, руки врозь', duration: 1.833, stepsPerMinute: 100, kind: 'steps' },
+  'diagonal-swings': { id: 'diagonal-swings', title: 'Махи по диагонали', duration: 1.833, stepsPerMinute: 40, kind: 'arms', family: 'diagonal-swings' },
+  'step-out-arms': { id: 'step-out-arms', title: 'Шаг в сторону, руки врозь', duration: 1.833, stepsPerMinute: 100, kind: 'steps', family: 'stepout' },
   // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
-  'run-in-place': { id: 'run-in-place', title: 'Бег на месте', duration: 3.75, stepsPerMinute: 150, kind: 'steps' },
-  'punches-up': { id: 'punches-up', title: 'Удары вверх', duration: 1.958, stepsPerMinute: 60, kind: 'arms' },
-  'side-step-reach': { id: 'side-step-reach', title: 'Шаг в сторону, рука вверх', duration: 3.5, stepsPerMinute: 100, kind: 'steps' },
-  'knee-to-elbow': { id: 'knee-to-elbow', title: 'Колено к локтю', duration: 1.833, stepsPerMinute: 110, kind: 'legs' },
-  'arm-crosses': { id: 'arm-crosses', title: 'Скрещивания рук', duration: 1.917, stepsPerMinute: 40, kind: 'arms' },
-  'step-arm-swing': { id: 'step-arm-swing', title: 'Шаг с махом руки', duration: 1.875, stepsPerMinute: 100, kind: 'steps' },
-  'dance-steps': { id: 'dance-steps', title: 'Танцевальные шаги', duration: 1.958, stepsPerMinute: 110, kind: 'steps' },
-  'overhead-press': { id: 'overhead-press', title: 'Жим руками вверх', duration: 1.792, stepsPerMinute: 60, kind: 'arms' },
-  'boxer-steps': { id: 'boxer-steps', title: 'Шаги в стойке боксёра', duration: 1.875, stepsPerMinute: 100, kind: 'steps' },
-  jog: { id: 'jog', title: 'Бег трусцой', duration: 1.792, stepsPerMinute: 140, kind: 'steps' },
-  'elbow-raises': { id: 'elbow-raises', title: 'Локти вверх по очереди', duration: 1.75, stepsPerMinute: 60, kind: 'arms' },
+  'run-in-place': { id: 'run-in-place', title: 'Бег на месте', duration: 3.75, stepsPerMinute: 150, kind: 'steps', family: 'run' },
+  'punches-up': { id: 'punches-up', title: 'Удары вверх', duration: 1.958, stepsPerMinute: 60, kind: 'arms', family: 'punches' },
+  'side-step-reach': { id: 'side-step-reach', title: 'Шаг в сторону, рука вверх', duration: 3.5, stepsPerMinute: 100, kind: 'steps', family: 'reach' },
+  'knee-to-elbow': { id: 'knee-to-elbow', title: 'Колено к локтю', duration: 1.833, stepsPerMinute: 110, kind: 'legs', family: 'knee' },
+  'arm-crosses': { id: 'arm-crosses', title: 'Скрещивания рук', duration: 1.917, stepsPerMinute: 40, kind: 'arms', family: 'crosses' },
+  'step-arm-swing': { id: 'step-arm-swing', title: 'Шаг с махом руки', duration: 1.875, stepsPerMinute: 100, kind: 'steps', family: 'stepout' },
+  'dance-steps': { id: 'dance-steps', title: 'Танцевальные шаги', duration: 1.958, stepsPerMinute: 110, kind: 'steps', family: 'dance-steps' },
+  'overhead-press': { id: 'overhead-press', title: 'Жим руками вверх', duration: 1.792, stepsPerMinute: 60, kind: 'arms', family: 'reach' },
+  'boxer-steps': { id: 'boxer-steps', title: 'Шаги в стойке боксёра', duration: 1.875, stepsPerMinute: 100, kind: 'steps', family: 'punches' },
+  jog: { id: 'jog', title: 'Бег трусцой', duration: 1.792, stepsPerMinute: 140, kind: 'steps', family: 'run' },
+  'elbow-raises': { id: 'elbow-raises', title: 'Локти вверх по очереди', duration: 1.75, stepsPerMinute: 60, kind: 'arms', family: 'elbow-raises' },
   // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
-  'arm-scissors': { id: 'arm-scissors', title: 'Ножницы руками', duration: 1.917, stepsPerMinute: 100, kind: 'arms' },
-  twist: { id: 'twist', title: 'Твист', duration: 1.958, stepsPerMinute: 100, kind: 'legs' },
-  'chest-crosses': { id: 'chest-crosses', title: 'Руки крест-накрест', duration: 3.542, stepsPerMinute: 40, kind: 'arms' },
-  'step-clap': { id: 'step-clap', title: 'Шаг в сторону с хлопком', duration: 3.75, stepsPerMinute: 100, kind: 'steps' },
-  'jumping-jacks': { id: 'jumping-jacks', title: 'Прыжки, руки вверх', duration: 3.708, stepsPerMinute: 120, kind: 'legs' },
-  'boxer-bounce': { id: 'boxer-bounce', title: 'Стойка боксёра', duration: 1.75, stepsPerMinute: 80, kind: 'arms' },
-  'chest-crosses-steps': { id: 'chest-crosses-steps', title: 'Крест-накрест с шагом', duration: 1.75, stepsPerMinute: 100, kind: 'steps' },
-  'squat-steps': { id: 'squat-steps', title: 'Шаги в полуприседе', duration: 1.792, stepsPerMinute: 100, kind: 'steps' },
-  'jazz-hands': { id: 'jazz-hands', title: 'Джазовые руки', duration: 1.75, stepsPerMinute: 40, kind: 'arms' },
-  'steps-reach-up': { id: 'steps-reach-up', title: 'Шаги с рукой вверх', duration: 1.792, stepsPerMinute: 100, kind: 'steps' },
-  'side-knee-crunch': { id: 'side-knee-crunch', title: 'Колено к локтю сбоку', duration: 1.833, stepsPerMinute: 110, kind: 'legs' },
-  'side-pushes': { id: 'side-pushes', title: 'Толчки в стороны', duration: 1.917, stepsPerMinute: 80, kind: 'arms' },
-  'step-arm-out': { id: 'step-arm-out', title: 'Шаг, рука в сторону', duration: 2, stepsPerMinute: 100, kind: 'steps' },
-  march: { id: 'march', title: 'Шаг на месте', duration: 1.917, stepsPerMinute: 110, kind: 'steps' },
-  'alternate-reach': { id: 'alternate-reach', title: 'Руки вверх по очереди', duration: 3.5, stepsPerMinute: 60, kind: 'arms' },
-  'arm-crosses-steps': { id: 'arm-crosses-steps', title: 'Скрещивания рук с шагом', duration: 1.75, stepsPerMinute: 100, kind: 'steps' },
+  'arm-scissors': { id: 'arm-scissors', title: 'Ножницы руками', duration: 1.917, stepsPerMinute: 100, kind: 'arms', family: 'crosses' },
+  twist: { id: 'twist', title: 'Твист', duration: 1.958, stepsPerMinute: 100, kind: 'legs', family: 'twist' },
+  'chest-crosses': { id: 'chest-crosses', title: 'Руки крест-накрест', duration: 3.542, stepsPerMinute: 40, kind: 'arms', family: 'crosses' },
+  'step-clap': { id: 'step-clap', title: 'Шаг в сторону с хлопком', duration: 3.75, stepsPerMinute: 100, kind: 'steps', family: 'step-clap' },
+  'jumping-jacks': { id: 'jumping-jacks', title: 'Прыжки, руки вверх', duration: 3.708, stepsPerMinute: 120, kind: 'legs', family: 'jumping-jacks' },
+  'boxer-bounce': { id: 'boxer-bounce', title: 'Стойка боксёра', duration: 1.75, stepsPerMinute: 80, kind: 'arms', family: 'punches' },
+  'chest-crosses-steps': { id: 'chest-crosses-steps', title: 'Крест-накрест с шагом', duration: 1.75, stepsPerMinute: 100, kind: 'steps', family: 'crosses' },
+  'squat-steps': { id: 'squat-steps', title: 'Шаги в полуприседе', duration: 1.792, stepsPerMinute: 100, kind: 'steps', family: 'squat-steps' },
+  'jazz-hands': { id: 'jazz-hands', title: 'Джазовые руки', duration: 1.75, stepsPerMinute: 40, kind: 'arms', family: 'jazz-hands' },
+  'steps-reach-up': { id: 'steps-reach-up', title: 'Шаги с рукой вверх', duration: 1.792, stepsPerMinute: 100, kind: 'steps', family: 'reach' },
+  'side-knee-crunch': { id: 'side-knee-crunch', title: 'Колено к локтю сбоку', duration: 1.833, stepsPerMinute: 110, kind: 'legs', family: 'knee' },
+  'side-pushes': { id: 'side-pushes', title: 'Толчки в стороны', duration: 1.917, stepsPerMinute: 80, kind: 'arms', family: 'side-pushes' },
+  'step-arm-out': { id: 'step-arm-out', title: 'Шаг, рука в сторону', duration: 2, stepsPerMinute: 100, kind: 'steps', family: 'stepout' },
+  march: { id: 'march', title: 'Шаг на месте', duration: 1.917, stepsPerMinute: 110, kind: 'steps', family: 'walk' },
+  'alternate-reach': { id: 'alternate-reach', title: 'Руки вверх по очереди', duration: 3.5, stepsPerMinute: 60, kind: 'arms', family: 'reach' },
+  'arm-crosses-steps': { id: 'arm-crosses-steps', title: 'Скрещивания рук с шагом', duration: 1.75, stepsPerMinute: 100, kind: 'steps', family: 'crosses' },
   // скрыт до перегенерации: рваный стык петли (src/data/streams.ts, HIDDEN_MOVES)
-  'twist-knee': { id: 'twist-knee', title: 'Скручивания с коленом', duration: 1.75, stepsPerMinute: 110, kind: 'legs' },
-  'arms-to-shoulders': { id: 'arms-to-shoulders', title: 'Руки к плечам', duration: 1.875, stepsPerMinute: 60, kind: 'arms' },
-  'step-out-bent-arms': { id: 'step-out-bent-arms', title: 'Шаги врозь, руки согнуты', duration: 1.875, stepsPerMinute: 100, kind: 'steps' },
-  'light-jog': { id: 'light-jog', title: 'Лёгкий бег', duration: 3.833, stepsPerMinute: 140, kind: 'steps' },
+  'twist-knee': { id: 'twist-knee', title: 'Скручивания с коленом', duration: 1.75, stepsPerMinute: 110, kind: 'legs', family: 'knee' },
+  'arms-to-shoulders': { id: 'arms-to-shoulders', title: 'Руки к плечам', duration: 1.875, stepsPerMinute: 60, kind: 'arms', family: 'arms-to-shoulders' },
+  'step-out-bent-arms': { id: 'step-out-bent-arms', title: 'Шаги врозь, руки согнуты', duration: 1.875, stepsPerMinute: 100, kind: 'steps', family: 'stepout' },
+  'light-jog': { id: 'light-jog', title: 'Лёгкий бег', duration: 3.833, stepsPerMinute: 140, kind: 'steps', family: 'run' },
   // скрыт до перегенерации: рывок на стыке петли (src/data/streams.ts, HIDDEN_MOVES)
-  'arm-swings-clap': { id: 'arm-swings-clap', title: 'Махи руками с хлопком', duration: 1.375, stepsPerMinute: 40, kind: 'arms' },
-  'side-lunges': { id: 'side-lunges', title: 'Выпады в стороны', duration: 1.75, stepsPerMinute: 80, kind: 'legs' },
-  'low-crosses': { id: 'low-crosses', title: 'Скрещивания рук внизу', duration: 1.875, stepsPerMinute: 40, kind: 'arms' },
-  'steps-arm-swings': { id: 'steps-arm-swings', title: 'Шаги с махами рук', duration: 1.792, stepsPerMinute: 110, kind: 'steps' },
-  'diagonal-punches': { id: 'diagonal-punches', title: 'Удары по диагонали', duration: 1.75, stepsPerMinute: 60, kind: 'arms' },
-  'twist-steps': { id: 'twist-steps', title: 'Скручивания с шагом', duration: 2, stepsPerMinute: 100, kind: 'steps' },
-  'arms-up-steps': { id: 'arms-up-steps', title: 'Руки вверх с шагом', duration: 3.75, stepsPerMinute: 80, kind: 'steps' },
+  'arm-swings-clap': { id: 'arm-swings-clap', title: 'Махи руками с хлопком', duration: 1.375, stepsPerMinute: 40, kind: 'arms', family: 'arm-swings-clap' },
+  'side-lunges': { id: 'side-lunges', title: 'Выпады в стороны', duration: 1.75, stepsPerMinute: 80, kind: 'legs', family: 'side-lunges' },
+  'low-crosses': { id: 'low-crosses', title: 'Скрещивания рук внизу', duration: 1.875, stepsPerMinute: 40, kind: 'arms', family: 'crosses' },
+  'steps-arm-swings': { id: 'steps-arm-swings', title: 'Шаги с махами рук', duration: 1.792, stepsPerMinute: 110, kind: 'steps', family: 'stepout' },
+  'diagonal-punches': { id: 'diagonal-punches', title: 'Удары по диагонали', duration: 1.75, stepsPerMinute: 60, kind: 'arms', family: 'punches' },
+  'twist-steps': { id: 'twist-steps', title: 'Скручивания с шагом', duration: 2, stepsPerMinute: 100, kind: 'steps', family: 'twist' },
+  'arms-up-steps': { id: 'arms-up-steps', title: 'Руки вверх с шагом', duration: 3.75, stepsPerMinute: 80, kind: 'steps', family: 'reach' },
 }
 
 /**

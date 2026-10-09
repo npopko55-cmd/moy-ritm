@@ -35,6 +35,7 @@ import {
   forgetAdminToken,
   readAdminToken,
   saveAdminToken,
+  type FunnelGuestLink,
   type FunnelSummary,
   type FunnelUser,
   type FunnelUserTariff,
@@ -566,8 +567,143 @@ function FunnelColumn({ funnel, title, data, loading }: ColumnProps) {
         ))}
       </ol>
 
+      <GuestLinks data={data} loading={loading} />
+
       <Letters data={data} loading={loading} />
     </section>
+  )
+}
+
+/** Число и под ним мелко доля от `of` (0 или нет базы — без доли). null — «—». */
+function Part({ value, of }: { value: number | null; of?: number | null }) {
+  if (value === null) return <>—</>
+  return (
+    <>
+      {num(value)}
+      {of ? <span className="admin__cell-pct">{Math.round((value / of) * 100)}%</span> : null}
+    </>
+  )
+}
+
+/** Части «с какого раза» и «когда» — только ненулевые, через точку. */
+function parts(items: [string, number][]): string {
+  const filled = items.filter(([, n]) => n > 0).map(([label, n]) => `${label} — ${num(n)}`)
+  return filled.length ? filled.join(' · ') : 'никто не зарегистрировался'
+}
+
+const triesText = (t: FunnelGuestLink['by_prompt']) =>
+  parts([
+    ['без окна', t.no_prompt],
+    ['1-й показ (полное)', t.prompt_1],
+    ['2-й', t.prompt_2],
+    ['3-й', t.prompt_3],
+    ['4-й и дальше', t.prompt_4_plus],
+    ['неизвестно', t.unknown],
+  ])
+
+const daysText = (d: FunnelGuestLink['by_day']) =>
+  parts([
+    ['в день первого захода', d.same_day],
+    ['на 2-й день', d.next_day],
+    ['позже', d.later],
+    ['неизвестно', d.unknown],
+  ])
+
+/** Столбцов в таблице гостевых ссылок — для строки «с какого раза» под меткой. */
+const GUEST_LINK_COLUMNS = 11
+
+/**
+ * «Гостевые ссылки» (Дима, 09.10.2026: «видеть аналитику отдельно по тем, кто
+ * прошёл по этой ссылке»): строка на метку ссылки /play/<токен>_<метка> —
+ * шаги гостя и что стало с зарегистрировавшимися. Доли — от «Зашли», у
+ * «Бесплатно после пробного» — от закончивших пробный. Под строкой — «с
+ * какого раза» двумя строками. Правила подсчёта — на сервере (FUNNELS.md
+ * бэкенда); пустых меток он не присылает. Таблица шире карточки — на любой
+ * ширине прокручивается вбок внутри рамки, как таблица людей.
+ */
+function GuestLinks({ data, loading }: { data: FunnelSummary | null; loading: boolean }) {
+  const rows = data?.guest_links
+
+  return (
+    <div className="admin__letters">
+      <h3 className="admin__letters-title">Гостевые ссылки</h3>
+      {rows === undefined || rows.length === 0 ? (
+        <p className="admin__letters-note">
+          {loading
+            ? 'Загружаем…'
+            : rows === undefined
+              ? 'Сервер пока не считает гостевые ссылки.'
+              : 'За период по гостевым ссылкам /play/ никого не было.'}
+        </p>
+      ) : (
+        <>
+          <div className="admin__scroll">
+            <table className="admin__table admin__table--letters admin__table--guests">
+              <thead>
+                <tr>
+                  <th>Метка</th>
+                  <th className="is-num">Зашли</th>
+                  <th className="is-num">Начали тренировку</th>
+                  <th className="is-num">Увидели окно</th>
+                  <th className="is-num">Нажали «Попробовать»</th>
+                  <th className="is-num">Зарегистри&shy;ровались</th>
+                  <th className="is-num">Начали заниматься</th>
+                  <th className="is-num">Пробный кончился без оплаты</th>
+                  <th className="is-num">Бесплатно после пробного</th>
+                  <th className="is-num">Оплатили</th>
+                  <th className="is-num">Выручка</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <Fragment key={r.source}>
+                    <tr className="admin__guest-row">
+                      <td>{r.source || 'Без метки'}</td>
+                      <td className="is-num">{num(r.visitors)}</td>
+                      <td className="is-num">
+                        <Part value={r.started} of={r.visitors} />
+                      </td>
+                      <td className="is-num">
+                        <Part value={r.prompted} of={r.visitors} />
+                      </td>
+                      <td className="is-num">
+                        <Part value={r.clicked} of={r.visitors} />
+                      </td>
+                      <td className="is-num">
+                        <Part value={r.registered} of={r.visitors} />
+                      </td>
+                      <td className="is-num">
+                        <Part value={r.trained} of={r.visitors} />
+                      </td>
+                      <td className="is-num">
+                        <Part value={r.expired} />
+                      </td>
+                      <td className="is-num">
+                        <Part value={r.free_after_trial} of={r.expired} />
+                      </td>
+                      <td className="is-num">
+                        <Part value={r.paid_users} of={r.visitors} />
+                      </td>
+                      <td className="is-num">{money(r.revenue, r.currency)}</td>
+                    </tr>
+                    <tr className="admin__guest-tries">
+                      <td colSpan={GUEST_LINK_COLUMNS}>
+                        <span>С какого раза: {triesText(r.by_prompt)}</span>
+                        <span>Когда: {daysText(r.by_day)}</span>
+                      </td>
+                    </tr>
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="admin__letters-note">
+            Доли — от «Зашли», у «Бесплатно после пробного» — от закончивших пробный. «С какого
+            раза» и «Когда» известны для регистраций с 09.10.2026, более ранние — «неизвестно».
+          </p>
+        </>
+      )}
+    </div>
   )
 }
 

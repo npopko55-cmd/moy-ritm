@@ -9,6 +9,14 @@
  *     запроса сразу после охранника не будет;
  *   • блок разблокировки и экран паузы печатают, сколько пробного осталось.
  *
+ * После конца trial3d (правка 09.10.2026, Дима: «оставить 5 бесплатных
+ * движений, чтобы человек не уходил совсем, как у бывших покупателей»)
+ * сервер оставляет первые free_tier.exercise_limit движений (настройка
+ * TRIAL3D_AFTER_EXERCISES, 5). Первый вход в тренировку после конца — всё
+ * равно страница «Бесплатный доступ истёк» с тарифами и ссылкой «Продолжить
+ * бесплатно»; дальше охранник пускает в плеер, как бывшего покупателя
+ * (trialSendsToEnded). Лимит 0 — по-старому: страница закрывает тренировку.
+ *
  * Вернулся человек в приложение (src/lib/appReturn.ts) — ответ помечается
  * устаревшим: пока его не было, он мог оплатить доступ или потренироваться в
  * другом окне, и следующий вход в тренировку спросит сервер заново.
@@ -138,7 +146,18 @@ onAppReturn(markTrialStale)
  */
 function knownFor(s: Snapshot | null, userId: string | undefined): boolean {
   if (!s || !userId || s.userId !== userId) return false
-  return !s.stale || s.boot.trial?.funnel !== 'trial20'
+  // trial3d кончился по часам уже после этого ответа (вкладка провисела
+  // открытой). Что кончился — видно и так, но сколько движений остаётся
+  // после пробного (free_tier.exercise_limit при expired), знает только
+  // сервер — спрашиваем заново (09.10.2026). Ответ, полученный уже после
+  // ends_at, берём как есть: иначе при спешащих часах телефона, пока сервер
+  // ещё говорит active, спрашивали бы по кругу.
+  const trial = s.boot.trial
+  if (trial?.funnel === 'trial3d' && trial.state === 'active' && trial.ends_at) {
+    const ends = Date.parse(trial.ends_at)
+    if (ends <= Date.now() && s.at < ends) return false
+  }
+  return !s.stale || trial?.funnel !== 'trial20'
 }
 
 /** Предложение челленджа показано: второй раз не зовём. */
@@ -180,9 +199,70 @@ export function trialExpired(trial: Trial | null | undefined): boolean {
   )
 }
 
-/** В тренировку не пускаем: пробный кончился, а оплаченного доступа нет. */
+/**
+ * Пробный кончился, а оплаченного доступа нет. С 09.10.2026 это ещё не
+ * «тренировка закрыта»: в trial3d после конца могут остаться бесплатные
+ * движения (afterTrialMoves), и куда вести, решает trialSendsToEnded. Здесь —
+ * есть ли человеку что делать на странице /trial-ended.
+ */
 export const trialBlocks = (trial: Trial | null | undefined, access: Access | null): boolean =>
   !hasAccess(access) && trialExpired(trial)
+
+/**
+ * Сколько движений бесплатно после конца trial3d — как прислал сервер
+ * (free_tier.exercise_limit при state = expired, настройка
+ * TRIAL3D_AFTER_EXERCISES). 0 — после пробного закрыто всё (настройка
+ * выключена), либо пробный кончился только по часам и ответа сервера о
+ * конце ещё нет. Правка 09.10.2026.
+ */
+export function afterTrialMoves(trial: Trial | null | undefined): number {
+  if (trial?.funnel !== 'trial3d' || trial.state !== 'expired') return 0
+  return Math.max(0, freeLimit() ?? 0)
+}
+
+/**
+ * «Бесплатный доступ истёк» уже показан этому человеку — второй раз
+ * охранник туда не ведёт (09.10.2026). Отметка в localStorage по id
+ * человека: на другом устройстве страницу покажут ещё раз, и это не беда.
+ * Хранилище недоступно (приватный режим, запрет сайта) — помним до
+ * перезагрузки вкладки: страница тогда покажется снова, но «Продолжить
+ * бесплатно» всё равно ведёт в плеер, а не обратно сюда.
+ */
+const ENDED_SEEN_KEY = 'moy-ritm.trial_ended_seen'
+const endedSeenHere = new Set<string>()
+
+export function trialEndedSeen(userId: string | undefined): boolean {
+  if (!userId) return false
+  if (endedSeenHere.has(userId)) return true
+  try {
+    return localStorage.getItem(`${ENDED_SEEN_KEY}.${userId}`) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function markTrialEndedSeen(userId: string | undefined): void {
+  if (!userId) return
+  endedSeenHere.add(userId)
+  try {
+    localStorage.setItem(`${ENDED_SEEN_KEY}.${userId}`, '1')
+  } catch {
+    // Хранилище недоступно — хватит памяти вкладки (endedSeenHere).
+  }
+}
+
+/**
+ * Охраннику тренировки: увести на /trial-ended. Пробный кончился, оплаты
+ * нет, и либо бесплатных движений после него нет (TRIAL3D_AFTER_EXERCISES =
+ * 0 — по-старому), либо человек эту страницу ещё не видел. Видел — пускаем в
+ * плеер с бесплатными движениями и плашкой «Открой все 40», как бывшего
+ * покупателя. Правка 09.10.2026.
+ */
+export const trialSendsToEnded = (
+  trial: Trial | null | undefined,
+  access: Access | null,
+  userId: string | undefined,
+): boolean => trialBlocks(trial, access) && !(afterTrialMoves(trial) > 0 && trialEndedSeen(userId))
 
 /** trial20: пора один раз показать предложение тарифов перед отсчётом. */
 export const offerDue = (trial: Trial | null | undefined, access: Access | null): boolean =>

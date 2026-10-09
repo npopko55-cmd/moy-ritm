@@ -175,6 +175,26 @@
   color: var(--pink-600);
 }
 
+/* ——— Гостевые ссылки (09.10.2026, GuestLinks в Admin.tsx) ———
+   Та же рамка и отступы, что у «По письмам». Под числом — доля мелко;
+   строка «с какого раза» прижата к строке метки и переносится по словам. */
+.admin__cell-pct {
+  display: block;
+  font-size: 11.5px;
+  color: var(--gray-500);
+}
+
+.admin__table.admin__table--guests tr.admin__guest-row td { border-bottom: none; }
+
+.admin__table.admin__table--guests tr.admin__guest-tries td {
+  padding-top: 0;
+  white-space: normal;
+  font-size: 12.5px;
+  color: var(--gray-600);
+}
+
+.admin__guest-tries span { display: block; }
+
 /* ——— Таблица людей ——— */
 .admin__tools {
   display: flex;

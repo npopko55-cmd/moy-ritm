@@ -13,6 +13,32 @@
 /* Вторичная кнопка: вид .page__btn, но во всю ширину на телефоне. */
 .trial__continue { white-space: normal; text-align: center; }
 
+/* «Продолжить бесплатно — 5 движений» на /trial-ended (09.10.2026): вторая,
+   неброская кнопка — подчёркнутый текст, а не плашка. Главное действие на
+   странице — тарифы; это запасной выход к бесплатным движениям. Темнее и
+   крупнее «Помощи», чтобы её не принимали за служебную ссылку. */
+.trial__free {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 6px 4px;
+  font: inherit;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink-700);
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.trial__free:focus-visible {
+  outline: 2px solid var(--pink-600);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
 .trial__help {
   font-size: 14.5px;
   font-weight: 600;
@@ -22,7 +48,8 @@
 }
 
 @media (hover: hover) {
-  .trial__help:hover { color: var(--pink-600); }
+  .trial__help:hover,
+  .trial__free:hover { color: var(--pink-600); }
 }
 
 @media (max-width: 639.98px) {

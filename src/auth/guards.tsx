@@ -12,7 +12,7 @@ import { DEFAULT_STREAM, getStream } from '../data/streams'
 import { useFlow, type FlowSession } from '../flow/FlowSession'
 import { readFunnelToken } from '../lib/funnel'
 import { IN_TELEGRAM } from '../lib/telegram'
-import { loadBootstrap, offerDue, trialBlocks, useTrialState } from '../lib/trial'
+import { loadBootstrap, offerDue, trialSendsToEnded, useTrialState } from '../lib/trial'
 import { keepAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
 import { OFFLINE_WAITING, Waiting } from '../screens/Account'
@@ -141,7 +141,12 @@ const TRIAL_WAIT_MS = 5000
  * все кнопки разом: «Влиться в поток» на главной, в «Моём прогрессе», в
  * меню, «Вернуться в поток» и прямые ссылки.
  *
- *   • пробный кончился, оплаченного доступа нет → /trial-ended;
+ *   • пробный кончился, оплаченного доступа нет → /trial-ended. С 09.10.2026
+ *     у trial3d после конца остаются бесплатные движения (TRIAL3D_AFTER_EXERCISES
+ *     на бэкенде, 5): тогда /trial-ended — только при первом входе, а дальше
+ *     человек идёт в плеер с этими движениями и плашкой «Открой все 40», как
+ *     бывший покупатель (trialSendsToEnded в lib/trial.ts). Лимит 0 — как
+ *     раньше, страница закрывает тренировку всегда;
  *   • челлендж trial20 и пора предложение (offer_due, через три дня) → /offer, но только перед
  *     новым заходом (`start`) и не посреди идущей тренировки: в плеер возвращаем как есть.
  *     Новый заход начинается и с отсчёта, и с плеера на паузе — туда ведут главная и
@@ -178,7 +183,7 @@ export function RequireTrial({ start = false, children }: { start?: boolean; chi
   }, [known, userId])
 
   if (!known && !gaveUp && !passed.current) return null
-  if (trialBlocks(trial, access)) return <Navigate to="/trial-ended" replace />
+  if (trialSendsToEnded(trial, access, userId)) return <Navigate to="/trial-ended" replace />
   const resuming = flow?.streamId === getStream(streamId).id
   if (start && !resuming && offerDue(trial, access)) return <Navigate to="/offer" replace />
   passed.current = true

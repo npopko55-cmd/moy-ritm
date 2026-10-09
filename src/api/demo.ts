@@ -220,6 +220,11 @@ const demoFunnelOf = (token: string | undefined): Funnel | null =>
 
 /** trial3d: столько дней открыты все движения. */
 const TRIAL_DAYS = 3
+/**
+ * trial3d после конца: столько первых движений остаётся бесплатно — как
+ * TRIAL3D_AFTER_EXERCISES бэкенда (09.10.2026; раньше после пробного было 0).
+ */
+const TRIAL3D_AFTER_MOVES = 5
 /** «Все движения» — как ALL_EXERCISES_LIMIT бэкенда: плеер обрезает длиной списка. */
 const ALL_MOVES_LIMIT = 1000
 /** trial20, челлендж «21 день»: бесплатных движений и через сколько дней — тарифы. */
@@ -237,7 +242,7 @@ const NO_TRIAL: Trial = {
 
 /** Бесплатный уровень с поправкой на пробный период — как free_tier бэкенда. */
 function freeTierOf(trial: Trial): FreeTier {
-  if (trial.state === 'expired') return { ...FREE_TIER, exercise_limit: 0 }
+  if (trial.state === 'expired') return { ...FREE_TIER, exercise_limit: TRIAL3D_AFTER_MOVES }
   if (trial.state === 'active') {
     return { ...FREE_TIER, exercise_limit: trial.funnel === 'trial3d' ? ALL_MOVES_LIMIT : CHALLENGE_MOVES }
   }

@@ -48,7 +48,14 @@ import { api, type RegisterBody } from '../api/client'
 import { ApiError, type Access, type Me, type RegisterResponse } from '../api/types'
 import { onAppReturn } from '../lib/appReturn'
 import { flushBeforeSignOut } from '../lib/chunks'
-import { forgetFunnelToken, launchFunnel, readFunnelGuest, readFunnelToken, saveFunnelToken } from '../lib/funnel'
+import {
+  anonId,
+  forgetFunnelToken,
+  launchFunnel,
+  readFunnelGuest,
+  readFunnelToken,
+  saveFunnelToken,
+} from '../lib/funnel'
 import { finishGuest } from '../lib/guest'
 import { saveMoveInterval } from '../lib/settings'
 import { useSitePaymentWatch } from '../lib/sitePayment'
@@ -360,11 +367,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(
     async (body: RegisterBody) => {
       // Пришёл по ссылке воронки — метку получит бэкенд вместе с регистрацией.
-      // Пришёл гостем со ссылки /play/ — регистрация получит meta.guest.
+      // Пришёл гостем со ссылки /play/ — регистрация получит meta.guest, а
+      // с 09.10.2026 и браузер гостя (anon_id): так сводка связывает
+      // регистрацию с его показами окна и первым заходом.
       const funnelToken = readFunnelToken()
       const guest = funnelToken !== null && readFunnelGuest()
       const res = await api.register(
-        funnelToken ? { ...body, funnel_token: funnelToken, ...(guest ? { guest } : {}) } : body,
+        funnelToken
+          ? { ...body, funnel_token: funnelToken, ...(guest ? { guest, anon_id: anonId() } : {}) }
+          : body,
       )
       // Занятая почта — 409 EMAIL_TAKEN, до этой строки она не доходит. Без
       // токенов отвечал только бэкенд до 28.09 (check_email): в контексте
