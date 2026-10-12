@@ -30,7 +30,7 @@ import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
 import Unlock from '../components/Unlock'
 import { DEFAULT_FREE_TIER, getStream } from '../data/streams'
-import { loopPoster, loopSrc, stepRate, stepsFor, type Loop } from '../data/loops'
+import { loopPoster, loopSrc, SECONDS_PER_MOVE, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
 import {
   FLOW_RESUME_MINUTES,
@@ -195,7 +195,11 @@ export default function Player() {
   // стартует сразу, а bootstrap лишь подтверждает цифры с сервера.
   const [boot, setBoot] = useState<Settings | null>(null)
   const settings = boot ?? me?.settings ?? null
-  const moveInterval = settings?.move_interval_seconds ?? loadMoveInterval()
+  // Гостю — интервал из guest-bootstrap, а до ответа (или без него) — 30 с:
+  // интервал, оставшийся в этом браузере от прошлого входа (хоть 15 с), к
+  // гостю не относится — окно регистрации рассчитано на круг 3 × 30 с.
+  const moveInterval =
+    settings?.move_interval_seconds ?? (guest ? SECONDS_PER_MOVE : loadMoveInterval())
   const motivationOn = settings?.motivation_enabled ?? true
 
   /* ─────────────  Бесплатный уровень  ───────────── */
@@ -859,10 +863,14 @@ export default function Player() {
       sessionRef.current += 1
       setSessionSeconds(sessionRef.current)
       // Гость: секунды движения копятся в этом браузере, по ним встаёт окно.
+      // Положенное окно ждёт стыка движений — секунды, в которую ниже сменится
+      // движение (Никита 12.10: окно после круга из 3 движений, не посреди
+      // движения). Порог отсчитывается от показа, поэтому после первого же
+      // окна график ровно по стыкам. Открываем до смены: так молчит её сигнал.
       if (guestRef.current) {
         const moved = addGuestMoved(1)
         const due = guestPromptDue(moved, thresholds)
-        if (due) openPromptRef.current(due, moved)
+        if (due && inMoveRef.current + 1 >= moveInterval) openPromptRef.current(due, moved)
       }
       stepsRef.current += stepRate(moveRef.current)
       if (openRef.current) {

@@ -1058,13 +1058,13 @@ export function createDemoApi(): Api {
       return { ok: true }
     },
 
-    // Гость в демо — тот же бесплатный уровень без аккаунта: десять движений
+    // Гость в демо — тот же бесплатный уровень без аккаунта: три движения
     // (GUEST_EXERCISES бэкенда), пустая статистика, пробного периода нет.
     async guestBootstrap(token: string) {
       const funnel = demoFunnelOf(token)
       if (!funnel) throw new ApiError(404, 'FUNNEL_NOT_FOUND', 'Такой ссылки нет')
       const access = accessInfo('')
-      const tier: FreeTier = { stream_code: FREE_TIER.stream_code, exercise_limit: 10 }
+      const tier: FreeTier = { stream_code: FREE_TIER.stream_code, exercise_limit: 3 }
       return {
         streams: demoStreams(access, tier),
         settings: DEFAULT_SETTINGS,
