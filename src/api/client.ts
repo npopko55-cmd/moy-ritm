@@ -135,6 +135,12 @@ export interface Api {
   guestEvent(body: GuestEventBody): Promise<void>
   /** Ведёт ли «Включить эфир» невошедшего в гостевой режим. Входа не требует. */
   guestConfig(): Promise<GuestConfig>
+  /**
+   * Заход на сайт — счётчик «сколько людей заходит в день» в общей статистике
+   * админки. Входа не требует и не передаёт: только `anonId`. 204; повтор за
+   * те же сутки бэкенд молча не пишет.
+   */
+  siteVisit(anonId: string): Promise<void>
   /** Предложение тарифов после 10-й тренировки показано. Требует входа. */
   funnelOfferSeen(): Promise<{ ok: boolean }>
   /**

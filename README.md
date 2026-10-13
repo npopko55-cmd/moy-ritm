@@ -63,7 +63,8 @@ VITE_API_URL=https://ritmritm.ru/api/v1 npm run build
 | `/go/:token`             | Вход по ссылке воронки из Telegram: визит → регистрация    |
 | `/offer`                 | челлендж trial20: предложение тарифов через 3 дня после регистрации, один раз |
 | `/trial-ended`           | Пробный период кончился — тарифы (`src/lib/trial.ts`)      |
-| `/admin`                 | Аналитика воронок для владельца: свой вход, ссылок нет     |
+| `/admin`                 | Админка для владельца: свой вход, ссылок нет. Главная — общая статистика сайта (заходы, регистрации, тренировки по дням) |
+| `/admin/funnels`         | Аналитика воронок (до 13.10.2026 жила на `/admin`); дальше `/admin/posts`, `/admin/behavior`, `/admin/survey`, `/admin/payments` |
 
 `streamId` — один из `cardio`, `back`, `office`, `dance`, `60plus`.
 

@@ -232,3 +232,48 @@ export function reportBannerShown(place: BannerPlace, userId: string | undefined
 export function reportBannerClick(place: BannerPlace): void {
   api.funnelBanner('click', place).catch(() => undefined)
 }
+
+/* ——— Заход на сайт ——— */
+
+/**
+ * Сутки по Москве, за которые заход этого браузера уже засчитан сервером.
+ * В localStorage, а не во вкладке: заходы считаются по браузерам, и новая
+ * вкладка в те же сутки повторять заход не должна.
+ */
+const VISIT_DAY_KEY = 'moy-ritm.visit.day'
+
+/** Заход уходит один раз за загрузку: StrictMode и повторный вызов не дублируют. */
+let siteVisitSent = false
+
+/**
+ * Заход на сайт (POST /site/visit) — «сколько людей заходит в день» в общей
+ * статистике админки. Один раз за загрузку приложения и не чаще раза в
+ * московские сутки на браузер; админка (/admin…) — не заход.
+ *
+ * Выстрелил и забыл: рендер ответа не ждёт, ошибки глушим. Отметку дня
+ * ставим по ответу — не дошёл, заход пошлёт следующая загрузка. Повтор за те
+ * же сутки сервер погасит и сам.
+ */
+export function reportSiteVisit(): void {
+  if (siteVisitSent) return
+  siteVisitSent = true
+  const base = import.meta.env.BASE_URL.replace(/\/+$/, '')
+  const path = window.location.pathname.slice(base.length) || '/'
+  if (/^\/admin(\/|$)/.test(path)) return
+  const day = moscowDay()
+  try {
+    if (localStorage.getItem(VISIT_DAY_KEY) === day) return
+  } catch {
+    /* хранилище закрыто — шлём: повтор сервер погасит сам */
+  }
+  api.siteVisit(anonId()).then(
+    () => {
+      try {
+        localStorage.setItem(VISIT_DAY_KEY, day)
+      } catch {
+        /* приватный режим — следующая загрузка пошлёт заход ещё раз, не страшно */
+      }
+    },
+    () => undefined,
+  )
+}

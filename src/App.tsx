@@ -191,9 +191,11 @@ export default function App() {
             }
           />
 
-          {/* Аналитика воронок для владельца. Ссылок на неё нет; вход —
-              свой, администраторский (src/api/admin.ts). */}
+          {/* Админка для владельца: главная — общая статистика, воронки —
+              /admin/funnels. Ссылок на неё нет; вход — свой,
+              администраторский (src/api/admin.ts). */}
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/funnels" element={<Admin />} />
           <Route path="/admin/posts" element={<Admin />} />
           <Route path="/admin/behavior" element={<Admin />} />
           <Route path="/admin/survey" element={<Admin />} />

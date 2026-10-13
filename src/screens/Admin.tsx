@@ -1,12 +1,15 @@
 /**
- * Аналитика тестовых воронок — страница для владельца, не для людей.
+ * Админка «Моего ритма» — страница для владельца, не для людей.
  *
  * Ссылок на неё в интерфейсе нет, поисковикам она закрыта (noindex здесь и
  * Disallow в robots.txt). Вход — почта и пароль администратора; токен живёт
  * в sessionStorage и к пользовательской сессии отношения не имеет
  * (src/api/admin.ts). Истёк — снова форма входа.
  *
- * Что на странице:
+ * Главная, /admin, — общая статистика сайта (AdminOverview.tsx): заходы,
+ * регистрации, тренировки за период и по дням.
+ *
+ * Аналитика воронок — /admin/funnels (до 13.10.2026 жила на /admin):
  *   • период сводки: всё время, 7 дней, 30 дней или свои даты. Старты бота
  *     и визиты считаются по дате события, остальные шаги — люди,
  *     зарегистрированные в период, в их состоянии на сегодня;
@@ -19,11 +22,11 @@
  *   • таблица людей выбранной воронки с сортировкой и страницами, и она же —
  *     CSV-файлом.
  *
- * Второй раздел — /admin/posts, посты в Telegram-каналы воронок и рассылки
- * ботом (AdminPosts.tsx), третий — /admin/behavior, поведение людей по
- * воронкам (AdminBehavior.tsx), четвёртый — /admin/survey, ответы на опрос в
- * боте (AdminSurvey.tsx), пятый — /admin/payments, оплаты из GetCourse, по
- * которым доступ не открылся сам, и выдача доступа руками (AdminPayments.tsx).
+ * Дальше — /admin/posts, посты в Telegram-каналы воронок и рассылки
+ * ботом (AdminPosts.tsx), /admin/behavior, поведение людей по воронкам
+ * (AdminBehavior.tsx), /admin/survey, ответы на опрос в боте
+ * (AdminSurvey.tsx), и /admin/payments, оплаты из GetCourse, по которым
+ * доступ не открылся сам, и выдача доступа руками (AdminPayments.tsx).
  * Разделы переключаются чипами вверху страницы; вход общий.
  */
 
@@ -40,7 +43,6 @@ import {
   type FunnelUser,
   type FunnelUserTariff,
   type FunnelUsersPage,
-  type Period,
   type UsersSort,
 } from '../api/admin'
 import { IS_DEMO } from '../api/client'
@@ -48,7 +50,9 @@ import type { Funnel } from '../api/types'
 import { rub } from '../data/tariffs'
 import { AccountShell, Field, Form, FormError, errorText, isEmail } from './Account'
 import AdminBehavior from './AdminBehavior'
+import AdminOverview from './AdminOverview'
 import AdminPayments from './AdminPayments'
+import { PeriodChoice, usePeriod, ymd } from './AdminPeriod'
 import AdminPosts from './AdminPosts'
 import AdminSurvey from './AdminSurvey'
 import PageShell, { Card } from './Page'
@@ -62,15 +66,6 @@ const FUNNELS: { funnel: Funnel; title: string }[] = [
   { funnel: 'trial20', title: 'Челлендж 21 день' },
 ]
 
-type PeriodKind = 'all' | '7' | '30' | 'custom'
-
-const PERIODS: { kind: PeriodKind; label: string }[] = [
-  { kind: 'all', label: 'Всё время' },
-  { kind: '7', label: '7 дней' },
-  { kind: '30', label: '30 дней' },
-  { kind: 'custom', label: 'Свои даты' },
-]
-
 const SORTS: { sort: UsersSort; label: string }[] = [
   { sort: 'registered_at', label: 'Дата регистрации' },
   { sort: 'total_seconds', label: 'Минуты' },
@@ -80,20 +75,6 @@ const SORTS: { sort: UsersSort; label: string }[] = [
 const PER_PAGE = 20
 
 /* ——— Форматирование ——— */
-
-/** Локальная дата браузера — «2026-09-22». */
-function ymd(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-}
-
-function periodOf(kind: PeriodKind, from: string, to: string): Period {
-  if (kind === 'all') return {}
-  if (kind === 'custom') return { from: from || undefined, to: to || undefined }
-  const start = new Date()
-  start.setDate(start.getDate() - (Number(kind) - 1))
-  return { from: ymd(start), to: ymd(new Date()) }
-}
 
 const num = (n: number) => n.toLocaleString('ru-RU')
 
@@ -169,12 +150,19 @@ function useNoindex(): void {
 
 /* ——— Страница ——— */
 
-type Section = 'funnels' | 'posts' | 'behavior' | 'survey' | 'payments'
+type Section = 'overview' | 'funnels' | 'posts' | 'behavior' | 'survey' | 'payments'
 
 const SECTIONS: { section: Section; path: string; label: string; title: string; lead: string }[] = [
   {
-    section: 'funnels',
+    section: 'overview',
     path: '/admin',
+    label: 'Общая статистика',
+    title: 'Общая статистика',
+    lead: 'Всё по сайту целиком: сколько людей заходит, регистрируется и занимается — за всё время или за выбранные даты.',
+  },
+  {
+    section: 'funnels',
+    path: '/admin/funnels',
     label: 'Аналитика воронок',
     title: 'Аналитика воронок',
     lead: 'Две тестовые группы запуска через Telegram: кто пришёл по ссылке, дошёл до тренировки и оплатил.',
@@ -212,7 +200,7 @@ const SECTIONS: { section: Section; path: string; label: string; title: string; 
 function useSection(): Section {
   const { pathname } = useLocation()
   const path = pathname.replace(/\/+$/, '')
-  return SECTIONS.find((s) => s.path === path)?.section ?? 'funnels'
+  return SECTIONS.find((s) => s.path === path)?.section ?? 'overview'
 }
 
 export default function Admin() {
@@ -345,8 +333,10 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
         <AdminSurvey token={token} fail={fail} />
       ) : section === 'payments' ? (
         <AdminPayments token={token} fail={fail} />
-      ) : (
+      ) : section === 'funnels' ? (
         <Funnels token={token} fail={fail} />
+      ) : (
+        <AdminOverview token={token} fail={fail} />
       )}
     </PageShell>
   )
@@ -355,10 +345,8 @@ function Dashboard({ token, onSignOut }: { token: string; onSignOut(why?: 'expir
 /* ——— Аналитика воронок ——— */
 
 function Funnels({ token, fail }: { token: string; fail: Fail }) {
-  const [kind, setKind] = useState<PeriodKind>('all')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const period = periodOf(kind, from, to)
+  const choice = usePeriod()
+  const { kind, from, to, period } = choice
 
   const [summary, setSummary] = useState<FunnelSummary[] | null>(null)
   const [summaryError, setSummaryError] = useState('')
@@ -384,30 +372,7 @@ function Funnels({ token, fail }: { token: string; fail: Fail }) {
   return (
     <>
       <Card title="Период">
-        <div className="chips">
-          {PERIODS.map((p) => (
-            <button
-              key={p.kind}
-              type="button"
-              className={`chip ${kind === p.kind ? 'is-on' : ''}`}
-              onClick={() => setKind(p.kind)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        {kind === 'custom' && (
-          <div className="admin__dates">
-            <label>
-              С
-              <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
-            </label>
-            <label>
-              по
-              <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
-            </label>
-          </div>
-        )}
+        <PeriodChoice state={choice} />
         <p className="admin__period-note">
           Старты бота, визиты и плашка «Открой все 40» — по дате события. Остальное — люди,
           зарегистрированные в этот период, и их состояние на сегодня.

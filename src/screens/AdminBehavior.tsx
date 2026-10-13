@@ -16,7 +16,8 @@
  */
 
 import { useEffect, useState } from 'react'
-import { adminApi, type BehaviorColumn, type BehaviorGroup, type BehaviorReport, type Period } from '../api/admin'
+import { adminApi, type BehaviorColumn, type BehaviorGroup, type BehaviorReport } from '../api/admin'
+import { PeriodChoice, usePeriod } from './AdminPeriod'
 import { Card } from './Page'
 
 type Fail = (e: unknown, show: (text: string) => void) => void
@@ -29,29 +30,6 @@ const COLUMNS: { group: BehaviorGroup; title: string; note?: string }[] = [
 
 /** Подпись воронки в заголовке колонки гостевой ссылки. */
 const FUNNEL_TITLES: Record<string, string> = { trial3d: '3 дня', trial20: 'Челлендж' }
-
-type PeriodKind = 'all' | '7' | '30' | 'custom'
-
-const PERIODS: { kind: PeriodKind; label: string }[] = [
-  { kind: 'all', label: 'Всё время' },
-  { kind: '7', label: '7 дней' },
-  { kind: '30', label: '30 дней' },
-  { kind: 'custom', label: 'Свои даты' },
-]
-
-/** Локальная дата браузера — «2026-09-22». */
-function ymd(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-}
-
-function periodOf(kind: PeriodKind, from: string, to: string): Period {
-  if (kind === 'all') return {}
-  if (kind === 'custom') return { from: from || undefined, to: to || undefined }
-  const start = new Date()
-  start.setDate(start.getDate() - (Number(kind) - 1))
-  return { from: ymd(start), to: ymd(new Date()) }
-}
 
 /* ——— Форматирование ——— */
 
@@ -155,10 +133,8 @@ function metrics(report: BehaviorReport): { title: string; rows: Metric[] }[] {
 /* ——— Раздел ——— */
 
 export default function AdminBehavior({ token, fail }: { token: string; fail: Fail }) {
-  const [kind, setKind] = useState<PeriodKind>('all')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const period = periodOf(kind, from, to)
+  const choice = usePeriod()
+  const { kind, from, to, period } = choice
 
   const [report, setReport] = useState<BehaviorReport | null>(null)
   const [error, setError] = useState('')
@@ -202,30 +178,7 @@ export default function AdminBehavior({ token, fail }: { token: string; fail: Fa
   return (
     <>
       <Card title="Период регистрации">
-        <div className="chips">
-          {PERIODS.map((p) => (
-            <button
-              key={p.kind}
-              type="button"
-              className={`chip ${kind === p.kind ? 'is-on' : ''}`}
-              onClick={() => setKind(p.kind)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        {kind === 'custom' && (
-          <div className="admin__dates">
-            <label>
-              С
-              <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
-            </label>
-            <label>
-              по
-              <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
-            </label>
-          </div>
-        )}
+        <PeriodChoice state={choice} />
         <p className="admin__period-note">
           Люди, зарегистрированные в этот период, и что они делали в первые три недели после
           регистрации. Удалённые аккаунты не считаются.

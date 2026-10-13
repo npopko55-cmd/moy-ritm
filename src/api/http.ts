@@ -386,6 +386,8 @@ export function createHttpApi(rawBase: string): Api {
 
     guestConfig: () => request<GuestConfig>('GET', '/funnel/guest-config', { auth: false }),
 
+    siteVisit: (anonId) => request<void>('POST', '/site/visit', { body: { anon_id: anonId }, auth: false }),
+
     funnelOfferSeen: () => request<{ ok: boolean }>('POST', '/funnel/offer-seen'),
 
     funnelBanner: (action, place) =>

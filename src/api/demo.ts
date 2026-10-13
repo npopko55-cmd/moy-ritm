@@ -26,6 +26,9 @@ import type {
   ChannelPost,
   FunnelSummary,
   FunnelUser,
+  Overview,
+  OverviewCounts,
+  OverviewDay,
   Period,
   PostChannelKey,
   PostInput,
@@ -1082,6 +1085,10 @@ export function createDemoApi(): Api {
       return { enabled: false, token: null } satisfies GuestConfig
     },
 
+    // Заходы считает только боевой бэкенд: в демо общая статистика админки
+    // берёт выдуманные цифры.
+    async siteVisit() {},
+
     // Диагностика роликов нужна только боевому бэкенду: в демо её некуда слать.
     async playerFault() {
       return undefined
@@ -1321,6 +1328,54 @@ function demoSurvey(): SurveyRow[] {
 /** YYYY-MM-DD по времени браузера → границы суток в мс. */
 const dayStart = (date: string) => Date.parse(`${date}T00:00:00`)
 
+/**
+ * Общая статистика в демо: 60 дней сайта с постоянным зерном. Заходы
+ * «начали считаться» 12 дней назад — как на боевом после выкладки счётчика:
+ * видно и подпись «считаются с …», и нули до неё.
+ */
+function demoOverview(period: Period): Overview {
+  const SITE_DAYS = 60
+  const VISITS_DAYS = 12
+  const rnd = seeded(20261013)
+  const now = Date.now()
+  const all: OverviewDay[] = []
+  for (let i = 0; i < SITE_DAYS; i += 1) {
+    const registered = Math.floor(rnd() * 9)
+    const active = 4 + Math.floor(rnd() * 18)
+    const workouts = active + Math.floor(rnd() * active)
+    all.push({
+      day: localDate(now - i * DAY_MS),
+      visits: i < VISITS_DAYS ? 30 + Math.floor(rnd() * 70) : 0,
+      guests: Math.floor(rnd() * 6),
+      registered,
+      registered_by_funnel: Math.floor(registered * rnd()),
+      active_users: active,
+      workouts,
+      workouts_started: workouts + Math.floor(rnd() * 4),
+      minutes: workouts * (8 + Math.floor(rnd() * 12)),
+    })
+  }
+  const days = all.filter((d) => (!period.from || d.day >= period.from) && (!period.to || d.day <= period.to))
+  const sum = (key: keyof OverviewCounts) => days.reduce((n, d) => n + d[key], 0)
+  // Уникальные за период меньше суммы дней: одни и те же люди приходят снова.
+  const unique = (key: keyof OverviewCounts) =>
+    Math.min(sum(key), Math.round(Math.max(0, ...days.map((d) => d[key])) * Math.sqrt(days.length)))
+  return {
+    totals: {
+      visits: unique('visits'),
+      guests: sum('guests'),
+      registered: sum('registered'),
+      registered_by_funnel: sum('registered_by_funnel'),
+      active_users: unique('active_users'),
+      workouts: sum('workouts'),
+      workouts_started: sum('workouts_started'),
+      minutes: sum('minutes'),
+    },
+    days,
+    visits_since: localDate(now - (VISITS_DAYS - 1) * DAY_MS),
+  }
+}
+
 export function createDemoAdminApi(): AdminApi {
   const people = demoFunnelPeople()
   const DEMO_TOKEN = 'demo-admin'
@@ -1404,6 +1459,11 @@ export function createDemoAdminApi(): AdminApi {
         throw new ApiError(401, 'UNAUTHORIZED', 'Неверная почта или пароль')
       }
       return DEMO_TOKEN
+    },
+
+    async overview(token, period) {
+      check(token)
+      return demoOverview(period)
     },
 
     async summary(token, period) {

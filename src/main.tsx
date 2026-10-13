@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import { reloadOnce } from './lib/chunkReload'
+import { reportSiteVisit } from './lib/funnel'
 import { screenWaiting } from './lib/screens'
 import { startTelegram } from './lib/telegram'
 import './styles/global.css'
@@ -31,6 +32,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </React.StrictMode>,
 )
+
+// Заход на сайт для общей статистики админки: отрисовка ответа не ждёт, раз
+// в сутки на браузер, ошибки глушатся (src/lib/funnel.ts).
+reportSiteVisit()
 
 // Сервис-воркер только в собранном виде: в разработке он бы подсовывал
 // старые файлы вместо горячей замены. Регистрируем после load, чтобы не

@@ -1,4 +1,4 @@
-/* ═══════ Аналитика воронок (/admin) ═══════
+/* ═══════ Админка (/admin): общая статистика, аналитика воронок и разделы ═══════
    Оболочка и карточки — как у страниц кабинета (Page.css), чипы — те же,
    что в настройках. Здесь только своё: две колонки воронок, ссылка входа
    и таблица, которая на телефоне прокручивается вбок внутри рамки. */
@@ -319,9 +319,56 @@
   color: var(--pink-600);
 }
 
-/* ——— Разделы админки: воронки, поведение и посты ——— */
+/* ——— Разделы админки: общая статистика, воронки, поведение и посты ——— */
 .admin__sections { margin-top: 18px; }
 .admin__sections .chip { flex: 0 1 auto; }
+
+/* ═══════ Общая статистика (/admin, AdminOverview.tsx) ═══════
+   Итоги — плитки с подписью, числом и мелкой строкой, как шаги воронки
+   (те же классы admin__step-*). По дням — та же таблица, что у людей, но
+   уже, и в «Заходах» — полоска от самого людного дня периода. */
+.overview__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.overview__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--gray-100);
+  border-radius: var(--r-md);
+}
+
+.overview__tile .admin__step-label { padding-top: 0; }
+.overview__tile .admin__step-pct { white-space: normal; }
+
+.admin__table.overview__table { min-width: 640px; }
+
+.overview__weekday { color: var(--gray-500); }
+
+.overview__visits { font-variant-numeric: tabular-nums; }
+
+.overview__bar {
+  display: inline-block;
+  width: 72px;
+  height: 6px;
+  margin-right: 10px;
+  border-radius: 3px;
+  background: var(--gray-100);
+  vertical-align: middle;
+  overflow: hidden;
+}
+
+.overview__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--pink-500);
+}
 
 /* ═══════ Посты в каналы (/admin/posts) ═══════
    Список — строки-кнопки: время, статус, начало текста. Редактор — та же

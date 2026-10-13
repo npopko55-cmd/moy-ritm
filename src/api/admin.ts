@@ -1,6 +1,7 @@
 /**
- * Админские ручки: аналитика воронок, посты и рассылки, опрос — только для
- * страницы /admin. Там же оплаты без доступа и их ручной разбор.
+ * Админские ручки: общая статистика сайта, аналитика воронок, посты и
+ * рассылки, опрос — только для страницы /admin. Там же оплаты без доступа и
+ * их ручной разбор.
  *
  * Отдельно от client.ts намеренно: у администратора свой токен и своя
  * жизнь. Токен лежит в sessionStorage (закрыл вкладку — вышел) и никогда не
@@ -146,6 +147,40 @@ export type UsersSort = 'registered_at' | 'total_seconds' | 'active_days'
 
 /** Период сводки: даты YYYY-MM-DD включительно. Пусто — за всё время. */
 export type Period = { from?: string; to?: string }
+
+/**
+ * Показатели общей статистики — за день или итогом за период. Правила
+ * подсчёта — на сервере (app/services/site_stats_service.py бэкенда).
+ */
+export type OverviewCounts = {
+  /** Уникальные браузеры: за период — за весь период, а не сумма дней. */
+  visits: number
+  /** Гости начали тренировку без регистрации (по браузерам). */
+  guests: number
+  /** Регистрации без удалённых аккаунтов и администратора. */
+  registered: number
+  /** Из них пришли по ссылкам воронок. */
+  registered_by_funnel: number
+  /** Люди с движением: за период — разные люди за весь период. */
+  active_users: number
+  /** Засчитанные тренировки — от минуты движения. */
+  workouts: number
+  /** Все начатые тренировки, и короче минуты. */
+  workouts_started: number
+  /** Минуты движения, вниз. */
+  minutes: number
+}
+
+/** День общей статистики: `day` — YYYY-MM-DD. */
+export type OverviewDay = OverviewCounts & { day: string }
+
+export type Overview = {
+  totals: OverviewCounts
+  /** От новых к старым; дни без данных — с нулями. */
+  days: OverviewDay[]
+  /** Первый записанный заход на сайт (YYYY-MM-DD); null — заходов ещё нет. */
+  visits_since: string | null
+}
 
 export type UsersQuery = { funnel: Funnel; page: number; per_page: number; sort: UsersSort }
 
@@ -380,6 +415,8 @@ export interface AdminApi {
   readonly isDemo: boolean
   /** Токен администратора. 401 — неверная почта, пароль или это не админ. */
   login(email: string, password: string): Promise<string>
+  /** Общая статистика сайта за период и по дням. */
+  overview(token: string, period: Period): Promise<Overview>
   summary(token: string, period: Period): Promise<FunnelSummary[]>
   users(token: string, query: UsersQuery): Promise<FunnelUsersPage>
   usersCsv(token: string, funnel: Funnel): Promise<Blob>
@@ -519,6 +556,9 @@ function createHttpAdminApi(rawBase: string): AdminApi {
       return data.access_token
     },
 
+    overview: (token, period) =>
+      json<Overview>(send('GET', `/admin/overview${query({ from: period.from, to: period.to })}`, token)),
+
     async summary(token, period) {
       const data = await json<{ funnels: FunnelSummary[] }>(
         send('GET', `/admin/funnels/summary${query({ from: period.from, to: period.to })}`, token),
@@ -619,6 +659,7 @@ function lazyDemoAdminApi(): AdminApi {
   return {
     isDemo: true,
     login: (email, password) => impl().then((a) => a.login(email, password)),
+    overview: (token, period) => impl().then((a) => a.overview(token, period)),
     summary: (token, period) => impl().then((a) => a.summary(token, period)),
     users: (token, q) => impl().then((a) => a.users(token, q)),
     usersCsv: (token, funnel) => impl().then((a) => a.usersCsv(token, funnel)),
