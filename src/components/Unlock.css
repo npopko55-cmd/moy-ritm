@@ -5,7 +5,8 @@
  *
  * Два вида (src/components/Unlock.tsx): плашка «Разнообразь тренировки и
  * открой все 40 движений!» (.unlock-banner) и прежний блок пробного периода
- * trial3d «Шагайте без ограничений» (.unlock) — он не менялся.
+ * trial3d «Шагайте без ограничений» (.unlock) — он не менялся. Третий,
+ * светлый, — у гостя в плеере (.unlock-guest, в конце файла).
  */
 
 /* ═══════ Плашка «Открой все 40» ═══════ */
@@ -105,7 +106,9 @@
 
 @media (hover: hover) {
   .unlock__cta:hover,
-  .unlock-banner__cta:hover { transform: translateY(-1px); }
+  .unlock-banner__cta:hover,
+  .unlock-guest__cta:hover { transform: translateY(-1px); }
+  .unlock-guest__cta:hover { box-shadow: 0 10px 22px rgba(240, 23, 127, .36); }
 }
 
 /* Строкой: текст слева, кнопка справа. Экран паузы длинный, и лишняя
@@ -118,3 +121,106 @@
 }
 
 .unlock--compact .unlock__cta { align-self: center; margin-left: auto; }
+
+/* ═══════ Гость в плеере: «Открой весь функционал Ритма!» ═══════ */
+/*
+ * Макет Димы 14.10.2026: замок, заголовок, строка, кнопка «Попробовать 3 дня
+ * бесплатно →» и под ней мелко «Без карты · Без автосписаний». Блок светлый,
+ * на розовой подложке, а градиент здесь у кнопки — той же, что в окне гостя
+ * (GuestPrompt.css): яркое пятно на экране — сама кнопка.
+ *
+ * Кнопка встаёт справа от текста, если рядом им хватает места (планшет, где
+ * блок во всю ширину), а если нет — уходит под текст и растягивается во всю
+ * ширину блока (правая колонка десктопа, телефон). Решает ширина самого
+ * блока, а не экрана, как у плашки «Открой все 40»: flex-wrap и основа
+ * текста в em. Свободное место строки почти целиком забирает текст (999 к 1),
+ * поэтому рядом с ним кнопка своей ширины, а одна в строке — во всю.
+ * Кегли и отступы под каждое место — в Player.css (.stats__unlock).
+ */
+.unlock-guest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 14px 15px;
+  border: 1px solid var(--pink-100);
+  border-radius: var(--r-lg);
+  background: var(--pink-50);
+  box-shadow: var(--shadow-card);
+}
+
+.unlock-guest__head {
+  flex: 999 1 17em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.unlock-guest__lock {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--grad-pink-diag);
+  color: var(--white);
+  box-shadow: 0 6px 14px rgba(240, 23, 127, .24);
+}
+
+.unlock-guest__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.unlock-guest__title {
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: clamp(14px, 1.55vh, 18px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ink-900);
+  text-wrap: balance;
+}
+
+.unlock-guest__sub {
+  font-size: clamp(12px, 1.2vh, 14px);
+  line-height: 1.35;
+  color: var(--gray-500);
+}
+
+/* min-width: 0 — на самом узком телефоне кнопка не вылезает за блок, а
+   переносит строку: подпись у неё длинная. */
+.unlock-guest__action {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+
+.unlock-guest__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: var(--r-pill);
+  background: var(--grad-pink);
+  color: var(--white);
+  font-size: clamp(13.5px, 1.4vh, 16px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+  box-shadow: 0 6px 16px rgba(240, 23, 127, .28);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.unlock-guest__cta:active { transform: scale(0.96); }
+
+.unlock-guest__fine {
+  font-size: clamp(11px, 1.1vh, 12.5px);
+  line-height: 1.2;
+  color: var(--gray-400);
+  text-align: center;
+}

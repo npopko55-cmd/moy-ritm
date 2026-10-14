@@ -237,6 +237,22 @@ export const Shield = ({ size = 20, className }: I) => (
   </svg>
 )
 
+/**
+ * Замок — в блоке «Открой весь функционал Ритма!» у гостя (src/components/Unlock.tsx).
+ *
+ * Стоит по визуальному центру, а не по рамке: корпус тяжелее тонкой дужки —
+ * центр массы обводки на 1 ниже середины рамки (13,3 из 12,3). По правилу
+ * P = рамка + 0,65·(масса − рамка) в середину клетки встаёт точка 12,95,
+ * поэтому рисунок поднят на 0,95.
+ */
+export const Lock = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <rect x="4.6" y="9.35" width="14.8" height="10.1" rx="2.6" stroke="currentColor" strokeWidth="1.9" />
+    <path d="M8.4 9.35v-2.5a3.6 3.6 0 0 1 7.2 0v2.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    <circle cx="12" cy="14.4" r="1.5" fill="currentColor" />
+  </svg>
+)
+
 /** Корона на бейдже популярного тарифа. */
 export const Crown = ({ size = 14, className }: I) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">

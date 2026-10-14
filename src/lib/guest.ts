@@ -7,11 +7,16 @@
  *   • минуты гостя копятся в гостевом буфере (src/lib/chunks.ts) и уходят под
  *     аккаунт, когда человек зарегистрировался или вошёл в этом же браузере
  *     (finishGuest — её зовёт SessionProvider);
- *   • окно регистрации — по секундам движения, накопительно в этом браузере:
- *     полное на 1:30, короткое через 1:30 после него и дальше каждые 1:30
+ *   • окно регистрации — по секундам движения в этом заходе: полное на 1:30,
+ *     короткое через 1:30 после него и дальше каждые 1:30
  *     (GUEST_PROMPT_SECONDS; Никита 12.10.2026: гостю открыты 3 движения по
- *     30 с, они идут по кругу, окно — после каждого круга). Перезагрузка счёт
- *     не обнуляет — он в localStorage;
+ *     30 с, они идут по кругу, окно — после каждого круга). Заход — вкладка:
+ *     счёт и показанные окна лежат в sessionStorage, перезагрузка их не
+ *     обнуляет, а новая вкладка (с главной сайта, по ссылке из блога — всё
+ *     равно откуда) начинает с нуля и с полного окна. Дима 14.10.2026: «неважно,
+ *     с какой страницы ты заходишь — полторы минуты, потом окно». До этого
+ *     счёт копился в localStorage через все прошлые заходы, и в новом заходе
+ *     первое окно приходило не на 1:30;
  *   • события гостя — POST /funnel/guest-event (reportGuest), ошибки глушим:
  *     метрика не должна мешать тренировке.
  */
@@ -47,10 +52,11 @@ export const GUEST_REGISTER_PATH = `/register?next=${encodeURIComponent(GUEST_NE
 export const GUEST_LOGIN_PATH = `/login?next=${encodeURIComponent(GUEST_NEXT)}`
 
 /**
- * Пороги окна в секундах движения: полное, короткое после закрытия полного,
- * дальше короткое каждые столько. В бою — 90, 90, 90: полное на 1:30, короткое
- * через 1:30 после него и дальше каждые 1:30 (Никита, 12.10: гостю 3 движения
- * по 30 с — окно ровно после круга; до этого — 120, Дима, 07.10).
+ * Пороги окна в секундах движения этого захода: полное, короткое после
+ * закрытия полного, дальше короткое каждые столько. В бою — 90, 90, 90: в
+ * каждом заходе полное на 1:30, короткое через 1:30 после него и дальше каждые
+ * 1:30 (Никита, 12.10: гостю 3 движения по 30 с — окно ровно после круга; до
+ * этого — 120, Дима, 07.10). Счёт — на заход, а не на браузер (Дима, 14.10).
  */
 export const GUEST_PROMPT_SECONDS = { full: 90, shortAfterFull: 90, shortEvery: 90 }
 
@@ -69,51 +75,86 @@ export function guestThresholds(): Thresholds {
   return { full, shortAfterFull, shortEvery }
 }
 
+/** Счёт этого захода: секунды движения и показанные окна — в sessionStorage. */
 const MOVED_KEY = 'moy-ritm.guest.moved'
 const PROMPT_KEY = 'moy-ritm.guest.prompt'
+/** Один guest_start на браузер (метрика) — в localStorage, как и было. */
 const STARTED_KEY = 'moy-ritm.guest.started'
+
+type Store = 'local' | 'session'
 
 /** Когда хранилище закрыто (приватный режим) — счёт живёт до перезагрузки. */
 const memory = new Map<string, string>()
 
-function read(key: string): string | null {
+function read(key: string, store: Store = 'local'): string | null {
   try {
-    return localStorage.getItem(key)
+    return (store === 'local' ? localStorage : sessionStorage).getItem(key)
   } catch {
     return memory.get(key) ?? null
   }
 }
 
-function write(key: string, value: string | null): void {
+function write(key: string, value: string | null, store: Store = 'local'): void {
   if (value === null) memory.delete(key)
   else memory.set(key, value)
   try {
-    if (value === null) localStorage.removeItem(key)
-    else localStorage.setItem(key, value)
+    const target = store === 'local' ? localStorage : sessionStorage
+    if (value === null) target.removeItem(key)
+    else target.setItem(key, value)
   } catch {
     /* приватный режим — хватит памяти вкладки */
   }
 }
 
-/** Секунды движения гостя в этом браузере — накопительно, через перезагрузки. */
+/**
+ * До 14.10.2026 счёт и окна лежали в localStorage под теми же ключами и
+ * копились через все заходы (там же могли остаться пороги старых версий).
+ * При первом обращении за жизнь страницы молча стираем — читать их больше
+ * некому.
+ */
+let legacyCleared = false
+
+function clearLegacy(): void {
+  if (legacyCleared) return
+  legacyCleared = true
+  try {
+    localStorage.removeItem(MOVED_KEY)
+    localStorage.removeItem(PROMPT_KEY)
+  } catch {
+    /* хранилище закрыто — и стирать нечего */
+  }
+}
+
+/** Счёт захода: прочитать и записать — только через эти две. */
+function readVisit(key: string): string | null {
+  clearLegacy()
+  return read(key, 'session')
+}
+
+function writeVisit(key: string, value: string | null): void {
+  clearLegacy()
+  write(key, value, 'session')
+}
+
+/** Секунды движения гостя в этом заходе (вкладке) — перезагрузка их не обнуляет. */
 export function guestMoved(): number {
-  const n = Number(read(MOVED_KEY))
+  const n = Number(readVisit(MOVED_KEY))
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
 /** Прибавить секунды движения; возвращает новый счёт. */
 export function addGuestMoved(seconds: number): number {
   const next = guestMoved() + seconds
-  write(MOVED_KEY, String(next))
+  writeVisit(MOVED_KEY, String(next))
   return next
 }
 
-/** Что уже показано: полное окно и с какой секунды движения положено короткое. */
+/** Что уже показано в этом заходе: полное окно и с какой секунды движения положено короткое. */
 type PromptState = { full: boolean; next: number }
 
 function promptState(): PromptState {
   try {
-    const saved = JSON.parse(read(PROMPT_KEY) ?? 'null') as PromptState | null
+    const saved = JSON.parse(readVisit(PROMPT_KEY) ?? 'null') as PromptState | null
     if (saved && typeof saved.full === 'boolean' && Number.isFinite(saved.next)) return saved
   } catch {
     /* испорченная запись — как будто окон ещё не было */
@@ -137,10 +178,10 @@ export function markGuestPromptShown(kind: GuestPromptKind, moved: number, t: Th
     full: true,
     next: moved + (kind === 'full' ? t.shortAfterFull : t.shortEvery),
   }
-  write(PROMPT_KEY, JSON.stringify(next))
+  writeVisit(PROMPT_KEY, JSON.stringify(next))
 }
 
-/** Полное окно уже было — «Вернусь позже» на паузе зовёт короткое. */
+/** Полное окно в этом заходе уже было — «Вернусь позже» на паузе зовёт короткое. */
 export const guestFullShown = (): boolean => promptState().full
 
 /** Событие гостя. Не падает и не ждёт ответа. */
@@ -194,8 +235,8 @@ export function lastGuestBootstrap(token: string | undefined): GuestBootstrap | 
  */
 export function finishGuest(userId: string): void {
   adoptGuestChunks(userId)
-  write(MOVED_KEY, null)
-  write(PROMPT_KEY, null)
+  writeVisit(MOVED_KEY, null)
+  writeVisit(PROMPT_KEY, null)
 }
 
 /* ——— «Сначала гость» на лендинге (GUEST_FIRST_ENABLED) ——— */

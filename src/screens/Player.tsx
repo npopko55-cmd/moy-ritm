@@ -28,7 +28,7 @@ import {
 } from '../components/Icons'
 import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
-import Unlock from '../components/Unlock'
+import Unlock, { GuestUnlock } from '../components/Unlock'
 import { DEFAULT_FREE_TIER, getStream } from '../data/streams'
 import { loopPoster, loopSrc, SECONDS_PER_MOVE, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
@@ -424,12 +424,17 @@ export default function Player() {
    * всё — прежний блок пробного периода на прежнем месте: в правой колонке,
    * на телефоне — последним в ленте статистики. Движений нет вовсе — блок
    * стоит на месте круга, и больше его нигде нет. С оплатой — нигде.
+   *
+   * Гость — свой блок (GuestUnlock, макет Димы 14.10.2026): «Открой весь
+   * функционал Ритма!» с переходом на регистрацию, всё время, пока есть
+   * движения. Место и механизм — те же, что у прежнего блока trial3d.
    */
   const opensAll = trialOpensAll(useTrial(), access)
-  // Гостю плашек нет: «Открыть» ведёт на тарифы и пишет метрику — и то и
-  // другое требует входа. Его зовёт к регистрации своё окно.
+  // Плашек воронки гостю нет: «Открыть» ведёт на тарифы и пишет метрику — и
+  // то и другое требует входа. Его зовут к регистрации своё окно и свой блок.
   const topBanner = limited && !empty && !opensAll && !guest
   const sideUnlock = limited && !empty && opensAll && !guest
+  const guestUnlock = guest && !empty
 
   const loop: Loop | null = empty ? null : moveAt(step)
   const nextLoop: Loop | null = empty ? null : moveAt(step + 1)
@@ -862,7 +867,8 @@ export default function Player() {
     const id = setInterval(() => {
       sessionRef.current += 1
       setSessionSeconds(sessionRef.current)
-      // Гость: секунды движения копятся в этом браузере, по ним встаёт окно.
+      // Гость: секунды движения копятся в этом заходе (вкладке, src/lib/guest.ts),
+      // по ним встаёт окно.
       // Положенное окно ждёт стыка движений — секунды, в которую ниже сменится
       // движение (Никита 12.10: окно после круга из 3 движений, не посреди
       // движения). Порог отсчитывается от показа, поэтому после первого же
@@ -1455,15 +1461,26 @@ export default function Player() {
     continueFlow()
   }, [continueFlow, guestToken])
 
-  /** «Попробовать…» — регистрация с токеном воронки, как после /go; потом обратно в плеер. */
-  const promptCta = useCallback(() => {
-    const kind = promptRef.current
-    if (!guestToken || !kind) return
-    reportGuest(guestToken, 'prompt_cta', kind)
+  /**
+   * На регистрацию с токеном воронки, как после /go; потом обратно в плеер.
+   * Общий путь для «Попробовать…» в окне и кнопки блока гостя на экране.
+   * Блок зовёт его напрямую, без события: prompt_cta бэкенд принимает только
+   * с видом окна (kind full/short).
+   */
+  const toGuestRegister = useCallback(() => {
+    if (!guestToken) return
     // Токен могла стереть другая ссылка: регистрация должна его получить.
     saveFunnelToken(guestToken, true)
     navigate(GUEST_REGISTER_PATH)
   }, [guestToken, navigate])
+
+  /** «Попробовать…» в окне: событие prompt_cta с видом окна — и на регистрацию. */
+  const promptCta = useCallback(() => {
+    const kind = promptRef.current
+    if (!guestToken || !kind) return
+    reportGuest(guestToken, 'prompt_cta', kind)
+    toGuestRegister()
+  }, [guestToken, toGuestRegister])
 
   /** «Вернусь позже» у гостя: «Мой прогресс» требует входа — вместо него окно. */
   const laterGuest = useCallback(() => {
@@ -1535,7 +1552,7 @@ export default function Player() {
         раскладка видна снова, только ролик стоит.
       */}
       <div
-        className={`player ${notice ? 'player--notice' : ''} ${sideUnlock ? 'player--locked' : ''} ${topBanner ? 'player--banner' : ''} ${immersive ? 'player--immersive' : ''}`}
+        className={`player ${notice ? 'player--notice' : ''} ${sideUnlock || guestUnlock ? 'player--locked' : ''} ${topBanner ? 'player--banner' : ''} ${immersive ? 'player--immersive' : ''}`}
         hidden={showPause}
       >
       <WaveBg opacity={0.28} />
@@ -1800,10 +1817,11 @@ export default function Player() {
         {/* Прежний блок пробного периода trial3d (открыто всё) — на своём
             прежнем месте. На телефоне и планшете правой колонки нет, и блок
             встаёт последним в ленте статистики — но остаётся тем же самым
-            узлом, второго в разметке нет. */}
-        {sideUnlock && (
+            узлом, второго в разметке нет. Гостю на том же месте — его блок
+            с регистрацией (Дима 14.10: под «Время» и «Шаги»). */}
+        {(sideUnlock || guestUnlock) && (
           <div className="stats__unlock">
-            <Unlock place="player" />
+            {guestUnlock ? <GuestUnlock onCta={toGuestRegister} /> : <Unlock place="player" />}
           </div>
         )}
       </aside>

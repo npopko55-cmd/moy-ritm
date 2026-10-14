@@ -21,6 +21,10 @@
  *
  * Кнопка ведёт на тарифы сайта. В Telegram Mini App платить нельзя (правила
  * Telegram): там она открывает тарифы сайта во внешнем браузере.
+ *
+ * Третий вид — у гостя в плеере (GuestUnlock ниже, макет Димы 14.10.2026):
+ * «Открой весь функционал Ритма!» и «Попробовать 3 дня бесплатно →». Он ведёт
+ * не на тарифы, а на регистрацию, и метрики плашки у него нет.
  */
 
 import { useEffect } from 'react'
@@ -32,6 +36,7 @@ import { reportBannerClick, reportBannerShown } from '../lib/funnel'
 import { loadTariffs } from '../lib/tariffs'
 import { openTariffsOnSite, useInTelegram } from '../lib/telegram'
 import { CATALOG_MOVES_TEXT, trialHint, trialOpensAll, useTrialState } from '../lib/trial'
+import { Lock } from './Icons'
 import './Unlock.css'
 
 /**
@@ -147,6 +152,39 @@ function TrialUnlock({ compact, hint }: { compact: boolean; hint: string | null 
           Открыть
         </Link>
       )}
+    </div>
+  )
+}
+
+/**
+ * Гость в плеере — всё время, пока он тренируется (Дима, 14.10.2026, по его
+ * макету): замок, «Открой весь функционал Ритма!», строка о том, что даст
+ * регистрация, кнопка «Попробовать 3 дня бесплатно →» и под ней мелко «Без
+ * карты · Без автосписаний». Тексты Димины, дословно.
+ *
+ * Кнопка ведёт туда же, куда «Попробовать» в окне гостя: на регистрацию с
+ * токеном воронки. Переход делает плеер (onCta) — токен у него. Метрики
+ * здесь нет: показ и нажатие плашки (POST /funnel/banner) пишутся только у
+ * вошедших, а prompt_cta бэкенд принимает лишь от окна, с kind full/short.
+ */
+export function GuestUnlock({ onCta }: { onCta(): void }) {
+  return (
+    <div className="unlock-guest">
+      <div className="unlock-guest__head">
+        <span className="unlock-guest__lock">
+          <Lock size={22} />
+        </span>
+        <span className="unlock-guest__text">
+          <span className="unlock-guest__title">Открой весь функционал Ритма!</span>
+          <span className="unlock-guest__sub">Все потоки, все движения и сохранение прогресса</span>
+        </span>
+      </div>
+      <div className="unlock-guest__action">
+        <button className="unlock-guest__cta" type="button" onClick={onCta}>
+          Попробовать 3 дня бесплатно →
+        </button>
+        <span className="unlock-guest__fine">Без карты · Без автосписаний</span>
+      </div>
     </div>
   )
 }
