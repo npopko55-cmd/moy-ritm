@@ -15,6 +15,14 @@
  *   • мини-ап Telegram — оплаты нет по его правилам, кнопка открывает эту же
  *     страницу на сайте.
  *
+ * Установленное приложение (экран «Домой», src/lib/standalone.ts): страницу
+ * оплаты GetCourse айфон открывает поверх приложения во встроенном браузере.
+ * Человек платит там и закрывает его «Готово» — а под ним всё та же /pay со
+ * старым профилем, и перезагрузить её нечем. Поэтому ссылки на GetCourse
+ * включают ожидание оплаты (markSitePayment → src/lib/sitePayment.ts:
+ * профиль перечитывается сам), а как только оплата видна — уводим на
+ * /payment/success: он покажет итог и откроет поток.
+ *
  * Незнакомый тариф — обратно на /tariffs. Всплывающих окон нет: всё —
  * блоками на странице.
  */
@@ -22,16 +30,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import { ApiError, type Checkout, type CheckoutTariff } from '../api/types'
+import { ApiError, type Access, type Checkout, type CheckoutTariff } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import GetCourseWidget, { WidgetSkeleton } from '../components/GetCourseWidget'
 import { Clock } from '../components/Icons'
 import { VPN_HINT } from '../data/support'
 import { rub } from '../data/tariffs'
 import { plural } from '../lib/date'
-import { rememberAccessBefore } from '../lib/payment'
+import { paymentArrived, readAccessBefore, rememberAccessBefore } from '../lib/payment'
+import { STANDALONE } from '../lib/standalone'
 import { cachedTariffs, loadTariffs } from '../lib/tariffs'
-import { openPayOnSite, useInTelegram } from '../lib/telegram'
+import { markSitePayment, openPayOnSite, useInTelegram } from '../lib/telegram'
 import { useResendConfirmation } from '../lib/useResendConfirmation'
 import { AccountShell, FormError, FormOk, errorText } from './Account'
 import './Pay.css'
@@ -122,6 +131,18 @@ export default function Pay() {
     }
   }, [code, inTelegram, verified, attempt, reload])
 
+  // Установленное приложение: вернулись со страницы GetCourse, профиль
+  // перечитался (src/lib/sitePayment.ts), и оплата видна — на «Проверяем
+  // оплату», он покажет итог и уведёт в поток. Только если срок доступа до
+  // оплаты запомнен (отсюда уходили платить или хотя бы видели оплату): без
+  // записи paymentArrived считает оплатой любой доступ, и подписчик, открывший
+  // /pay продлить, улетал бы отсюда сразу. В браузере GetCourse и так
+  // возвращает на /payment/success.
+  if (STANDALONE) {
+    const before = readAccessBefore()
+    if (before && paymentArrived(access, before)) return <Navigate to="/payment/success" replace />
+  }
+
   const known = tariffs?.find((t) => t.code === code)
   if (load.kind === 'missing' || (tariffs && !known)) return <Navigate to="/tariffs" replace />
 
@@ -163,7 +184,7 @@ export default function Pay() {
         backup={
           <p className="checkout__backup">
             Форма не отвечает?{' '}
-            <a href={page_url} onClick={() => rememberAccessBefore(access)}>
+            <a href={page_url} onClick={() => leaveToPay(access)}>
               Оплатить на странице GetCourse
             </a>
           </p>
@@ -250,6 +271,17 @@ function TariffCardSkeleton() {
 }
 
 /**
+ * Уход на страницу оплаты GetCourse. Срок доступа до оплаты — для «Проверяем
+ * оплату». В установленном приложении ещё и включаем ожидание оплаты: айфон
+ * откроет GetCourse поверх приложения, и вернувшегося после «Готово» встретит
+ * эта же страница — профиль перечитается сам (src/lib/sitePayment.ts).
+ */
+function leaveToPay(access: Access | null): void {
+  rememberAccessBefore(access)
+  if (STANDALONE) markSitePayment()
+}
+
+/**
  * Переход на страницу оплаты GetCourse — обычной ссылкой в этой же вкладке:
  * без виджета это единственный путь, с виджетом — запасной. Под кнопкой —
  * подсказка про VPN: в запасном блоке (форма не пришла) заметнее.
@@ -259,7 +291,7 @@ function PayLink({ url, note, vpn = 'quiet' }: { url: string; note: string; vpn?
   return (
     <div className="checkout__link">
       <p className="checkout__note">{note}</p>
-      <a className="form__submit" href={url} onClick={() => rememberAccessBefore(access)}>
+      <a className="form__submit" href={url} onClick={() => leaveToPay(access)}>
         Перейти к оплате
       </a>
       <p className={`checkout__vpn ${vpn === 'loud' ? 'is-loud' : ''}`}>{VPN_HINT}</p>

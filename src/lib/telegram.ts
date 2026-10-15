@@ -229,14 +229,22 @@ export function forgetMiniAppVisit(): void {
 
 /* ─────────────  Мини-ап ждёт оплату с сайта  ───────────── */
 
-/** Когда из мини-апа ушли оформлять доступ на сайт. Переживает перезагрузку мини-апа. */
+/**
+ * Когда ушли оформлять доступ: из мини-апа на сайт или из установленного
+ * приложения на GetCourse. Переживает перезагрузку мини-апа.
+ */
 const SITE_PAY_KEY = 'moy-ritm.tg.site_pay_at'
 
 let sitePayAt: number | null = null
 const sitePayListeners = new Set<() => void>()
 
-/** Ушли оформлять доступ на сайт — ожидание оплаты (src/lib/sitePayment.ts). */
-function markSitePayment(): void {
+/**
+ * Ушли оформлять доступ — ожидание оплаты (src/lib/sitePayment.ts). Зовут
+ * его мини-ап, уводя на сайт (openOnSite), и страница оплаты в установленном
+ * приложении, уводя на страницу GetCourse (src/screens/Pay.tsx): айфон
+ * открывает её поверх приложения, а вернувшемуся перезагрузить страницу нечем.
+ */
+export function markSitePayment(): void {
   sitePayAt = Date.now()
   try {
     sessionStorage.setItem(SITE_PAY_KEY, String(sitePayAt))

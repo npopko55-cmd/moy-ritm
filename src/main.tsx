@@ -6,12 +6,17 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { reloadOnce } from './lib/chunkReload'
 import { reportSiteVisit } from './lib/funnel'
 import { screenWaiting } from './lib/screens'
+import { applyStandaloneLook } from './lib/standalone'
 import { startTelegram } from './lib/telegram'
 import './styles/global.css'
 
 // Открыты внутри Telegram — подключаем его скрипт и настраиваем мини-ап.
 // Обычному посетителю ничего не качается (src/lib/telegram.ts).
 startTelegram()
+
+// Открыты как приложение с экрана «Домой» — полоса с часами белая, а не
+// розовая, ещё до первой отрисовки (src/lib/standalone.ts).
+applyStandaloneLook()
 
 // Вкладка, открытая до выкладки, просит кусок кода, которого уже нет, —
 // одна перезагрузка вместо страницы ошибки (src/lib/chunkReload.ts). Только

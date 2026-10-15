@@ -1,5 +1,5 @@
 /**
- * Мини-ап ждёт оплату с сайта.
+ * Мини-ап или установленное приложение ждёт оплату, ушедшую в чужое окно.
  *
  * Платить в мини-апе нельзя: «Оформить на сайте» открывает сайт во внешнем
  * браузере (openOnSite в src/lib/telegram.ts), и человек возвращается в
@@ -7,17 +7,26 @@
  * (src/lib/appReturn.ts), но не чаще раза в полминуты и только если
  * Telegram сообщил о возвращении — а вьюха бывает «на виду» всё это время.
  *
- * Поэтому WATCH_MS после ухода на сайт, пока мини-ап на виду и развёрнут,
- * профиль (а с ним и доступ) перечитывается каждые POLL_MS и по первому
- * касанию после возвращения: оплатил — и тренировка тут же открывает все
- * движения, без перезапуска мини-апа. Оплата пришла — ждать перестаём.
- * Вне мини-апа ничего не делает.
+ * С приложением, установленным на экран «Домой» (src/lib/standalone.ts), то
+ * же самое: страницу оплаты GetCourse айфон открывает поверх приложения во
+ * встроенном браузере, человек платит там и закрывает его «Готово», а под
+ * ним всё та же /pay со старым профилем. Перезагрузить нечем — адресной
+ * строки нет, — и visibilitychange при закрытии может не прийти. Уход
+ * отмечает сама страница оплаты (markSitePayment в src/screens/Pay.tsx).
+ *
+ * Поэтому WATCH_MS после ухода платить, пока страница на виду (а мини-ап ещё
+ * и развёрнут), профиль (а с ним и доступ) перечитывается каждые POLL_MS и по
+ * первому касанию после возвращения: оплатил — и тренировка тут же открывает
+ * все движения, без перезапуска. Оплата пришла — ждать перестаём. В обычном
+ * браузере ничего не делает: GetCourse возвращает человека на
+ * /payment/success в ту же вкладку, и проверяет оплату уже тот экран.
  */
 
 import { useEffect, type MutableRefObject } from 'react'
 import type { Me } from '../api/types'
 import { hasAccess } from '../api/types'
 import { paymentArrived, type AccessBefore } from './payment'
+import { STANDALONE } from './standalone'
 import {
   IN_TELEGRAM,
   forgetSitePayment,
@@ -72,13 +81,14 @@ export function useSitePaymentWatch(
   meRef: MutableRefObject<Me | null>,
 ): void {
   useEffect(() => {
-    if (!IN_TELEGRAM) return
+    if (!IN_TELEGRAM && !STANDALONE) return
     /** Первое касание после возвращения — повод проверить сразу. */
     let armed = true
     let busy = false
 
     const check = () => {
       if (busy || !meRef.current || !waiting()) return
+      // Вне Telegram telegramActive() всегда true: меняют его только его события.
       if (document.visibilityState === 'hidden' || !telegramActive()) return
       busy = true
       void reload().then((me) => {
@@ -98,7 +108,9 @@ export function useSitePaymentWatch(
     }
 
     const timer = window.setInterval(check, POLL_MS)
-    // Уход на сайт — в самом касании «Оформить на сайте»: доступ, каким он был.
+    // Уход платить — в самом касании «Оформить на сайте» (мини-ап) или
+    // ссылки на страницу GetCourse (приложение): доступ, каким он был.
+    // Событий Telegram вне мини-апа нет — подписка на activated там молчит.
     const offPay = onSitePayment(() => {
       saveBefore(meRef.current)
       armed = true

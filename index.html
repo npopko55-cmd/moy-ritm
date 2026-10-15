@@ -18,8 +18,23 @@
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
     <meta name="twitter:card" content="summary" />
+    <!-- Цвет полосы браузера — розовый. В приложении, установленном на экран
+         «Домой», он красит полосу с часами над белыми экранами, поэтому там —
+         белый, как фон страниц (--bg). Браузер берёт первый подходящий тег,
+         так что белый — раньше розового. Страховка, если media не поддержан, —
+         applyStandaloneLook в src/lib/standalone.ts. -->
+    <meta name="theme-color" content="#ffffff" media="(display-mode: standalone)" />
     <meta name="theme-color" content="#ff2d8e" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Айфон и «На экран „Домой“»: своя иконка без прозрачности (айфон
+         заливает прозрачное чёрным; собирает её scripts/build-app-icons.py),
+         запуск без адресной строки, короткое имя под иконкой вместо обрезанного
+         <title> и обычная полоса с часами — тёмный текст на цвете theme-color. -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Мой ритм" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- Шрифты свои: без внешних доменов и без цепочки HTML → CSS → файл. -->
     <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/montserrat-var-cyrillic.woff2" />
     <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/montserrat-var-latin.woff2" />

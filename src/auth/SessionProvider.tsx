@@ -342,8 +342,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [reload],
   )
 
-  // Мини-ап отправил человека оплачивать на сайт — четверть часа перечитываем
-  // доступ сами, чтобы после оплаты он открылся сразу (src/lib/sitePayment.ts).
+  // Мини-ап отправил человека оплачивать на сайт, а установленное приложение —
+  // на страницу GetCourse: четверть часа перечитываем доступ сами, чтобы после
+  // оплаты он открылся сразу (src/lib/sitePayment.ts).
   useSitePaymentWatch(reload, meRef)
 
   /**
