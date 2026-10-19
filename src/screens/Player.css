@@ -1267,6 +1267,194 @@
   }
 }
 
+/* На телефоне в портрете отдельная строка кнопок уменьшала круг. Кнопки
+   помещаются в его нижних углах; высоту круга ограничивает нижнее меню. */
+@media (orientation: portrait) and (max-width: 767.98px) {
+  .player:not(.player--immersive) .player__stage { --pause-row: 0px; --phone-circle-reserve: 300px; }
+  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 340px; }
+  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 410px; }
+
+  .player:not(.player--immersive) .stage__figure {
+    width: min(92vw, max(200px, calc(100 * var(--vh) - var(--phone-circle-reserve) + 16vw)), 100%);
+  }
+
+  .player:not(.player--immersive) .stage__pause { position: absolute; right: 0; bottom: 0; width: auto; height: auto; }
+  .player:not(.player--immersive) .stage__sound { height: auto; }
+  .player:not(.player--immersive) .stage__pause > span,
+  .player:not(.player--immersive) .stage__sound > span { display: none; }
+  .player:not(.player--immersive) .ctrl--main { width: 54px; height: 54px; }
+  .player:not(.player--immersive) .ctrl--sound { width: 46px; height: 46px; }
+}
+
+/* Между 431 и 767 px плашка занимает больше высоты, поэтому перед нижним
+   меню нужен дополнительный запас. */
+@media (orientation: portrait) and (min-width: 431px) and (max-width: 767.98px) {
+  .player:not(.player--immersive) .player__stage { --phone-circle-reserve: 330px; }
+  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 370px; }
+  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 440px; }
+}
+
+/* В портретном iPad размер берётся из реальной высоты ряда сцены. Прежний
+   фиксированный запас 510 px оставлял пустоту вокруг круга. */
+@media (min-width: 768px) and (max-width: 1179.98px) and (orientation: portrait) {
+  .player__stage { --pause-row: 0px; }
+  .stage__area { flex: 1 1 auto; min-height: 0; justify-content: center; }
+  .stage__figure,
+  .player--banner .stage__figure {
+    width: auto;
+    height: min(100%, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    max-width: 100%;
+  }
+  .stage__pause { position: absolute; right: 0; bottom: 0; width: auto; height: auto; }
+  .stage__sound { height: auto; }
+}
+
+/* Планшет боком при высоте от 501 px: статистика уходит вправо, чтобы
+   круг занял ширину и высоту левой части экрана. */
+@media (orientation: landscape) and (min-width: 768px) and (max-width: 1023.98px) and (min-height: 501px) {
+  .player {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-columns: minmax(0, 1fr) clamp(240px, 25vw, 270px);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "stage brand"
+      "stage menu"
+      "stage top"
+      "stage ."
+      "stage s1"
+      "stage s2";
+    gap: 8px 12px;
+    padding:
+      calc(12px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+      calc(12px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  }
+
+  .player--banner {
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "stage brand"
+      "stage menu"
+      "stage top"
+      "stage banner"
+      "stage ."
+      "stage s1"
+      "stage s2";
+  }
+
+  .player--locked {
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "stage brand"
+      "stage menu"
+      "stage top"
+      "stage ."
+      "stage s1"
+      "stage s2"
+      "stage unlock";
+  }
+
+  .player--notice {
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "stage brand"
+      "stage menu"
+      "stage top"
+      "stage note"
+      "stage ."
+      "stage s1"
+      "stage s2";
+  }
+
+  .player .logo { grid-area: brand; align-self: center; justify-self: start; }
+  .player .logo__tagline { display: none; }
+  .player .side__menu { position: static; grid-area: menu; height: auto; min-height: 0; gap: 4px; padding: 0; background: none; border: 0; }
+  .player .side__menu .tabbar__item { height: 44px; min-height: 44px; padding: 4px 2px; gap: 0; }
+  .player .side__menu .tabbar__item > span { display: none; }
+  .stats__top { grid-area: top; padding-left: 0; }
+  .player__banner { grid-area: banner; }
+
+  .player__stage { grid-area: stage; --pause-row: 0px; --headline-sm: clamp(16px, 2vw, 22px); gap: 8px; }
+  .stage__area {
+    flex: 0 0 auto;
+    width: min(100%, calc(100 * var(--vh) - 90px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  }
+  .stage__figure,
+  .player--banner .stage__figure { width: 100%; height: auto; }
+  .stage__pause { position: absolute; right: 0; bottom: 0; width: auto; height: auto; }
+  .stage__sound { height: auto; }
+  .stage__pause > span,
+  .stage__sound > span,
+  .stage__note { display: none; }
+}
+
+/* На невысоком планшете правую колонку уплотняем, сохраняя круг видимым. */
+@media (orientation: landscape) and (min-width: 768px) and (max-width: 1023.98px) and (min-height: 501px) and (max-height: 679px) {
+  .player {
+    gap: 6px 10px;
+    padding:
+      calc(6px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
+      calc(6px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+  }
+  .player .logo { display: none; }
+}
+
+/* 1024–1179 px боком: узкое левое меню и кнопки в углах возвращают кругу
+   ширину боковых полей и высоту прежней строки управления. */
+@media (min-width: 1024px) and (max-width: 1179.98px) and (orientation: landscape) {
+  .player {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-columns: clamp(140px, 14vw, 165px) minmax(0, 1fr) clamp(260px, 24vw, 285px);
+    gap: 12px;
+    padding:
+      calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+      calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+  }
+  .player .logo__tagline { display: none; }
+  .player__stage { --stage-pad: 12px; --pause-row: 0px; }
+  .stage__area { width: 100%; }
+  .stage__figure { width: min(calc(100 * var(--vh) - var(--stage-chrome)), 100%); }
+  .stage__pause { position: absolute; right: 0; bottom: 0; width: auto; height: auto; }
+  .stage__sound { height: auto; }
+  .stage__pause > span,
+  .stage__sound > span { display: none; }
+}
+
+/* На низком широком экране круг также забирает высоту строки кнопок. */
+@media (min-width: 1180px) and (max-height: 639.98px) {
+  .player { height: 100dvh; min-height: 0; }
+  .player__stage { --pause-row: 0px; }
+  .stage__pause { position: absolute; right: 0; bottom: 0; width: auto; height: auto; }
+  .stage__sound { height: auto; }
+}
+
+/* Общая компактная правая колонка на коротких экранах. */
+@media (orientation: landscape) and (min-width: 768px) and (max-width: 1023.98px) and (min-height: 501px) and (max-height: 679px),
+       (orientation: landscape) and (min-width: 1024px) and (max-width: 1179.98px) and (max-height: 620px),
+       (min-width: 1180px) and (max-height: 540px) {
+  .track { min-height: 44px; padding: 5px 10px 5px 7px; }
+  .track__icon { width: 26px; height: 26px; }
+  .player__banner .unlock-guest { gap: 6px; padding: 7px 8px; }
+  .player__banner .unlock-guest__head { gap: 7px; }
+  .player__banner .unlock-guest__lock { width: 26px; height: 26px; box-shadow: none; }
+  .player__banner .unlock-guest__lock svg { width: 15px; height: 15px; }
+  .player__banner .unlock-guest__title { font-size: 11.5px; }
+  .player__banner .unlock-guest__sub { display: none; }
+  .player__banner .unlock-guest__action { gap: 3px; }
+  .player__banner .unlock-guest__cta { min-height: 32px; padding: 5px 10px; font-size: 11px; }
+  .player__banner .unlock-guest__fine { font-size: 9.5px; }
+  .player__banner .unlock-banner { gap: 6px; padding: 7px 8px; }
+  .player__banner .unlock-banner__title { font-size: 11.5px; }
+  .player__banner .unlock-banner__cta { padding: 5px 10px; font-size: 11px; }
+  .stat { padding: 7px 10px; }
+  .stat__big { font-size: 26px; margin: 2px 0 6px; }
+  .stat__mid { font-size: 22px; }
+  .week { display: none; }
+}
+
 /* ——— Ландшафт ——— */
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
   /* Сетка та же, что без «весь экран»: меню в правом верхнем углу
