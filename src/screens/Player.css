@@ -1075,23 +1075,28 @@
   .player__banner .unlock-banner__title { font-size: 11.5px; }
   .player__banner .unlock-banner__cta { padding: 5px 12px; font-size: 11.5px; }
 
-  /* Круг здесь слева, и плашка его не сдвигает: предел телефона в портрете
-     (правило выше) снимаем — та же ширина, что без плашки. */
-  .player--banner .stage__figure { width: min(calc(86 * var(--vh) - var(--pause-row)), 40vw, 100%); }
-
-  /* На 390 px высоты полноразмерная строка съела бы круг: здесь она ниже,
-     вместе с уменьшенной кнопкой. */
-  .player__stage { --headline-sm: 13px; --pause-row: 56px; }
+  /* Кнопки занимают свободное место по бокам круга, а не отдельный ряд
+     под ним. Так кругу достаётся почти вся высота короткого экрана. */
+  .player__stage { --headline-sm: 13px; --pause-row: 0px; --control-clearance: 224px; }
   .stage__top { height: 22px; }
   .stage__headline { font-size: 14px; -webkit-line-clamp: 1; }
-  /* Ряд кнопок под кругом убрали, а следом и ленту потоков — освободившуюся
-     высоту забирает круг (было 62dvh, потом 76dvh); строку с паузой из этой
-     высоты вычитаем. */
-  .stage__figure { width: min(calc(86 * var(--vh) - var(--pause-row)), 40vw, 100%); }
+  .stage__figure,
+  .player--banner .stage__figure {
+    width: min(
+      calc(100 * var(--vh) - 38px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      calc(100% - var(--control-clearance)),
+      100%
+    );
+  }
   .stage__note { display: none; }
 
+  .stage__pause { position: absolute; right: 0; bottom: 0; width: auto; height: auto; }
+  .stage__sound { height: auto; }
   .stage__pause,
   .stage__sound { gap: 8px; font-size: 11.5px; }
+  /* При выключенном звуке длинная подпись задевает круг; название действия
+     остаётся у самой кнопки для скринридера. */
+  .stage__sound .ctrl--sound:not(.is-on) + span { display: none; }
   .ctrl--main { width: 54px; height: 54px; }
   .ctrl--sound { width: 46px; height: 46px; }
 
@@ -1121,6 +1126,17 @@
   /* В ландшафте на 390 px высоты плашке места нет: круг важнее. Про конец
      доступа человек уже узнал из письма, а на тарифах его встретит строка. */
   .access-note { display: none; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 740px) {
+  /* На узком телефоне помещаются только сами кнопки; их названия доступны
+     через aria-label. Освободившуюся ширину тоже отдаём кругу. */
+  .player { gap: 4px 8px; }
+  .player__stage { --control-clearance: 120px; }
+  .stage__pause > span,
+  .stage__sound > span { display: none; }
+  .player__banner .unlock-guest { gap: 4px; padding: 5px 6px; }
+  .stat { padding: 5px 8px; }
 }
 
 
