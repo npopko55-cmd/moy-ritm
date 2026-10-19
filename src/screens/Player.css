@@ -628,15 +628,13 @@
   opacity: .8;
 }
 
-/* ——— Плашка «Открой все 40» под карточкой музыки ——— */
+/* ——— Плашка тарифов или регистрации под карточкой музыки ——— */
 /* Правка заказчика 26.09.2026: «наверх прям … чтобы прям в глаза
    бросалась». На десктопе это верх правой колонки: колонка узкая, и кнопка
    там встаёт под заголовком — плашка решает это сама (Unlock.css). */
 .player__banner { flex: 0 0 auto; }
 
-/* ——— Прежний блок trial3d под карточками ——— */
-/* У гостя на этом же месте — его блок с регистрацией (Unlock.css,
-   .unlock-guest; Дима 14.10.2026). Ряд и класс .player--locked — общие. */
+/* ——— Блок trial3d под карточками ——— */
 .stats__unlock { flex: 0 0 auto; }
 
 /* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
@@ -670,9 +668,9 @@
 
   .stats__unlock .unlock { gap: 6px; padding: 10px 12px; }
   .stats__unlock .unlock__cta { padding: 5px 14px; }
-  .stats__unlock .unlock-guest { gap: 10px; padding: 11px 12px; }
-  .stats__unlock .unlock-guest__lock { width: 36px; height: 36px; }
-  .stats__unlock .unlock-guest__cta { min-height: 40px; padding: 8px 14px; }
+  .player__banner .unlock-guest { gap: 10px; padding: 11px 12px; }
+  .player__banner .unlock-guest__lock { width: 36px; height: 36px; }
+  .player__banner .unlock-guest__cta { min-height: 40px; padding: 8px 14px; }
 
   .player__banner .unlock-banner { gap: 6px 10px; padding: 10px 12px; }
   .player__banner .unlock-banner__cta { padding: 7px 14px; }
@@ -692,9 +690,9 @@
   /* Правой колонке на 650 px высоты тесно — блок разблокировки ужимаем. */
   .stats__unlock .unlock { flex-direction: row; align-items: center; gap: 10px; padding: 9px 12px; }
   .stats__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 5px 14px; }
-  .stats__unlock .unlock-guest { gap: 8px 12px; padding: 10px 12px; }
-  .stats__unlock .unlock-guest__lock { width: 34px; height: 34px; }
-  .stats__unlock .unlock-guest__cta { min-height: 38px; padding: 7px 14px; }
+  .player__banner .unlock-guest { gap: 8px 12px; padding: 10px 12px; }
+  .player__banner .unlock-guest__lock { width: 34px; height: 34px; }
+  .player__banner .unlock-guest__cta { min-height: 38px; padding: 7px 14px; }
   .player__banner .unlock-banner { gap: 6px 10px; padding: 9px 12px; }
   .player__banner .unlock-banner__cta { padding: 6px 14px; }
 
@@ -772,6 +770,13 @@
     width: min(78vw, calc(100 * var(--vh) - var(--stage-chrome)), 100%);
   }
 
+  /* У вошедшего с пробным доступом под статистикой есть ещё одна строка. */
+  .player--locked .stage__figure { --stage-chrome: calc(480px + var(--pause-row)); }
+
+  /* На iPad плашка над кругом занимает отдельный ряд. Отдаём ей место из
+     диаметра круга, чтобы статистика и меню оставались на первом экране. */
+  .player--banner .stage__figure { --stage-chrome: calc(510px + var(--pause-row)); }
+
   .stage__pause,
   .stage__sound { gap: 10px; font-size: 12px; }
 
@@ -779,8 +784,8 @@
   .player__stats > .stat:nth-of-type(1) { grid-area: s1; }
   .player__stats > .stat:nth-of-type(2) { grid-area: s2; }
 
-  /* Разблокировка — последней в ленте статистики, во всю ширину. Ряд под неё
-     заводится только вместе с ней: без доступа и с доступом сетка разная,
+  /* Блок trial3d — последним в ленте статистики, во всю ширину. Ряд под него
+     заводится только вместе с ним: без доступа и с доступом сетка разная,
      поэтому пустой строки в раскладке не остаётся. */
   .stats__unlock { grid-area: unlock; }
 
@@ -799,15 +804,14 @@
   .stats__unlock .unlock__price { font-size: 11px; }
   .stats__unlock .unlock__cta { align-self: center; margin-left: auto; padding: 6px 13px; font-size: 12.5px; }
 
-  /* Блок гостя — во всю ширину ряда: замок и текст слева, кнопка справа; на
-     узком экране кнопка уходит под текст — это решает сам блок (Unlock.css). */
-  .stats__unlock .unlock-guest { padding: 12px 14px; border-radius: var(--r-md); }
-  .stats__unlock .unlock-guest__title { font-size: clamp(15px, 2vw, 17px); }
-  .stats__unlock .unlock-guest__sub { font-size: 13px; }
-  .stats__unlock .unlock-guest__cta { font-size: 14.5px; }
+  /* Регистрация гостя — во всю ширину над кругом: текст слева, кнопка справа. */
+  .player__banner .unlock-guest { padding: 12px 14px; border-radius: var(--r-md); }
+  .player__banner .unlock-guest__title { font-size: clamp(15px, 2vw, 17px); }
+  .player__banner .unlock-guest__sub { font-size: 13px; }
+  .player__banner .unlock-guest__cta { font-size: 14.5px; }
 
-  /* Плашка «Открой все 40» — своим рядом сразу под шапкой с карточкой
-     музыки, над фразой и кругом. Ряд заводится только вместе с ней. С
+  /* Плашка тарифов или регистрации — сразу под карточкой музыки, над кругом.
+     Ряд заводится только вместе с ней. С
      прежним блоком (.player--locked) и плашкой о конце доступа
      (.player--notice) она не встречается: первый — у trial3d с открытыми
      движениями, вторая — при оплаченном доступе. На планшете заголовок
@@ -894,12 +898,12 @@
 
   /* Блок гостя на телефоне: кнопка под текстом во всю ширину и в одну
      строку даже на 320 px. */
-  .stats__unlock .unlock-guest { gap: 10px; padding: 12px; }
-  .stats__unlock .unlock-guest__lock { width: 38px; height: 38px; }
-  .stats__unlock .unlock-guest__title { font-size: clamp(14.5px, 4vw, 16px); }
-  .stats__unlock .unlock-guest__sub { font-size: 12.5px; }
-  .stats__unlock .unlock-guest__cta { padding: 10px 14px; font-size: clamp(13.5px, 3.8vw, 15px); }
-  .stats__unlock .unlock-guest__fine { font-size: 11.5px; }
+  .player__banner .unlock-guest { gap: 10px; padding: 12px; }
+  .player__banner .unlock-guest__lock { width: 38px; height: 38px; }
+  .player__banner .unlock-guest__title { font-size: clamp(14.5px, 4vw, 16px); }
+  .player__banner .unlock-guest__sub { font-size: 12.5px; }
+  .player__banner .unlock-guest__cta { padding: 10px 14px; font-size: clamp(13.5px, 3.8vw, 15px); }
+  .player__banner .unlock-guest__fine { font-size: 11.5px; }
 
   /* Ноты по бокам круга на узком экране только лезут за край. */
   .stage__note { display: none; }
@@ -984,6 +988,17 @@
     );
   }
 
+  /* У гостя плашка выше тарифной: на коротком телефоне сохраняем кнопку
+     «Играть» над нижним меню, уменьшая только круг. */
+  .player--guest-banner .stage__figure {
+    width: min(
+      92vw,
+      calc(58 * var(--vh) - var(--pause-row)),
+      max(200px, calc(100 * var(--vh) - 435px - env(safe-area-inset-top) - env(safe-area-inset-bottom))),
+      100%
+    );
+  }
+
   .access-note { font-size: 12px; padding: 8px 10px; }
 }
 
@@ -1029,15 +1044,15 @@
 
   /* Блок гостя в узком столбце: замок поменьше, строку под заголовком
      прячем, как цену у блока выше; кнопка и «Без карты» остаются. */
-  .stats__unlock .unlock-guest { gap: 6px; padding: 7px 8px; border-radius: var(--r-md); }
-  .stats__unlock .unlock-guest__head { gap: 7px; }
-  .stats__unlock .unlock-guest__lock { width: 26px; height: 26px; box-shadow: none; }
-  .stats__unlock .unlock-guest__lock svg { width: 15px; height: 15px; }
-  .stats__unlock .unlock-guest__title { font-size: 11.5px; }
-  .stats__unlock .unlock-guest__sub { display: none; }
-  .stats__unlock .unlock-guest__action { gap: 3px; }
-  .stats__unlock .unlock-guest__cta { min-height: 32px; padding: 5px 10px; font-size: 11px; }
-  .stats__unlock .unlock-guest__fine { font-size: 9.5px; }
+  .player__banner .unlock-guest { gap: 6px; padding: 7px 8px; border-radius: var(--r-md); }
+  .player__banner .unlock-guest__head { gap: 7px; }
+  .player__banner .unlock-guest__lock { width: 26px; height: 26px; box-shadow: none; }
+  .player__banner .unlock-guest__lock svg { width: 15px; height: 15px; }
+  .player__banner .unlock-guest__title { font-size: 11.5px; }
+  .player__banner .unlock-guest__sub { display: none; }
+  .player__banner .unlock-guest__action { gap: 3px; }
+  .player__banner .unlock-guest__cta { min-height: 32px; padding: 5px 10px; font-size: 11px; }
+  .player__banner .unlock-guest__fine { font-size: 9.5px; }
 
   /* Плашка «Открой все 40» — в правом столбце сразу под карточкой трека.
      Свободная высота столбца уходит под неё, а карточки статистики, как и

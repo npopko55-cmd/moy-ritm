@@ -427,7 +427,7 @@ export default function Player() {
    *
    * Гость — свой блок (GuestUnlock, макет Димы 14.10.2026): «Открой весь
    * функционал Ритма!» с переходом на регистрацию, всё время, пока есть
-   * движения. Место и механизм — те же, что у прежнего блока trial3d.
+   * движения. Он стоит над кругом, как верхняя плашка тарифов.
    */
   const opensAll = trialOpensAll(useTrial(), access)
   // Плашек воронки гостю нет: «Открыть» ведёт на тарифы и пишет метрику — и
@@ -1552,7 +1552,7 @@ export default function Player() {
         раскладка видна снова, только ролик стоит.
       */}
       <div
-        className={`player ${notice ? 'player--notice' : ''} ${sideUnlock || guestUnlock ? 'player--locked' : ''} ${topBanner ? 'player--banner' : ''} ${immersive ? 'player--immersive' : ''}`}
+        className={`player ${notice ? 'player--notice' : ''} ${sideUnlock ? 'player--locked' : ''} ${topBanner || guestUnlock ? 'player--banner' : ''} ${guestUnlock ? 'player--guest-banner' : ''} ${immersive ? 'player--immersive' : ''}`}
         hidden={showPause}
       >
       <WaveBg opacity={0.28} />
@@ -1729,14 +1729,12 @@ export default function Player() {
           </button>
         </div>
 
-        {/* Плашка «Открой все 40» — сразу под карточкой музыки, «чтобы
-            прям в глаза бросалась». На десктопе это верх правой колонки, в
-            одну колонку — отдельный ряд между шапкой и кругом, в ландшафте
-            телефона — правый столбец под карточкой трека. Узел один, место
-            выбирает сетка (Player.css, .player--banner). */}
-        {topBanner && (
+        {/* Призыв к регистрации гостя и плашка тарифов стоят сразу под
+            карточкой музыки. На планшете и телефоне это отдельный ряд над
+            кругом; в ландшафте — верх правой колонки. */}
+        {(topBanner || guestUnlock) && (
           <div className="player__banner">
-            <Unlock place="player" />
+            {guestUnlock ? <GuestUnlock onCta={toGuestRegister} /> : <Unlock place="player" />}
           </div>
         )}
 
@@ -1814,14 +1812,11 @@ export default function Player() {
           </div>
         </section>
 
-        {/* Прежний блок пробного периода trial3d (открыто всё) — на своём
-            прежнем месте. На телефоне и планшете правой колонки нет, и блок
-            встаёт последним в ленте статистики — но остаётся тем же самым
-            узлом, второго в разметке нет. Гостю на том же месте — его блок
-            с регистрацией (Дима 14.10: под «Время» и «Шаги»). */}
-        {(sideUnlock || guestUnlock) && (
+        {/* Пробный период trial3d (открыто всё) остаётся после статистики.
+            Регистрация гостя находится выше, сразу после карточки музыки. */}
+        {sideUnlock && (
           <div className="stats__unlock">
-            {guestUnlock ? <GuestUnlock onCta={toGuestRegister} /> : <Unlock place="player" />}
+            <Unlock place="player" />
           </div>
         )}
       </aside>
