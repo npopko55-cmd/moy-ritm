@@ -5,6 +5,7 @@ import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import { reloadOnce } from './lib/chunkReload'
 import { reportSiteVisit } from './lib/funnel'
+import { catchInstallPrompt } from './lib/install'
 import { screenWaiting } from './lib/screens'
 import { applyStandaloneLook } from './lib/standalone'
 import { startTelegram } from './lib/telegram'
@@ -17,6 +18,11 @@ startTelegram()
 // Открыты как приложение с экрана «Домой» — полоса с часами белая, а не
 // розовая, ещё до первой отрисовки (src/lib/standalone.ts).
 applyStandaloneLook()
+
+// Предложение Chrome «Установить приложение» приходит один раз вскоре после
+// загрузки — ловим его сразу, чтобы кнопка в настройках («Приложение на
+// телефоне») могла его показать и через минуту (src/lib/install.ts).
+catchInstallPrompt()
 
 // Вкладка, открытая до выкладки, просит кусок кода, которого уже нет, —
 // одна перезагрузка вместо страницы ошибки (src/lib/chunkReload.ts). Только

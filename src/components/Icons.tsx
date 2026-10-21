@@ -436,6 +436,35 @@ export const Trophy = ({ size = 20, className }: I) => (
   </svg>
 )
 
+/* ——— Значки кнопок Safari: инструкция «Приложение на телефоне» в настройках ——— */
+
+/**
+ * «Поделиться» в Safari: квадрат без верхней стороны и стрелка вверх из него.
+ * Рисунок как у самой кнопки айфона — человек должен узнать её на экране.
+ * По высоте занимает 3…20,8 из 24: середина почти совпадает с серединой рамки.
+ */
+export const Share = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M8.8 9.4H7.4a1.8 1.8 0 0 0-1.8 1.8V19a1.8 1.8 0 0 0 1.8 1.8h9.2a1.8 1.8 0 0 0 1.8-1.8v-7.8a1.8 1.8 0 0 0-1.8-1.8h-1.4"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M12 14.4V3.4M8.6 6.6 12 3.2l3.4 3.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/** «•••» — кнопка меню Safari: три точки в ряд, по центру клетки. */
+export const More = ({ size = 20, className }: I) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+    <circle cx="5.4" cy="12" r="1.9" />
+    <circle cx="12" cy="12" r="1.9" />
+    <circle cx="18.6" cy="12" r="1.9" />
+  </svg>
+)
+
 /**
  * Telegram — кнопка «Написать в Telegram» на странице помощи.
  *

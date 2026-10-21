@@ -66,6 +66,10 @@
   box-shadow: var(--shadow-soft);
 }
 
+/* Карточка с якорем (/settings#app): прокрутка к ней оставляет зазор сверху,
+   а в установленном приложении — ещё и место под чёлку. */
+.page__card[id] { scroll-margin-top: calc(16px + env(safe-area-inset-top)); }
+
 .page__card-title {
   font-size: clamp(18px, 2vh, 22px);
   font-weight: 800;

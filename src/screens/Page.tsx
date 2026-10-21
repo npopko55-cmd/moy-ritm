@@ -108,16 +108,19 @@ export default function PageShell({ title, lead, back, wide, tab, children }: Pr
 
 /** Карточка-раздел. Всё содержимое страниц кабинета лежит в таких. */
 export function Card({
+  id,
   title,
   text,
   children,
 }: {
+  /** Якорь для ссылок прямо на карточку: /settings#app. */
+  id?: string
   title?: string
   text?: ReactNode
   children?: ReactNode
 }) {
   return (
-    <section className="page__card">
+    <section className="page__card" id={id}>
       {title && <h2 className="page__card-title">{title}</h2>}
       {text && <p className="page__card-text">{text}</p>}
       {children}

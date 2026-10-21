@@ -107,3 +107,101 @@
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
   .page .btn--pink-lg { padding: 13px 20px 13px 26px; font-size: 16px; }
 }
+
+/* ═══════ Карточка «Приложение на телефоне» ═══════
+   Не настройка, а инструкция: переключатель iPhone / Android, подсказка по
+   обстановке, кнопка установки в одно касание и нумерованные шаги. */
+
+.app-guide { margin-top: 16px; }
+
+/* Чипов два — во всю ширину карточки на компьютере они растянулись бы в
+   две длинные полосы. На телефоне карточка уже этого предела. */
+.app-guide__chips { max-width: 420px; }
+
+/* «Откройте на телефоне…», «Только из Safari…» — темнее и плотнее
+   пояснений: без неё шаги ниже не сработают. */
+.app-guide__hint {
+  margin-top: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink-800);
+}
+
+/* «Скопировать адрес» — ссылкой: действие попутное, не главное. Высота
+   44 px — под палец (.page__link). */
+.app-guide__copy {
+  padding: 0;
+  text-align: left;
+}
+
+/* Скопировать не вышло — адрес текстом, выделяется целиком одним касанием. */
+.app-guide__url {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--gray-500);
+  overflow-wrap: anywhere;
+}
+
+.app-guide__url-text {
+  font-weight: 600;
+  color: var(--ink-900);
+  -webkit-user-select: all;
+  user-select: all;
+}
+
+.app-guide__install {
+  margin-top: 18px;
+  min-height: 48px;
+}
+
+.app-guide__or {
+  margin-top: 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--gray-500);
+}
+
+/* — Шаги — номера розовые и жирные, чтобы шаг находился глазом. */
+.app-guide__steps {
+  margin: 16px 0 0;
+  padding-left: 1.6em;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-800);
+}
+
+.app-guide__copy + .app-guide__steps,
+.app-guide__or + .app-guide__steps { margin-top: 6px; }
+
+.app-guide__steps li {
+  padding-left: 4px;
+  /* Длинный адрес демо (…github.io/…) переносится, а не вылезает из карточки. */
+  overflow-wrap: anywhere;
+}
+
+.app-guide__steps li + li { margin-top: 8px; }
+
+.app-guide__steps li::marker {
+  font-weight: 700;
+  color: var(--pink-600);
+}
+
+/* Название кнопки и её значок не разрываются переносом. */
+.app-guide__key { white-space: nowrap; }
+
+/* Значок кнопки в строке — размером с текст. Середина значка встаёт на
+   середину букв (≈0,32 em над строкой, между строчными и заглавными):
+   0,32 − 1,15/2 ≈ −0,25 em. Значок ниже межстрочного (1,15 против 1,55 em),
+   поэтому строку не раздвигает и соседние строки не прыгают. */
+.app-guide__icon {
+  width: 1.15em;
+  height: 1.15em;
+  margin-left: .25em;
+  vertical-align: -.25em;
+}
+
+@media (max-width: 560px) {
+  /* Как «Написать в Telegram» в помощи: на телефоне — во всю ширину. */
+  .app-guide__install { width: 100%; }
+}
