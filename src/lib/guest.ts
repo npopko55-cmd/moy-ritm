@@ -25,7 +25,7 @@ import { api } from '../api/client'
 import type { GuestAction, GuestBootstrap, GuestPromptKind } from '../api/types'
 import { DEFAULT_STREAM } from '../data/streams'
 import { adoptGuestChunks } from './chunks'
-import { anonId } from './funnel'
+import { anonId, readFunnelGuest, readFunnelToken } from './funnel'
 
 /*
  * Адреса гостя (правка Димы 06.10.2026: «точно нужна главная»):
@@ -47,6 +47,14 @@ export const GUEST_NEXT = `/player/${DEFAULT_STREAM.id}`
 
 /** Регистрация из окна гостя: токен воронки уже запомнен, как после /go. */
 export const GUEST_REGISTER_PATH = `/register?next=${encodeURIComponent(GUEST_NEXT)}`
+
+/**
+ * Тарифы из плеера гостя (владелец, 21.10.2026): блок «Открой весь
+ * функционал Ритма!» и обе кнопки окна ведут сюда, а не сразу на
+ * регистрацию. Первой карточкой там у такого гостя стоит «3 дня бесплатно»
+ * (guestTrialToken ниже), за ней — платные тарифы.
+ */
+export const GUEST_TARIFFS_PATH = '/tariffs'
 
 /** «Войти» в шапке гостя — и обратно в плеер, уже под своим аккаунтом. */
 export const GUEST_LOGIN_PATH = `/login?next=${encodeURIComponent(GUEST_NEXT)}`
@@ -226,6 +234,54 @@ export function loadGuestBootstrap(token: string): Promise<GuestBootstrap> {
 /** Уже пришедший ответ — для первого рендера плеера. */
 export function lastGuestBootstrap(token: string | undefined): GuestBootstrap | null {
   return guestBoot && guestBoot.token === token ? guestBoot.boot : null
+}
+
+/* ——— Карточка «3 дня бесплатно» на тарифах ——— */
+
+/**
+ * Токен воронки, запомненный с гостевой ссылки /play/, или null. Запоминают
+ * его PlayGuest и переход из плеера на тарифы, снимает — регистрация.
+ * Входа он не учитывает: вошёл ли человек, решает тот, кто спрашивает.
+ */
+export function savedGuestToken(): string | null {
+  const token = readFunnelToken()
+  return token !== null && readFunnelGuest() ? token : null
+}
+
+/*
+ * Кому показывать «3 дня бесплатно». Три дня даёт только регистрация с
+ * токеном воронки trial3d (бэкенд, funnel_service: TRIAL3D_DAYS суток всё
+ * открыто). Без токена пробного нет вовсе (TRIAL_DAYS = 0), а с токеном
+ * trial20 — челлендж без трёх дней. Какая воронка за токеном, фронтенд сам
+ * не решает (src/lib/funnel.ts) — её называет ответ guest-bootstrap
+ * (guest.funnel). Поэтому карточку видит только гость, у которого:
+ *   • запомнен токен с гостевой ссылки (savedGuestToken);
+ *   • guest-bootstrap по этому токену ответил funnel = trial3d.
+ * Не ответил (сеть, 404 — ссылки нет или воронки выключены) — карточки нет:
+ * лучше не показать её, чем пообещать три дня, которых не будет.
+ */
+
+/** Уже известный ответ — без запроса: из плеера на тарифы карточка не мигает. */
+export function knownGuestTrialToken(): string | null {
+  const token = savedGuestToken()
+  return token && lastGuestBootstrap(token)?.guest.funnel === 'trial3d' ? token : null
+}
+
+/**
+ * То же с запросом, если ответа ещё нет (тарифы открыли перезагрузкой или
+ * отдельной вкладкой). guest-bootstrap — публичная ручка и ничего не пишет;
+ * в плеере тот же ответ берётся из памяти страницы, второго запроса нет.
+ * Не падает.
+ */
+export async function loadGuestTrialToken(): Promise<string | null> {
+  const token = savedGuestToken()
+  if (!token) return null
+  try {
+    const boot = await loadGuestBootstrap(token)
+    return boot.guest.funnel === 'trial3d' ? token : null
+  } catch {
+    return null
+  }
 }
 
 /**

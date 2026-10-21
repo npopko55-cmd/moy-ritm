@@ -3,7 +3,7 @@
    страницы «Бесплатный доступ истёк» (/trial-ended). Вынесены из
    Tariffs.css без изменений: вид карточек на странице тарифов тот же. */
 
-/* ——— Четыре тарифа ——— */
+/* ——— Четыре тарифа (у гостя trial3d — пять: первой «3 дня бесплатно») ——— */
 .tariffs__plans {
   /* Тот же градиент, что у .tariffs: карточки живут и на других страницах
      (/offer, /trial-ended), где обёртки .tariffs нет. */
@@ -46,6 +46,17 @@
   --tone-ink: var(--green-600);
   --tone-soft: #e4f7ed;
   background: #fafefb;
+}
+
+/* «3 дня бесплатно» у гостя (TariffPlans.tsx, FreePlan). Тон — спокойный
+   фиолетовый, как у окна гостя в плеере: карточка идёт первой, но не должна
+   перебивать «6 месяцев» с короной и залитой кнопкой. Поэтому и кнопка у
+   неё контурная, как у обычных платных. */
+.plan--free {
+  --tone: var(--violet-500);
+  --tone-ink: var(--violet-600);
+  --tone-soft: #f1ebff;
+  border-color: #e7defb;
 }
 
 .plan__crown {
@@ -135,6 +146,37 @@
   font-size: clamp(12.5px, 1.05vw, 15px);
   line-height: 1.4;
   color: var(--gray-600);
+}
+
+/* У бесплатной под заметкой ещё строка пунктов — свободная высота уходит
+   под неё, а не под заметку. */
+.plan--free .plan__note { margin-bottom: 0; }
+
+.plan__points {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  margin: 12px 0 auto;
+  font-size: clamp(12.5px, 1.05vw, 14px);
+  line-height: 1.35;
+  color: var(--ink-700);
+}
+
+.plan__points li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.plan__points li::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone);
 }
 
 .plan__cta {
@@ -240,6 +282,52 @@
   50% { opacity: .55; }
 }
 
+/* ——— Бесплатная полосой: 1 + 4 ———
+   С 640 px «3 дня бесплатно» лежит во всю ширину над платными: цена и срок
+   слева, название, заметка и пункты посередине, кнопка справа. Пятую
+   колонку не заводим: в карточке шириной ~205 px (1440 px, пять в ряд)
+   «1 990 ₽» кеглем 44 px встаёт впритык, а бейдж скидки наезжает на
+   название, как сейчас на 900–1179. А так четыре платные остаются
+   ровно такими, как были, — и 4 в ряд, и 2×2.
+   .plan.plan--free — сильнее правил .plan в медиазапросах ниже (отступ
+   под бейдж на 900–1179). */
+@media (min-width: 640px) {
+  /* Корона «6 месяцев» выступает над карточкой — между полосой и рядом
+     платных места под неё с запасом. */
+  .tariffs__plans.has-free { row-gap: clamp(30px, 3vw, 40px); }
+
+  .plan.plan--free {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "price name   cta"
+      "per   note   cta"
+      "per   points cta";
+    column-gap: clamp(18px, 2.4vw, 36px);
+    justify-items: start;
+    align-items: start;
+    text-align: left;
+    padding: clamp(16px, 1.6vw, 22px) clamp(18px, 2.2vw, 32px);
+  }
+
+  .plan--free .plan__price  { grid-area: price; align-self: end; margin-top: 0; font-size: clamp(30px, 2.8vw, 40px); }
+  .plan--free .plan__per    { grid-area: per; }
+  .plan--free .plan__rule   { display: none; }
+  .plan--free .plan__name   { grid-area: name; align-self: end; }
+  .plan--free .plan__note   { grid-area: note; margin-top: 2px; }
+  .plan--free .plan__points { grid-area: points; justify-content: flex-start; margin-top: 8px; }
+
+  .plan--free .plan__cta {
+    grid-area: cta;
+    align-self: center;
+    width: auto;
+    min-width: clamp(200px, 19vw, 250px);
+    margin-top: 0;
+    padding: 0 24px;
+  }
+}
+
 @media (max-width: 1179.98px) {
   .plan__crown { padding: 6px 11px; font-size: 11px; letter-spacing: .02em; }
   .plan__crown svg { width: 12px; height: 12px; }
@@ -267,6 +355,9 @@
   /* Порядок в разметке — от короткого срока к длинному; на телефоне
      рекомендованный тариф поднимаем наверх, чтобы его увидели первым. */
   .plan--half { order: -1; }
+  /* Бесплатная у гостя — ещё выше: владелец хочет её первой. Здесь это
+     обычная карточка в столбике, как платные. */
+  .plan--free { order: -2; }
 
   .plan { padding: 22px 18px 20px; }
   .plan__price { font-size: 38px; }

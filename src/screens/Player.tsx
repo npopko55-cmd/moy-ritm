@@ -43,7 +43,7 @@ import { createChunkQueue, type ChunkQueue } from '../lib/chunks'
 import { saveFunnelToken } from '../lib/funnel'
 import {
   addGuestMoved,
-  GUEST_REGISTER_PATH,
+  GUEST_TARIFFS_PATH,
   guestFullShown,
   guestMoved,
   guestPromptDue,
@@ -426,7 +426,7 @@ export default function Player() {
    * стоит на месте круга, и больше его нигде нет. С оплатой — нигде.
    *
    * Гость — свой блок (GuestUnlock, макет Димы 14.10.2026): «Открой весь
-   * функционал Ритма!» с переходом на регистрацию, всё время, пока есть
+   * функционал Ритма!» с переходом на тарифы (toGuestTariffs), всё время, пока есть
    * движения. Он стоит над кругом, как верхняя плашка тарифов.
    */
   const opensAll = trialOpensAll(useTrial(), access)
@@ -1462,25 +1462,38 @@ export default function Player() {
   }, [continueFlow, guestToken])
 
   /**
-   * На регистрацию с токеном воронки, как после /go; потом обратно в плеер.
-   * Общий путь для «Попробовать…» в окне и кнопки блока гостя на экране.
-   * Блок зовёт его напрямую, без события: prompt_cta бэкенд принимает только
-   * с видом окна (kind full/short).
+   * На тарифы (владелец, 21.10.2026; раньше — сразу на регистрацию). Один
+   * общий переход для всех «Попробовать…» гостя: кнопки блока на экране и
+   * обеих кнопок окна — полного и короткого, чтобы они не разъехались.
+   * Первой карточкой на тарифах у гостя trial3d стоит «3 дня бесплатно»
+   * (TariffPlans): она ведёт на регистрацию и обратно в плеер, платные — на
+   * регистрацию и потом на оплату.
+   *
+   * Токен воронки запоминаем здесь, до ухода: регистрация с тарифов должна
+   * его получить, а стереть его могла другая ссылка (/go без гостя снимает
+   * пометку гостя). По нему же тарифы решают, показывать ли бесплатную
+   * карточку.
+   *
+   * Крестик тарифов — «Назад» в эту запись истории: плеер откроется на
+   * паузе (старт одноразовый, spendStart), а счёт секунд и показанные окна
+   * лежат в sessionStorage вкладки (src/lib/guest.ts) и никуда не денутся.
+   *
+   * Блок зовёт переход напрямую, без события: prompt_cta бэкенд принимает
+   * только с видом окна (kind full/short).
    */
-  const toGuestRegister = useCallback(() => {
+  const toGuestTariffs = useCallback(() => {
     if (!guestToken) return
-    // Токен могла стереть другая ссылка: регистрация должна его получить.
     saveFunnelToken(guestToken, true)
-    navigate(GUEST_REGISTER_PATH)
+    navigate(GUEST_TARIFFS_PATH)
   }, [guestToken, navigate])
 
-  /** «Попробовать…» в окне: событие prompt_cta с видом окна — и на регистрацию. */
+  /** «Попробовать…» в окне: событие prompt_cta с видом окна — и на тарифы. */
   const promptCta = useCallback(() => {
     const kind = promptRef.current
     if (!guestToken || !kind) return
     reportGuest(guestToken, 'prompt_cta', kind)
-    toGuestRegister()
-  }, [guestToken, toGuestRegister])
+    toGuestTariffs()
+  }, [guestToken, toGuestTariffs])
 
   /** «Вернусь позже» у гостя: «Мой прогресс» требует входа — вместо него окно. */
   const laterGuest = useCallback(() => {
@@ -1734,7 +1747,7 @@ export default function Player() {
             кругом; в ландшафте — верх правой колонки. */}
         {(topBanner || guestUnlock) && (
           <div className="player__banner">
-            {guestUnlock ? <GuestUnlock onCta={toGuestRegister} /> : <Unlock place="player" />}
+            {guestUnlock ? <GuestUnlock onCta={toGuestTariffs} /> : <Unlock place="player" />}
           </div>
         )}
 
