@@ -7,9 +7,7 @@ import WaveBg from '../components/WaveBg'
 import {
   Clock,
   Close,
-  FloatNote,
   Leaf,
-  MusicNote,
   Phone,
   PlayCircle,
   Shield,
@@ -18,7 +16,6 @@ import {
 } from '../components/Icons'
 import { hasAccess } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
-import { asset } from '../lib/asset'
 import { formatDate } from '../lib/date'
 import { EXTRA_MOVES_LABEL } from '../lib/trial'
 import '../components/Logo.css'
@@ -108,22 +105,6 @@ export default function Tariffs() {
             <p className="tariffs__lead">Все движения и всё новое — сразу ваши.</p>
           </div>
 
-          <div className="tariffs__visual">
-            <div className="tariffs__blob" />
-            <MusicNote size={26} className="tariffs__note tariffs__note--a" />
-            <FloatNote size={22} className="tariffs__note tariffs__note--b" />
-            <MusicNote size={18} className="tariffs__note tariffs__note--c" />
-            <FloatNote size={16} className="tariffs__note tariffs__note--d" />
-            <img
-              className="tariffs__photo"
-              src={asset('hero/hero.webp')}
-              alt="Девушка двигается под музыку"
-              decoding="async"
-            />
-            <p className="tariffs__hand tariffs__hand--side">
-              Больше движения — больше классных дней! ♡
-            </p>
-          </div>
         </header>
 
         <ul className="tariffs__perks">

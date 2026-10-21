@@ -10,7 +10,6 @@
 
 .dash {
   --grad-warm: linear-gradient(92deg, var(--pink-500) 0%, var(--orange-500) 100%);
-  --photo-h: clamp(150px, 14.5vw, 208px);
 
   position: relative;
   display: grid;
@@ -118,10 +117,7 @@
 /* ——— Шапка ——— */
 .dash__head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: clamp(12px, 2vw, 26px);
-  min-height: clamp(112px, 13.5vw, 196px);
+  /* Фото девушки с подписями справа убрано по просьбе Димы 21.10. */
 }
 
 .dash__title {
@@ -138,74 +134,11 @@
   color: var(--gray-500);
 }
 
-.dash__visual {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: clamp(4px, 1vw, 14px);
-  /* Фото приподнято: в макете девушка чуть выступает над карточкой. */
-  margin-top: calc(var(--photo-h) * -0.33);
-}
-
-/* Снимок и пятно — одним куском: подпись слева не должна их разлучать. */
-.dash__figure { position: relative; flex: none; display: flex; }
-
-/* Пятно центрируем по фото: у hero.webp ширина — 0,496 высоты. */
-.dash__blob {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: calc(var(--photo-h) * 0.9);
-  height: calc(var(--photo-h) * 0.9);
-  transform: translate(-50%, -52%);
-  border-radius: 50%;
-  filter: blur(2px);
-  background:
-    radial-gradient(circle at 32% 26%, #ffe9f3 0%, rgba(255, 233, 243, 0) 62%),
-    linear-gradient(150deg, #fdeaf4 0%, #f7ecfb 52%, #ffeedf 100%);
-}
-
-.dash__photo {
-  position: relative;
-  flex: none;
-  height: var(--photo-h);
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 14px 24px rgba(20, 22, 26, .14));
-}
-
 .dash__hand {
   font-family: var(--font-hand);
   font-weight: 600;
   line-height: 1.15;
   color: var(--pink-500);
-}
-
-.dash__hand--a {
-  flex: none;
-  width: clamp(112px, 10.5vw, 158px);
-  transform: rotate(-9deg);
-  font-size: clamp(16px, 1.45vw, 23px);
-}
-
-/* Подпись стоит справа от фото и чуть выше низа — как приписка от руки. */
-.dash__hand--b {
-  flex: none;
-  align-self: flex-end;
-  margin-bottom: clamp(16px, 2.4vw, 38px);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  transform: rotate(6deg);
-  font-size: clamp(15px, 1.35vw, 21px);
-  white-space: nowrap;
-}
-
-/* Лучики у «Вы супер!»: три чёрточки веером, как дорисовывают от руки. */
-.dash__rays {
-  flex: none;
-  width: clamp(11px, .95vw, 15px);
-  height: auto;
 }
 
 .dash__hand--footer {
@@ -839,8 +772,6 @@
    До 900: показатели 2×2, недели в столбик, фото прячем.
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 899.98px) {
-  .dash__head { grid-template-columns: minmax(0, 1fr); min-height: 0; }
-  .dash__visual { display: none; }
 
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dash__weeks { grid-template-columns: minmax(0, 1fr); }

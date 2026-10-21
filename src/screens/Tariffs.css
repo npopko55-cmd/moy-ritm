@@ -3,7 +3,6 @@
    у макета, но страницей, а не всплывающим окном: окна владелец запретил. */
 
 .tariffs {
-  --photo-h: clamp(230px, 24vw, 340px);
   /* Розовый → оранжевый: заливка заголовка, чипа-короны и главной кнопки. */
   --grad-warm: linear-gradient(92deg, var(--pink-500) 0%, var(--orange-500) 100%);
 
@@ -63,10 +62,8 @@
 /* ——— Шапка карточки ——— */
 .tariffs__head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: clamp(12px, 2vw, 32px);
-  /* Место справа под крестик, чтобы подпись к фото под него не заезжала. */
+  /* Фото девушки с подписью справа убрано по просьбе Димы 21.10: в шапке
+     только логотип и заголовок. Место справа — под крестик. */
   padding-right: 52px;
 }
 
@@ -95,46 +92,6 @@
   color: var(--gray-500);
 }
 
-/* ——— Фото с пятном, нотками и подписью ——— */
-.tariffs__visual {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: clamp(2px, 1vw, 14px);
-}
-
-/* Пятно центрируем по фото: у hero.webp пропорция 545×1100,
-   значит его ширина — ровно 0,496 высоты. */
-.tariffs__blob {
-  position: absolute;
-  top: 50%;
-  left: calc(var(--photo-h) * 0.248);
-  width: calc(var(--photo-h) * 0.86);
-  height: calc(var(--photo-h) * 0.86);
-  transform: translate(-50%, -52%);
-  border-radius: 50%;
-  filter: blur(2px);
-  background:
-    radial-gradient(circle at 32% 26%, #ffe9f3 0%, rgba(255, 233, 243, 0) 62%),
-    radial-gradient(circle at 74% 34%, #efe6ff 0%, rgba(239, 230, 255, 0) 58%),
-    linear-gradient(150deg, #fdeaf4 0%, #f7ecfb 52%, #ffeedf 100%);
-}
-
-.tariffs__photo {
-  position: relative;
-  flex: none;
-  height: var(--photo-h);
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 14px 24px rgba(20, 22, 26, .14));
-}
-
-.tariffs__note { position: absolute; }
-.tariffs__note--a { top: 4%;  left: calc(var(--photo-h) * 0.40); color: var(--pink-400); }
-.tariffs__note--b { top: 25%; left: calc(var(--photo-h) * -0.04); color: var(--orange-400); }
-.tariffs__note--c { top: 58%; left: calc(var(--photo-h) * 0.46); color: var(--orange-500); }
-.tariffs__note--d { top: 80%; left: calc(var(--photo-h) * 0.02); color: var(--pink-200); }
-
 /* ——— Рукописные акценты ——— */
 .tariffs__hand {
   font-family: var(--font-hand);
@@ -142,13 +99,6 @@
   line-height: 1.15;
 }
 
-.tariffs__hand--side {
-  position: relative;
-  width: clamp(150px, 14vw, 205px);
-  transform: rotate(-10deg);
-  color: var(--pink-500);
-  font-size: clamp(19px, 1.9vw, 28px);
-}
 
 .tariffs__hand--footer {
   margin-top: clamp(20px, 2.4vw, 32px);
@@ -266,7 +216,6 @@
    900–1179: те же четыре карточки в ряд, но плотнее; фото меньше.
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 1179.98px) {
-  .tariffs { --photo-h: clamp(200px, 22vw, 260px); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -274,8 +223,7 @@
    Фото и подпись к нему прячем — в колонку они уже не помещаются.
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 899.98px) {
-  .tariffs__head { grid-template-columns: minmax(0, 1fr); padding-right: 48px; }
-  .tariffs__visual { display: none; }
+  .tariffs__head { padding-right: 48px; }
 
   .tariffs__perks {
     grid-template-columns: repeat(3, minmax(0, 1fr));

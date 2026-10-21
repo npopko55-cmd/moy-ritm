@@ -36,7 +36,6 @@ import {
   Trophy,
 } from '../components/Icons'
 import { VISIBLE_STREAMS, getStream } from '../data/streams'
-import { asset } from '../lib/asset'
 import { onBufferChange, pendingTodaySeconds } from '../lib/chunks'
 import { trialHint, trialOpensAll, useTrial, warmTrial } from '../lib/trial'
 import {
@@ -319,27 +318,6 @@ export default function Progress() {
                 Каждая минута в движении — это забота о себе.
                 <br />
                 И вы делаете это отлично! 💗
-              </p>
-            </div>
-
-            {/* Подписи стоят по бокам от фото: слева — про маленькие шаги,
-                справа — «Вы супер!». Пятно живёт в .dash__figure вместе со
-                снимком, иначе оно уезжает от него вслед за подписью. */}
-            <div className="dash__visual">
-              <p className="dash__hand dash__hand--a">Маленькие шаги — большие результаты!</p>
-              <div className="dash__figure">
-                <div className="dash__blob" />
-                <img
-                  className="dash__photo"
-                  src={asset('hero/hero.webp')}
-                  alt="Девушка двигается под музыку"
-                  decoding="async"
-                />
-              </div>
-              {/* «Вы супер!» с лучиками — восклицание, а не просто подпись. */}
-              <p className="dash__hand dash__hand--b">
-                Вы супер!
-                <Rays />
               </p>
             </div>
           </header>
@@ -760,23 +738,6 @@ function Ring({ value }: { value: number }) {
         strokeDasharray={c}
         strokeDashoffset={c * (1 - Math.max(0, Math.min(1, value)))}
         transform="rotate(-90 60 60)"
-      />
-    </svg>
-  )
-}
-
-/**
- * Лучики у «Вы супер!»: три розовые чёрточки, какие рисуют от руки рядом
- * с восклицанием. Знак только для глаз, в текст страницы не попадает.
- */
-function Rays() {
-  return (
-    <svg className="dash__rays" viewBox="0 0 26 30" fill="none" aria-hidden="true">
-      <path
-        d="M3 21.5 8.5 18M4.5 12.5h6.5M8 3.5l4.5 4"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
       />
     </svg>
   )
