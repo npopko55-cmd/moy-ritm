@@ -15,10 +15,18 @@
  * Согласие на обработку персональных данных — отдельная галочка, по
  * умолчанию не отмечена (так требует 152-ФЗ). Без неё — ошибка под ней, и
  * запрос не уходит; с ней в запрос идёт personal_data_consent: true.
- * «Согласие» и «политика конфиденциальности» — ссылки на страницы сайта в
- * этой же вкладке: в мини-апе другой вкладки нет, а новые вкладки на
+ * «Согласие» и «политика обработки персональных данных» — ссылки на страницы
+ * сайта в этой же вкладке: в мини-апе другой вкладки нет, а новые вкладки на
  * телефоне теряются. Вернувшись назад, человек видит форму такой, какой
  * оставил, — см. черновик ниже.
+ *
+ * Ниже — вторая галочка, согласие на рекламные сообщения (/ads-consent,
+ * 21.10.2026). Закон о рекламе требует его отдельно и не предотмеченным, а
+ * регистрация без него обязана проходить: галочка необязательная, ошибки у
+ * неё нет, и значение просто уходит полем ads_consent. Подпись — дословно из
+ * документа юристов (пункт 2.3): «Хочу получать рекламные сообщения проекта
+ * Мой ритм» со ссылкой на сам документ. Дать или снять согласие потом —
+ * переключатель в настройках (карточка «Письма»).
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -45,8 +53,23 @@ import {
  * до перезагрузки: на диск пароль не попадает. После отправки черновик
  * стирается.
  */
-type Draft = { email: string; password: string; repeat: string; name: string; consent: boolean }
-const EMPTY_DRAFT: Draft = { email: '', password: '', repeat: '', name: '', consent: false }
+type Draft = {
+  email: string
+  password: string
+  repeat: string
+  name: string
+  consent: boolean
+  /** Согласие на рекламные сообщения — необязательное, по умолчанию пусто. */
+  ads: boolean
+}
+const EMPTY_DRAFT: Draft = {
+  email: '',
+  password: '',
+  repeat: '',
+  name: '',
+  consent: false,
+  ads: false,
+}
 let draft: Draft = EMPTY_DRAFT
 
 /** Часовой пояс браузера. Без него «сегодня» в статистике считается неверно. */
@@ -70,6 +93,7 @@ export default function Register() {
   const [repeat, setRepeat] = useState(draft.repeat)
   const [name, setName] = useState(draft.name)
   const [consent, setConsent] = useState(draft.consent)
+  const [ads, setAds] = useState(draft.ads)
   const [bad, setBad] = useState({ email: '', password: '', repeat: '', consent: '' })
   const [error, setError] = useState('')
   /** Почта, на которую аккаунт уже есть: под кнопкой — дорога ко входу. */
@@ -78,8 +102,8 @@ export default function Register() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    draft = { email, password, repeat, name, consent }
-  }, [email, password, repeat, name, consent])
+    draft = { email, password, repeat, name, consent, ads }
+  }, [email, password, repeat, name, consent, ads])
 
   // Сообщение встаёт под кнопкой, а на телефоне кнопка — у нижнего края
   // экрана: без прокрутки ссылки «Войти» и «Забыли пароль?» остались бы за
@@ -115,6 +139,7 @@ export default function Register() {
         name: name.trim() || undefined,
         timezone: browserTimezone(),
         personal_data_consent: true,
+        ads_consent: ads,
       })
       draft = EMPTY_DRAFT
       if (res.status === 'registered') {
@@ -206,7 +231,29 @@ export default function Register() {
             </p>
           )}
           <p className="consent__more">
-            Подробнее — в <Link to="/privacy">политике конфиденциальности</Link>
+            Подробнее — в <Link to="/privacy">политике обработки персональных данных</Link>
+          </p>
+        </div>
+
+        {/* Согласие на рекламу — отдельное и необязательное: не отмечено, без
+            ошибки, регистрация проходит и без него. Подпись — из документа
+            юристов (пункт 2.3), ссылка ведёт на сам документ. */}
+        <div className="consent">
+          <label className="consent__row">
+            <input
+              className="consent__box"
+              type="checkbox"
+              checked={ads}
+              onChange={(e) => setAds(e.target.checked)}
+              disabled={busy}
+            />
+            <span>
+              Хочу получать <Link to="/ads-consent">рекламные сообщения</Link> проекта «Мой ритм»
+            </span>
+          </label>
+          <p className="consent__more">
+            Необязательно — регистрация пройдёт и без этого. Отказаться можно в любой момент в
+            настройках
           </p>
         </div>
 

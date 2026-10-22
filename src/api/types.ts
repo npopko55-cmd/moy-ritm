@@ -42,6 +42,12 @@ export type MeUser = {
   name: string | null
   timezone: string
   created_at: string
+  /**
+   * Согласие на рекламные сообщения (/ads-consent): когда дано; null — нет.
+   * Необязательное в типе: бэкенд до 22.10.2026 поля не отдаёт — тогда
+   * переключатель в настройках просто выключен.
+   */
+  ads_consent_at?: string | null
 }
 
 export type Settings = {

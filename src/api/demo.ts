@@ -118,6 +118,8 @@ type DemoUser = {
   verified?: boolean
   /** Воронка, по ссылке которой человек зарегистрировался. */
   funnel?: Funnel | null
+  /** Согласие на рекламные сообщения: когда дано. Нет поля — согласия нет. */
+  ads_consent_at?: string | null
   /** trial20: предложение тарифов (через три дня после регистрации) уже показано. */
   offer_seen?: boolean
 }
@@ -675,6 +677,7 @@ export function createDemoApi(): Api {
         name: user.name,
         timezone: user.timezone,
         created_at: user.created_at,
+        ads_consent_at: user.ads_consent_at ?? null,
       },
       settings: read<Settings>(`settings.${user.email}`, DEFAULT_SETTINGS),
       access: accessInfo(user.email),
@@ -753,6 +756,8 @@ export function createDemoApi(): Api {
         verified: false,
         // Пришёл по ссылке воронки — метка остаётся при нём, как на бэкенде.
         funnel: demoFunnelOf(body.funnel_token),
+        // Вторая галочка регистрации — как на бэкенде: момент, если отмечена.
+        ads_consent_at: body.ads_consent ? new Date().toISOString() : null,
       }
       all[email] = user
       write('users', all)
@@ -831,6 +836,13 @@ export function createDemoApi(): Api {
       const all = users()
       if (body.name !== undefined) all[user.email].name = body.name?.trim() || null
       if (body.timezone) all[user.email].timezone = body.timezone
+      // Согласие на рекламу — как на бэкенде: повторное «включить» момент не
+      // сдвигает, «выключить» стирает.
+      if (body.ads_consent === true) {
+        all[user.email].ads_consent_at ??= new Date().toISOString()
+      } else if (body.ads_consent === false) {
+        all[user.email].ads_consent_at = null
+      }
       write('users', all)
       return meOf(all[user.email])
     },

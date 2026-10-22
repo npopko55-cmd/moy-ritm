@@ -8,13 +8,19 @@
  * Источник истины — сервер. Интервал смены движения дублируется в
  * localStorage, но только как кэш для мгновенного старта плеера.
  *
+ * В карточке «Письма» — ещё и согласие на рекламные сообщения (/ads-consent,
+ * 22.10.2026): его дают необязательной галочкой при регистрации, а здесь
+ * можно дать позже или снять. Это поле профиля, а не настроек, — уходит в
+ * PATCH /me {ads_consent}, но ведёт себя так же: сразу на экране, откат при
+ * ошибке.
+ *
  * Последняя карточка — «Приложение на телефоне»: как поставить сайт на экран
  * «Домой». Это не настройка и на сервер ничего не шлёт; на неё ведёт ссылка
  * https://ritmritm.ru/settings#app из постов и писем.
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import type { PatchSettingsBody } from '../api/client'
 import { useSession } from '../auth/SessionProvider'
@@ -155,6 +161,27 @@ export default function Settings() {
     }
   }
 
+  /**
+   * Согласие на рекламные сообщения: включено — у профиля есть момент
+   * согласия. Включили — на экране сразу (момент поставит сервер, до ответа
+   * хватает «сейчас»), не получилось — возвращаем прежнее.
+   */
+  const patchAds = async (on: boolean) => {
+    const before = me.user
+    setFailed(null)
+    setMe({
+      ...me,
+      user: { ...before, ads_consent_at: on ? (before.ads_consent_at ?? new Date().toISOString()) : null },
+    })
+    try {
+      setMe(await api.patchMe({ ads_consent: on }))
+      done('ads')
+    } catch (e) {
+      setMe({ ...me, user: before })
+      setFailed({ key: 'ads', text: errorText(e) })
+    }
+  }
+
   /** Громкость: на экране сразу, в сеть — через полсекунды после остановки. */
   const slide = (value: number) => {
     setVolume(value)
@@ -259,6 +286,24 @@ export default function Settings() {
           />
         </Row>
         {note('mail')}
+        {/* Согласие на рекламу — отдельно от напоминаний: закон о рекламе
+            требует его отдельным, и снять его можно в любой момент. */}
+        <Row
+          label="Рекламные и информационные сообщения"
+          hint={
+            <>
+              Новые тренировки, мероприятия и скидки. Подробнее —{' '}
+              <Link to="/ads-consent">в согласии на рекламу</Link>.
+            </>
+          }
+        >
+          <Switch
+            label="Рекламные и информационные сообщения"
+            on={Boolean(me.user.ads_consent_at)}
+            onChange={(on) => void patchAds(on)}
+          />
+        </Row>
+        {note('ads')}
       </Card>
 
       <AppCard />

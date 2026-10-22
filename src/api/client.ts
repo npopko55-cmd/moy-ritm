@@ -63,10 +63,19 @@ export type RegisterBody = {
    * регистрации. Без неё запрос не уходит, поэтому здесь всегда true.
    */
   personal_data_consent: true
+  /**
+   * Согласие на рекламные сообщения (/ads-consent) — вторая галочка формы,
+   * необязательная и по умолчанию пустая (закон о рекламе). true — бэкенд
+   * запишет момент и редакцию согласия; false — регистрация та же.
+   */
+  ads_consent?: boolean
 }
 
-/** Явный null у name стирает имя; у timezone null игнорируется. */
-export type PatchMeBody = { name?: string | null; timezone?: string }
+/**
+ * Явный null у name стирает имя; у timezone null игнорируется. ads_consent —
+ * переключатель согласия на рекламу в настройках: true — дать, false — снять.
+ */
+export type PatchMeBody = { name?: string | null; timezone?: string; ads_consent?: boolean }
 
 export type PatchSettingsBody = Partial<Settings>
 

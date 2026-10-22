@@ -205,3 +205,16 @@
   /* Как «Написать в Telegram» в помощи: на телефоне — во всю ширину. */
   .app-guide__install { width: 100%; }
 }
+
+/* Ссылка в подсказке строки (согласие на рекламу → /ads-consent): видна как
+   ссылка, но тише заголовка строки. */
+.page__row-hint a {
+  color: var(--pink-600);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .page__row-hint a:hover { color: var(--pink-700); }
+}

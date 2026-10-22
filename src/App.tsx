@@ -92,10 +92,12 @@ export default function App() {
           <Route path="/help" element={<Help />} />
 
           {/* Документы — без входа: на них ссылаются регистрация, строка
-              под тарифами и подвал. Экран один, документ — по адресу. */}
+              под тарифами, настройки и подвал. Экран один, документ — по
+              адресу; /ads-consent — согласие на рекламные сообщения. */}
           <Route path="/oferta" element={<Legal />} />
           <Route path="/privacy" element={<Legal />} />
           <Route path="/consent" element={<Legal />} />
+          <Route path="/ads-consent" element={<Legal />} />
 
           <Route path="/tariffs" element={<Tariffs />} />
           {/* Оплата выбранного тарифа: карточка и встроенная форма GetCourse.

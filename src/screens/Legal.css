@@ -1,7 +1,18 @@
-/* ═══════ Документы: /oferta, /privacy, /consent ═══════
-   Оболочка и карточки — Page.css. Документ — одним листом: разделы с
-   заголовками, пункты с номерами «4.2.» в своей колонке, чтобы текст
-   пунктов шёл ровным краем. */
+/* ═══════ Документы: /oferta, /privacy, /consent, /ads-consent ═══════
+   Оболочка и карточки — Page.css. Документ — одним листом: вводные абзацы,
+   разделы с заголовками, пункты с номерами «4.2.» в своей колонке, чтобы
+   текст пунктов шёл ровным краем; абзацы без номера — во всю ширину. */
+
+/* Вводные абзацы до первого раздела: кто, кому и на каких условиях. */
+.legal__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: clamp(22px, 3vh, 30px);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-700);
+}
 
 .legal__section + .legal__section { margin-top: clamp(22px, 3vh, 30px); }
 
@@ -20,19 +31,51 @@
   list-style: none;
 }
 
+/* Колонка номера — под самый длинный у юристов: «4.4.1.» и «10.10.». */
 .legal__item {
   display: grid;
-  grid-template-columns: 3em minmax(0, 1fr);
+  grid-template-columns: 3.7em minmax(0, 1fr);
   gap: 8px;
   font-size: 15px;
   line-height: 1.6;
   color: var(--ink-700);
 }
 
+/* Абзац без номера (реквизиты в конце оферты) — во всю ширину. */
+.legal__item--plain { display: block; }
+
 .legal__num {
   color: var(--gray-500);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* Таблица (тарифы в оферте): на узком экране листается внутри себя. */
+.legal__table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.legal__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-700);
+  font-variant-numeric: tabular-nums;
+}
+
+.legal__table th,
+.legal__table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--gray-100);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.legal__table th {
+  color: var(--gray-500);
+  font-weight: 600;
 }
 
 .legal a {
@@ -63,6 +106,13 @@
   color: var(--gray-400);
 }
 
+/* У оферты реквизиты в самом тексте — в карточке только ссылки, без черты. */
+.legal__docs--alone {
+  margin-top: 12px;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .legal__req a,
 .legal__docs a {
   color: var(--pink-600);
@@ -76,6 +126,8 @@
 }
 
 @media (max-width: 639.98px) {
-  .legal__item { grid-template-columns: 2.6em minmax(0, 1fr); gap: 6px; font-size: 14.5px; }
+  .legal__item { grid-template-columns: 3.3em minmax(0, 1fr); gap: 6px; font-size: 14.5px; }
+  .legal__intro,
+  .legal__table,
   .legal__req { font-size: 14.5px; }
 }

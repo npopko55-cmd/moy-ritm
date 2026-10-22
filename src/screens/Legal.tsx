@@ -1,11 +1,14 @@
 /**
- * Документы: публичная оферта (/oferta), политика конфиденциальности
- * (/privacy) и согласие на обработку персональных данных (/consent).
+ * Документы: публичная оферта (/oferta), политика обработки персональных
+ * данных (/privacy), согласие на обработку персональных данных (/consent) и
+ * согласие на получение рекламных сообщений (/ads-consent).
  *
  * Оболочка — как у служебных страниц (Page.tsx): волны, логотип, кнопка
- * возврата и колонка по центру. Документ — одним листом-карточкой: разделы с
- * заголовками и нумерованными пунктами; внизу — реквизиты и ссылки на два
- * других документа. Тексты — в src/data/legal.ts.
+ * возврата и колонка по центру. Документ — одним листом-карточкой: вводные
+ * абзацы, разделы с заголовками, пункты и таблицы; внизу — реквизиты и
+ * ссылки на другие документы. Тексты юристов — дословно в src/data/legal.ts:
+ * номера пунктов там часть текста, страница их не считает, а только выносит
+ * ведущий номер («4.4.1.») в свою колонку, чтобы текст шёл ровным краем.
  *
  * Открыты всем, без входа: на них ссылаются регистрация, строка под
  * тарифами и подвал. Пришли со страницы сайта — «← Назад» возвращает туда
@@ -16,7 +19,7 @@
 
 import { useLayoutEffect, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LEGAL_DOCS, LEGAL_EDITION, OPERATOR } from '../data/legal'
+import { LEGAL_DOCS, LEGAL_EDITION, OPERATOR, type LegalBlock } from '../data/legal'
 import PageShell, { Card } from './Page'
 import './Legal.css'
 
@@ -46,6 +49,52 @@ function withLinks(text: string): ReactNode[] {
   }
   if (at < text.length) out.push(text.slice(at))
   return out
+}
+
+/** Ведущий номер пункта: «1.1.», «4.4.1.», «10.2.» — и остальной текст. */
+const NUM_RE = /^(\d+(?:\.\d+)+\.)\s+([\s\S]*)$/
+
+/**
+ * Блок раздела. Пункт с номером — номер в своей колонке; абзац без номера
+ * (реквизиты в конце оферты) — во всю ширину; таблица — с прокруткой по
+ * горизонтали внутри себя, чтобы на телефоне не ехала вся страница.
+ */
+function Block({ block }: { block: LegalBlock }) {
+  if (typeof block !== 'string') {
+    const { head, rows } = block.table
+    return (
+      <li className="legal__table-wrap">
+        <table className="legal__table">
+          <thead>
+            <tr>
+              {head.map((cell) => (
+                <th key={cell} scope="col">
+                  {cell}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.join('|')}>
+                {row.map((cell, k) => (
+                  <td key={k}>{withLinks(cell)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </li>
+    )
+  }
+  const numbered = NUM_RE.exec(block)
+  if (!numbered) return <li className="legal__item legal__item--plain">{withLinks(block)}</li>
+  return (
+    <li className="legal__item">
+      <span className="legal__num">{numbered[1]}</span>
+      <span>{withLinks(numbered[2])}</span>
+    </li>
+  )
 }
 
 export default function Legal() {
@@ -78,49 +127,54 @@ export default function Legal() {
       back={back}
     >
       <article className="page__card legal">
-        {doc.sections.map((section, i) => (
+        {doc.intro.length > 0 && (
+          <div className="legal__intro">
+            {doc.intro.map((text, i) => (
+              <p key={i}>{withLinks(text)}</p>
+            ))}
+          </div>
+        )}
+        {doc.sections.map((section) => (
           <section key={section.title} className="legal__section">
-            <h2 className="legal__title">
-              {i + 1}. {section.title}
-            </h2>
-            <ol className="legal__items">
-              {section.items.map((item, j) => (
-                <li key={j} className="legal__item">
-                  <span className="legal__num">
-                    {i + 1}.{j + 1}.
-                  </span>
-                  <span>{withLinks(item)}</span>
-                </li>
+            {/* Номер раздела — в самом заголовке, как у юристов. */}
+            <h2 className="legal__title">{section.title}</h2>
+            {/* Номера пунктов — часть текста, поэтому список без своих номеров. */}
+            <ul className="legal__items">
+              {section.blocks.map((block, j) => (
+                <Block key={j} block={block} />
               ))}
-            </ol>
+            </ul>
           </section>
         ))}
       </article>
 
-      <Card title={doc.requisitesTitle}>
-        <ul className="legal__req">
-          <li>{OPERATOR.name}</li>
-          <li>ИНН {OPERATOR.inn}</li>
-          <li>ОГРНИП {OPERATOR.ogrnip}</li>
-          <li>
-            Связь: Telegram{' '}
-            <a href={OPERATOR.telegram} target="_blank" rel="noopener noreferrer">
-              {OPERATOR.telegramName}
-            </a>
-          </li>
-          <li>
-            Сайт:{' '}
-            <a href={OPERATOR.site} target="_blank" rel="noopener noreferrer">
-              ritmritm.ru
-            </a>
-            , мини-приложение в Telegram — бот {OPERATOR.bot}
-          </li>
-        </ul>
-        <p className="legal__docs">
+      <Card title={doc.requisitesTitle ?? 'Другие документы'}>
+        {/* У оферты реквизиты — её собственный раздел 11: второй раз не повторяем. */}
+        {doc.requisitesTitle !== null && (
+          <ul className="legal__req">
+            <li>{OPERATOR.name}</li>
+            <li>ИНН {OPERATOR.inn}</li>
+            <li>ОГРНИП {OPERATOR.ogrnip}</li>
+            <li>
+              Связь: Telegram{' '}
+              <a href={OPERATOR.telegram} target="_blank" rel="noopener noreferrer">
+                {OPERATOR.telegramName}
+              </a>
+            </li>
+            <li>
+              Сайт:{' '}
+              <a href={OPERATOR.site} target="_blank" rel="noopener noreferrer">
+                ritmritm.ru
+              </a>
+              , мини-приложение в Telegram — бот {OPERATOR.bot}
+            </li>
+          </ul>
+        )}
+        <p className={`legal__docs ${doc.requisitesTitle === null ? 'legal__docs--alone' : ''}`}>
           {others.map((d, i) => (
             <span key={d.path}>
               {i > 0 && ' · '}
-              <Link to={d.path}>{d.title}</Link>
+              <Link to={d.path}>{d.short}</Link>
             </span>
           ))}
         </p>
