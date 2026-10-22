@@ -24,6 +24,12 @@ import type {
   BehaviorColumn,
   BehaviorGroup,
   ChannelPost,
+  CohortCells,
+  Dashboard,
+  DashboardCohort,
+  DashboardDay,
+  DashboardPerson,
+  DayPartKey,
   FunnelSummary,
   FunnelUser,
   Overview,
@@ -1388,6 +1394,193 @@ function demoOverview(period: Period): Overview {
   }
 }
 
+/* ——— Единое окно аналитики в демо ———
+   Строится поверх той же общей статистики и тех же выдуманных людей, что
+   остальные разделы: цифры согласованы между собой и одинаковы при каждом
+   открытии (постоянное зерно). */
+
+const DEMO_COHORT_DAYS = [1, 3, 7, 14, 30]
+const DEMO_PARTS: DayPartKey[] = ['morning', 'day', 'evening', 'night']
+const DEMO_PART_LABELS: Record<DayPartKey, string> = { morning: 'Утро', day: 'День', evening: 'Вечер', night: 'Ночь' }
+
+const demoRatio = (part: number, whole: number) => (whole ? Math.round((part / whole) * 10_000) / 10_000 : null)
+
+/** Ячейки когорты: доля двигавшихся в день N тает от первого дня к тридцатому. */
+function demoCells(day: string, size: number, keep: number, rnd: () => number): CohortCells {
+  const today = dayStart(localDate(Date.now()))
+  const returned = DEMO_COHORT_DAYS.map((n, i) => {
+    if (dayStart(day) + n * DAY_MS >= today) return null
+    const share = Math.max(0, keep - i * 0.09) * (0.75 + rnd() * 0.5)
+    return Math.min(size, Math.round(size * share))
+  })
+  return { size, returned, share: returned.map((v) => (v === null ? null : demoRatio(v, size))) }
+}
+
+/** Итог по когортам: в день N — только дожившие до него, как на сервере. */
+function demoCohortTotal(cohorts: DashboardCohort[]): DashboardCohort {
+  const total = (pick: (c: DashboardCohort) => CohortCells): CohortCells => {
+    const returned: (number | null)[] = []
+    const share: (number | null)[] = []
+    DEMO_COHORT_DAYS.forEach((_, i) => {
+      const ready = cohorts.map(pick).filter((c) => c.returned[i] !== null)
+      if (!ready.length) {
+        returned.push(null)
+        share.push(null)
+        return
+      }
+      const count = ready.reduce((n, c) => n + (c.returned[i] ?? 0), 0)
+      returned.push(count)
+      share.push(demoRatio(count, ready.reduce((n, c) => n + c.size, 0)))
+    })
+    return { size: cohorts.reduce((n, c) => n + pick(c).size, 0), returned, share }
+  }
+  return {
+    day: null,
+    size: cohorts.reduce((n, c) => n + c.size, 0),
+    paid: cohorts.reduce((n, c) => n + c.paid, 0),
+    everyone: total((c) => c.everyone),
+    bought: total((c) => c.bought),
+    not_bought: total((c) => c.not_bought),
+  }
+}
+
+function demoDashboard(period: Period): Dashboard {
+  const overview = demoOverview(period)
+  const rnd = seeded(20261022)
+  const days: DashboardDay[] = overview.days.map((d) => {
+    const payments = rnd() < 0.55 ? Math.floor(rnd() * 3) : 0
+    return { ...d, paid_users: payments, payments, revenue: payments * 990 }
+  })
+  const t = overview.totals
+  const payments = days.reduce((n, d) => n + d.payments, 0)
+  const revenue = days.reduce((n, d) => n + d.revenue, 0)
+  const registeredPaid = Math.min(t.registered, Math.round(payments * 0.8))
+
+  const cohorts: DashboardCohort[] = overview.days
+    .filter((d) => d.registered > 0)
+    .map((d) => {
+      const paid = Math.floor(d.registered * 0.3)
+      const bought = demoCells(d.day, paid, 0.8, rnd)
+      const rest = demoCells(d.day, d.registered - paid, 0.45, rnd)
+      const returned = bought.returned.map((b, i) => (b === null ? null : b + (rest.returned[i] ?? 0)))
+      return {
+        day: d.day,
+        size: d.registered,
+        paid,
+        everyone: {
+          size: d.registered,
+          returned,
+          share: returned.map((v) => (v === null ? null : demoRatio(v, d.registered))),
+        },
+        bought,
+        not_bought: rest,
+      }
+    })
+
+  const hours = Array.from({ length: 24 }, (_, h) =>
+    Math.round((h >= 7 && h <= 9 ? 40 : h >= 19 && h <= 21 ? 55 : h >= 23 || h <= 5 ? 3 : 14) * (0.7 + rnd() * 0.6)),
+  )
+  const sessions = hours.reduce((n, v) => n + v, 0)
+  const partHours: Record<DayPartKey, number[]> = {
+    morning: [5, 6, 7, 8, 9, 10, 11],
+    day: [12, 13, 14, 15, 16],
+    evening: [17, 18, 19, 20, 21, 22],
+    night: [23, 0, 1, 2, 3, 4],
+  }
+  const today = localDate(Date.now())
+  const window = (size: number, labels: string[], users: number[]) => ({
+    date_from: localDate(Date.now() - (size - 1) * DAY_MS),
+    date_to: today,
+    days: size,
+    users: users.reduce((n, v) => n + v, 0),
+    buckets: labels.map((label, i) => ({ label, users: users[i] })),
+  })
+
+  const channelParts = DEMO_SOURCES.map((s) => ({ ...s, registered: Math.round(t.registered * s.part) }))
+  return {
+    date_from: period.from ?? null,
+    date_to: period.to ?? null,
+    totals: {
+      visits: t.visits,
+      guests: t.guests,
+      registered: t.registered,
+      registered_paid: registeredPaid,
+      paid_users: payments,
+      payments,
+      revenue,
+      average_check: payments ? 990 : null,
+      manual_grants: Math.floor(payments / 4),
+      currency: 'RUB',
+    },
+    conversions: {
+      visit_to_guest: demoRatio(t.guests, t.visits),
+      guest_to_register: demoRatio(t.registered, t.guests),
+      register_to_paid: demoRatio(registeredPaid, t.registered),
+      visit_to_paid: demoRatio(registeredPaid, t.visits),
+    },
+    days,
+    visits_since: overview.visits_since,
+    channels: channelParts
+      .map((c) => {
+        const paid = Math.round(registeredPaid * c.part)
+        return {
+          source: c.source,
+          visits: Math.round(t.visits * c.part),
+          guests: Math.round(t.guests * c.part),
+          registered: c.registered,
+          registered_paid: Math.min(c.registered, paid),
+          register_to_paid: demoRatio(Math.min(c.registered, paid), c.registered),
+          paid_users: paid,
+          revenue: paid * 990,
+        }
+      })
+      .sort((a, b) => b.revenue - a.revenue),
+    cohort_days: DEMO_COHORT_DAYS,
+    cohorts,
+    cohort_total: demoCohortTotal(cohorts),
+    behavior: {
+      active_users: t.active_users,
+      week: window(7, ['1', '2–3', '4–6', '7'], [21, 17, 9, 3]),
+      month: window(30, ['1', '2–3', '4–9', '10+'], [34, 29, 18, 7]),
+      active_days: 412,
+      multi_session_days: 61,
+      multi_session_share: demoRatio(61, 412),
+      sessions_per_day_median: 1,
+      sessions,
+      session_median_seconds: 486,
+      session_mean_seconds: 612.4,
+      day_parts: DEMO_PARTS.map((key) => {
+        const n = partHours[key].reduce((sum, h) => sum + hours[h], 0)
+        return { key, label: DEMO_PART_LABELS[key], sessions: n, share: demoRatio(n, sessions) }
+      }),
+      hours,
+      sessions_since: localDate(Date.now() - 89 * DAY_MS),
+    },
+  }
+}
+
+/** Человек воронок → строка таблицы людей окна аналитики. */
+function demoPerson(p: FunnelUser): DashboardPerson {
+  const i = Number(p.user_id.split('-').pop()) || 0
+  return {
+    user_id: p.user_id,
+    email: p.email,
+    registered_at: p.registered_at,
+    funnel: p.funnel,
+    source: demoSourceOf(p) || null,
+    paid: p.paid,
+    tariff: typeof p.tariff === 'string' ? p.tariff : null,
+    paid_amount: p.paid_amount,
+    paid_at: p.paid ? p.last_activity_at : null,
+    active_days: p.active_days,
+    sessions: p.workouts,
+    minutes: Math.floor(p.total_seconds / 60),
+    last_active_at: p.last_activity_at,
+    favorite_part: p.active_days ? DEMO_PARTS[i % 3 === 0 ? 0 : i % 3 === 1 ? 2 : 1] : null,
+    days_since_registration: Math.floor((Date.now() - Date.parse(p.registered_at)) / DAY_MS),
+  }
+}
+
 export function createDemoAdminApi(): AdminApi {
   const people = demoFunnelPeople()
   const DEMO_TOKEN = 'demo-admin'
@@ -1476,6 +1669,45 @@ export function createDemoAdminApi(): AdminApi {
     async overview(token, period) {
       check(token)
       return demoOverview(period)
+    },
+
+    async dashboard(token, period) {
+      check(token)
+      return demoDashboard(period)
+    },
+
+    async dashboardPeople(token, period, search) {
+      check(token)
+      const needle = search.trim().toLowerCase()
+      const found = people
+        .filter((p) => (needle ? p.email.toLowerCase().includes(needle) : inPeriod(p, period)))
+        .map(demoPerson)
+        .sort((a, b) => b.active_days - a.active_days || (b.last_active_at ?? '').localeCompare(a.last_active_at ?? ''))
+      return { total: found.length, limit: 200, items: found.slice(0, 200) }
+    },
+
+    async userActivity(token, userId) {
+      check(token)
+      const p = people.find((x) => x.user_id === userId)
+      if (!p) throw new ApiError(404, 'USER_NOT_FOUND', 'Пользователь не найден')
+      const rnd = seeded(p.email.length * 7919)
+      const start = Date.parse(p.registered_at)
+      const days = Array.from({ length: p.active_days }, (_, i) => {
+        const seconds = 180 + Math.floor(rnd() * 900)
+        return { day: localDate(start + i * 2 * DAY_MS), minutes: Math.floor(seconds / 60), seconds, sessions: 1 + Math.floor(rnd() * 2) }
+      }).reverse()
+      const sessions = days.slice(0, 50).map((d) => {
+        const hour = [7, 8, 13, 19, 20][Math.floor(rnd() * 5)]
+        const part: DayPartKey = hour < 12 ? 'morning' : hour < 17 ? 'day' : 'evening'
+        return {
+          started_at: `${d.day}T${String(hour).padStart(2, '0')}:15:00+03:00`,
+          local_date: d.day,
+          local_time: `${String(hour).padStart(2, '0')}:15`,
+          day_part: part,
+          seconds: d.seconds,
+        }
+      })
+      return { user_id: p.user_id, email: p.email, timezone: 'Europe/Moscow', registered_at: p.registered_at, days, sessions }
     },
 
     async summary(token, period) {

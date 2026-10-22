@@ -1,7 +1,7 @@
 /**
- * Админские ручки: общая статистика сайта, аналитика воронок, посты и
- * рассылки, опрос — только для страницы /admin. Там же оплаты без доступа и
- * их ручной разбор.
+ * Админские ручки: единое окно аналитики (с 22.10.2026), общая статистика
+ * сайта, аналитика воронок, посты и рассылки, опрос — только для страницы
+ * /admin. Там же оплаты без доступа и их ручной разбор.
  *
  * Отдельно от client.ts намеренно: у администратора свой токен и своя
  * жизнь. Токен лежит в sessionStorage (закрыл вкладку — вышел) и никогда не
@@ -180,6 +180,132 @@ export type Overview = {
   days: OverviewDay[]
   /** Первый записанный заход на сайт (YYYY-MM-DD); null — заходов ещё нет. */
   visits_since: string | null
+}
+
+/* ——— Единое окно аналитики (/admin, docs/STATS.md бэкенда, раздел 12) ——— */
+
+/** Доли — от 0 до 1; null — считать не от чего или день ещё не наступил. */
+export type DashboardTotals = {
+  visits: number
+  guests: number
+  registered: number
+  /** Из зарегистрированных за период — оплатили когда-либо. */
+  registered_paid: number
+  /** Люди и штуки оплат за период (по дате оплаты), только деньги из GetCourse. */
+  paid_users: number
+  payments: number
+  revenue: number
+  average_check: number | null
+  /** Ручные выдачи доступа — штуки, в выручку не входят. */
+  manual_grants: number
+  currency: string
+}
+
+export type DashboardConversions = {
+  visit_to_guest: number | null
+  /** Может быть больше 1: регистрируются не только гости. */
+  guest_to_register: number | null
+  register_to_paid: number | null
+  visit_to_paid: number | null
+}
+
+export type DashboardDay = OverviewDay & { paid_users: number; payments: number; revenue: number }
+
+/** Метка ссылки (meta.src); '' — без метки. Оплата — по метке регистрации плательщика. */
+export type DashboardChannel = {
+  source: string
+  visits: number
+  guests: number
+  registered: number
+  registered_paid: number
+  register_to_paid: number | null
+  paid_users: number
+  revenue: number
+}
+
+export type CohortCells = { size: number; returned: (number | null)[]; share: (number | null)[] }
+
+export type DashboardCohort = {
+  /** День регистрации; у строки «все когорты» — null. */
+  day: string | null
+  size: number
+  paid: number
+  everyone: CohortCells
+  bought: CohortCells
+  not_bought: CohortCells
+}
+
+export type FrequencyWindow = {
+  date_from: string
+  date_to: string
+  days: number
+  users: number
+  buckets: { label: string; users: number }[]
+}
+
+export type DayPartKey = 'morning' | 'day' | 'evening' | 'night'
+
+export type DashboardBehavior = {
+  active_users: number
+  week: FrequencyWindow
+  month: FrequencyWindow
+  active_days: number
+  multi_session_days: number
+  multi_session_share: number | null
+  sessions_per_day_median: number | null
+  sessions: number
+  session_median_seconds: number | null
+  session_mean_seconds: number | null
+  day_parts: { key: DayPartKey; label: string; sessions: number; share: number | null }[]
+  /** 24 числа: тренировок, начатых в час 0…23 по поясу человека. */
+  hours: number[]
+  /** С какого дня есть данные о тренировках; null — их нет. */
+  sessions_since: string | null
+}
+
+export type Dashboard = {
+  date_from: string | null
+  date_to: string | null
+  totals: DashboardTotals
+  conversions: DashboardConversions
+  /** От новых к старым. */
+  days: DashboardDay[]
+  visits_since: string | null
+  channels: DashboardChannel[]
+  /** Дни возвращаемости: [1, 3, 7, 14, 30]. */
+  cohort_days: number[]
+  cohorts: DashboardCohort[]
+  cohort_total: DashboardCohort
+  behavior: DashboardBehavior
+}
+
+export type DashboardPerson = {
+  user_id: string
+  email: string
+  registered_at: string
+  funnel: string | null
+  source: string | null
+  paid: boolean
+  tariff: string | null
+  paid_amount: number | null
+  paid_at: string | null
+  active_days: number
+  sessions: number
+  minutes: number
+  last_active_at: string | null
+  favorite_part: DayPartKey | null
+  days_since_registration: number
+}
+
+export type DashboardPeople = { total: number; limit: number; items: DashboardPerson[] }
+
+export type UserActivity = {
+  user_id: string
+  email: string
+  timezone: string
+  registered_at: string
+  days: { day: string; minutes: number; seconds: number; sessions: number }[]
+  sessions: { started_at: string; local_date: string; local_time: string; day_part: DayPartKey; seconds: number }[]
 }
 
 export type UsersQuery = { funnel: Funnel; page: number; per_page: number; sort: UsersSort }
@@ -417,6 +543,12 @@ export interface AdminApi {
   login(email: string, password: string): Promise<string>
   /** Общая статистика сайта за период и по дням. */
   overview(token: string, period: Period): Promise<Overview>
+  /** Единое окно аналитики: всё, кроме таблицы людей. */
+  dashboard(token: string, period: Period): Promise<Dashboard>
+  /** Люди периода (до 200); с поиском по почте — среди всех. */
+  dashboardPeople(token: string, period: Period, search: string): Promise<DashboardPeople>
+  /** Карточка человека: по дням и последние тренировки. */
+  userActivity(token: string, userId: string): Promise<UserActivity>
   summary(token: string, period: Period): Promise<FunnelSummary[]>
   users(token: string, query: UsersQuery): Promise<FunnelUsersPage>
   usersCsv(token: string, funnel: Funnel): Promise<Blob>
@@ -559,6 +691,21 @@ function createHttpAdminApi(rawBase: string): AdminApi {
     overview: (token, period) =>
       json<Overview>(send('GET', `/admin/overview${query({ from: period.from, to: period.to })}`, token)),
 
+    dashboard: (token, period) =>
+      json<Dashboard>(send('GET', `/admin/dashboard${query({ from: period.from, to: period.to })}`, token)),
+
+    dashboardPeople: (token, period, search) =>
+      json<DashboardPeople>(
+        send(
+          'GET',
+          `/admin/dashboard/people${query({ from: period.from, to: period.to, search: search.trim() })}`,
+          token,
+        ),
+      ),
+
+    userActivity: (token, userId) =>
+      json<UserActivity>(send('GET', `/admin/users/${encodeURIComponent(userId)}/activity`, token)),
+
     async summary(token, period) {
       const data = await json<{ funnels: FunnelSummary[] }>(
         send('GET', `/admin/funnels/summary${query({ from: period.from, to: period.to })}`, token),
@@ -660,6 +807,9 @@ function lazyDemoAdminApi(): AdminApi {
     isDemo: true,
     login: (email, password) => impl().then((a) => a.login(email, password)),
     overview: (token, period) => impl().then((a) => a.overview(token, period)),
+    dashboard: (token, period) => impl().then((a) => a.dashboard(token, period)),
+    dashboardPeople: (token, period, search) => impl().then((a) => a.dashboardPeople(token, period, search)),
+    userActivity: (token, userId) => impl().then((a) => a.userActivity(token, userId)),
     summary: (token, period) => impl().then((a) => a.summary(token, period)),
     users: (token, q) => impl().then((a) => a.users(token, q)),
     usersCsv: (token, funnel) => impl().then((a) => a.usersCsv(token, funnel)),

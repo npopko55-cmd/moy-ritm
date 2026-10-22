@@ -323,7 +323,8 @@
 .admin__sections { margin-top: 18px; }
 .admin__sections .chip { flex: 0 1 auto; }
 
-/* ═══════ Общая статистика (/admin, AdminOverview.tsx) ═══════
+/* ═══════ Общая статистика (AdminOverview.tsx; плитки и полоса заходов —
+   и в окне аналитики) ═══════
    Итоги — плитки с подписью, числом и мелкой строкой, как шаги воронки
    (те же классы admin__step-*). По дням — та же таблица, что у людей, но
    уже, и в «Заходах» — полоска от самого людного дня периода. */
@@ -507,6 +508,225 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 12px;
+}
+
+/* ═══════ Единое окно аналитики (/admin, AdminAnalytics.tsx) ═══════
+   Без графических библиотек: полоса — блок с шириной в процентах, тепловая
+   таблица — фон ячейки, смешанный из розового и белого по доле. Таблицы —
+   те же admin__table в рамке admin__scroll: на телефоне прокручиваются вбок
+   внутри себя, страница не расползается. */
+
+.analytics__bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--gray-100);
+  overflow: hidden;
+}
+
+.analytics__bar > span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: var(--pink-500);
+}
+
+.analytics__muted { font-size: 12.5px; font-weight: 500; color: var(--gray-500); }
+p.analytics__muted { margin: 8px 0 0; line-height: 1.4; }
+
+/* Воронка шагов: подпись и число над полосой, доля перехода под ней. */
+.analytics__funnel {
+  display: grid;
+  gap: 14px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.analytics__funnel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.analytics__funnel-label { font-size: 14px; font-weight: 600; color: var(--ink-800); }
+
+.analytics__funnel-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics__funnel-pct { display: block; margin-top: 4px; font-size: 12.5px; color: var(--gray-500); }
+
+.analytics__funnel-step.is-worst .analytics__bar > span { background: var(--orange-500); }
+.analytics__funnel-step.is-worst .analytics__funnel-pct { color: var(--orange-600); font-weight: 700; }
+
+/* Экономика: поле расходов. */
+.analytics__spend {
+  display: grid;
+  gap: 6px;
+  max-width: 360px;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-800);
+}
+
+.analytics__spend input,
+.analytics__search {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink-900);
+  background: var(--white);
+}
+
+.analytics__search { display: block; max-width: 360px; margin-top: 12px; }
+
+.analytics__spend input:focus,
+.analytics__search:focus { outline: 2px solid var(--pink-200); border-color: var(--pink-400); }
+
+/* Возвращаемость: тепловая таблица. */
+.analytics__chips { margin-top: 12px; }
+
+.admin__table.analytics__cohorts { min-width: 620px; }
+
+.analytics__heat { min-width: 70px; color: var(--ink-900); }
+.analytics__heat.is-strong { color: var(--white); }
+.analytics__heat.is-future { color: var(--gray-300); background: var(--bg-panel); }
+
+.analytics__heat-count {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.analytics__cohort-total td { font-weight: 700; border-bottom: 2px solid var(--gray-200); }
+
+/* Поведение: блоки сеткой, на телефоне — один под другим. */
+.analytics__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 22px 28px;
+  margin-top: 14px;
+}
+
+.analytics__block { min-width: 0; }
+.analytics__block .admin__letters-title { margin-top: 0; }
+
+.analytics__rows { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+
+.analytics__row {
+  display: grid;
+  grid-template-columns: minmax(84px, 1.1fr) minmax(40px, 1.4fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--ink-800);
+}
+
+.analytics__row-label { min-width: 0; overflow-wrap: anywhere; }
+
+.analytics__row-value {
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics__row-pct { font-weight: 500; color: var(--gray-500); }
+
+.analytics__facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  margin: 10px 0 0;
+  font-size: 13.5px;
+}
+
+.analytics__facts dt { color: var(--gray-600); }
+.analytics__facts dd { margin: 0; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 24 часа — столбики по высоте. */
+.analytics__hours {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  align-items: end;
+  gap: 2px;
+  height: 64px;
+  margin-top: 14px;
+}
+
+.analytics__hour { display: flex; align-items: flex-end; height: 100%; }
+
+.analytics__hour > span {
+  display: block;
+  width: 100%;
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: var(--pink-400);
+}
+
+.analytics__hours-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--gray-400);
+}
+
+.admin__table.analytics__channels { min-width: 760px; }
+.admin__table.analytics__days { min-width: 860px; }
+
+/* Люди: почта — кнопка, под строкой раскрывается карточка. */
+.analytics__person-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--pink-600);
+  text-align: left;
+  cursor: pointer;
+}
+
+.analytics__person.is-open td { background: var(--pink-50); }
+
+.admin__table .analytics__card-row > td { white-space: normal; background: var(--bg-panel); }
+
+/* Карточка держится у левого края рамки, даже если таблицу прокрутили вбок,
+   и не шире видимой части — на телефоне её не надо листать. */
+.analytics__card {
+  position: sticky;
+  left: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 18px 28px;
+  max-width: min(960px, calc(100vw - 72px));
+  padding: 6px 0;
+}
+
+.analytics__sessions { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 13.5px; }
+
+.analytics__sessions li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: baseline;
+}
+
+@media (hover: hover) {
+  .analytics__person-btn:hover { text-decoration: underline; }
 }
 
 /* Телефон: воронки одна под другой. */

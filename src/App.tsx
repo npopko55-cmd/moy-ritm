@@ -193,15 +193,18 @@ export default function App() {
             }
           />
 
-          {/* Админка для владельца: главная — общая статистика, воронки —
-              /admin/funnels. Ссылок на неё нет; вход — свой,
-              администраторский (src/api/admin.ts). */}
+          {/* Админка для владельца: главная — единое окно аналитики, рядом
+              оплаты и посты. Ссылок на неё нет; вход — свой,
+              администраторский (src/api/admin.ts). Прежние разделы
+              «Воронки», «Поведение» и «Опрос» убраны 22.10.2026 — их адреса
+              ведут на главную админки, чтобы старые закладки не вели на
+              лендинг. */}
           <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/funnels" element={<Admin />} />
           <Route path="/admin/posts" element={<Admin />} />
-          <Route path="/admin/behavior" element={<Admin />} />
-          <Route path="/admin/survey" element={<Admin />} />
           <Route path="/admin/payments" element={<Admin />} />
+          <Route path="/admin/funnels" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin/behavior" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin/survey" element={<Navigate to="/admin" replace />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
