@@ -182,122 +182,142 @@ export type Overview = {
   visits_since: string | null
 }
 
-/* ——— Единое окно аналитики (/admin, docs/STATS.md бэкенда, раздел 12) ——— */
+/* ——— Окно «Аналитика» (/admin, docs/STATS.md бэкенда, раздел 12) ———
+   С 23.10.2026 — короткий экран главных цифр: «есть ли спрос и держит ли
+   продукт людей». Доли — от 0 до 1; null — считать не от чего или рано. */
 
-/** Доли — от 0 до 1; null — считать не от чего или день ещё не наступил. */
-export type DashboardTotals = {
-  visits: number
-  guests: number
+/** Доля со знаменателем: «42% — 21 из 50». */
+export type Share = { count: number; base: number; share: number | null }
+
+export type ActiveWeek = {
+  /** Последние 7 дней периода (по дню человека), не позже сегодня. */
+  date_from: string
+  date_to: string
+  days: number
+  /** Разные люди с движением в окне (WAU). */
+  users: number
+  /** В среднем людей с движением за день (DAU) и липкость = DAU / WAU. */
+  dau_average: number | null
+  stickiness: number | null
+}
+
+export type DashboardHeadline = {
   registered: number
-  /** Из зарегистрированных за период — оплатили когда-либо. */
-  registered_paid: number
-  /** Люди и штуки оплат за период (по дате оплаты), только деньги из GetCourse. */
-  paid_users: number
+  /** Засчитанная тренировка в день регистрации (по поясу человека). */
+  activation: Share
+  /** Движение в один из дней 1–7 после регистрации; база — у кого 7-й день прошёл. */
+  week_return: Share
   payments: number
+  paid_users: number
   revenue: number
-  average_check: number | null
-  /** Ручные выдачи доступа — штуки, в выручку не входят. */
-  manual_grants: number
   currency: string
+  /** Из зарегистрированных за период — оплатили когда-либо. */
+  paid_conversion: Share
+  active_week: ActiveWeek
 }
 
-export type DashboardConversions = {
-  visit_to_guest: number | null
-  /** Может быть больше 1: регистрируются не только гости. */
-  guest_to_register: number | null
-  register_to_paid: number | null
-  visit_to_paid: number | null
-}
+export type TrendDay = { day: string; registered: number; payments: number; revenue: number }
 
-export type DashboardDay = OverviewDay & { paid_users: number; payments: number; revenue: number }
+/** Последние 30 дней периода, от старых к новым. */
+export type DashboardTrend = { date_from: string; date_to: string; days: TrendDay[] }
 
-/** Метка ссылки (meta.src); '' — без метки. Оплата — по метке регистрации плательщика. */
+/** Метка ссылки (meta.src); '' — без метки. Выручка — по метке регистрации плательщика. */
 export type DashboardChannel = {
   source: string
   visits: number
   guests: number
   registered: number
-  registered_paid: number
-  register_to_paid: number | null
-  paid_users: number
+  activation: Share
+  /** Из зарегистрированных за период с меткой — оплатили когда-либо. */
+  paid: Share
   revenue: number
 }
 
-export type CohortCells = { size: number; returned: (number | null)[]; share: (number | null)[] }
+export type ReturnWindow = { key: string; label: string; day_from: number; day_to: number }
 
-export type DashboardCohort = {
-  /** День регистрации; у строки «все когорты» — null. */
-  day: string | null
+export type CohortRow = {
+  /** Понедельник недели регистрации; у строк «Купили» / «Не купили» — null. */
+  week: string | null
   size: number
-  paid: number
-  everyone: CohortCells
-  bought: CohortCells
-  not_bought: CohortCells
+  activation: Share
+  /** По окнам; null — окно ещё не прошло ни у кого. */
+  returns: (Share | null)[]
 }
 
-export type FrequencyWindow = {
-  date_from: string
-  date_to: string
-  days: number
-  users: number
-  buckets: { label: string; users: number }[]
+export type DashboardCohorts = {
+  windows: ReturnWindow[]
+  /** Последние 8 недель периода, от новых к старым. */
+  weeks: CohortRow[]
+  weeks_total: number
+  bought: CohortRow
+  not_bought: CohortRow
 }
 
 export type DayPartKey = 'morning' | 'day' | 'evening' | 'night'
 
-export type DashboardBehavior = {
+export type DashboardHabit = {
   active_users: number
-  week: FrequencyWindow
-  month: FrequencyWindow
-  active_days: number
-  multi_session_days: number
-  multi_session_share: number | null
-  sessions_per_day_median: number | null
+  /** «1», «2–3», «4+» дней с движением за неделю «Активных за неделю». */
+  frequency: { label: string; users: number; share: number | null }[]
+  workouts_per_week_median: number | null
   sessions: number
   session_median_seconds: number | null
-  session_mean_seconds: number | null
   day_parts: { key: DayPartKey; label: string; sessions: number; share: number | null }[]
-  /** 24 числа: тренировок, начатых в час 0…23 по поясу человека. */
-  hours: number[]
   /** С какого дня есть данные о тренировках; null — их нет. */
   sessions_since: string | null
 }
 
-export type Dashboard = {
-  date_from: string | null
-  date_to: string | null
-  totals: DashboardTotals
-  conversions: DashboardConversions
-  /** От новых к старым. */
-  days: DashboardDay[]
-  visits_since: string | null
-  channels: DashboardChannel[]
-  /** Дни возвращаемости: [1, 3, 7, 14, 30]. */
-  cohort_days: number[]
-  cohorts: DashboardCohort[]
-  cohort_total: DashboardCohort
-  behavior: DashboardBehavior
+export type ExpiringAccess = {
+  user_id: string
+  email: string
+  telegram_username: string | null
+  paid_until: string
+  tariff: string | null
 }
 
+export type DashboardMoney = {
+  tariffs: { tariff: string | null; payments: number; revenue: number }[]
+  average_check: number | null
+  revenue_per_registration: number | null
+  /** Продления — за всё время, от периода не зависят. */
+  renewals: {
+    window_days: number
+    grace_days: number
+    expiring_total: number
+    expiring: ExpiringAccess[]
+    expired: number
+    renewed: number
+    renewal_share: number | null
+  }
+}
+
+/** Самые активные и найденные поиском — всё за всё время. */
 export type DashboardPerson = {
   user_id: string
   email: string
-  registered_at: string
-  funnel: string | null
-  source: string | null
-  paid: boolean
-  tariff: string | null
-  paid_amount: number | null
-  paid_at: string | null
+  telegram_username: string | null
   active_days: number
-  sessions: number
+  workouts: number
   minutes: number
   last_active_at: string | null
-  favorite_part: DayPartKey | null
-  days_since_registration: number
+  paid: boolean
+  tariff: string | null
 }
 
-export type DashboardPeople = { total: number; limit: number; items: DashboardPerson[] }
+export type DashboardPeople = { items: DashboardPerson[] }
+
+export type Dashboard = {
+  date_from: string | null
+  date_to: string | null
+  headline: DashboardHeadline
+  trend: DashboardTrend
+  channels: DashboardChannel[]
+  cohorts: DashboardCohorts
+  habit: DashboardHabit
+  money: DashboardMoney
+  /** Топ-20 по дням с движением за всё время. */
+  top: DashboardPerson[]
+}
 
 export type UserActivity = {
   user_id: string
@@ -546,7 +566,7 @@ export interface AdminApi {
   /** Единое окно аналитики: всё, кроме таблицы людей. */
   dashboard(token: string, period: Period): Promise<Dashboard>
   /** Люди периода (до 200); с поиском по почте — среди всех. */
-  dashboardPeople(token: string, period: Period, search: string): Promise<DashboardPeople>
+  dashboardPeople(token: string, search: string): Promise<DashboardPeople>
   /** Карточка человека: по дням и последние тренировки. */
   userActivity(token: string, userId: string): Promise<UserActivity>
   summary(token: string, period: Period): Promise<FunnelSummary[]>
@@ -694,15 +714,8 @@ function createHttpAdminApi(rawBase: string): AdminApi {
     dashboard: (token, period) =>
       json<Dashboard>(send('GET', `/admin/dashboard${query({ from: period.from, to: period.to })}`, token)),
 
-    dashboardPeople: (token, period, search) =>
-      json<DashboardPeople>(
-        send(
-          'GET',
-          `/admin/dashboard/people${query({ from: period.from, to: period.to, search: search.trim() })}`,
-          token,
-        ),
-      ),
-
+    dashboardPeople: (token, search) =>
+      json<DashboardPeople>(send('GET', `/admin/dashboard/people${query({ search: search.trim() })}`, token)),
     userActivity: (token, userId) =>
       json<UserActivity>(send('GET', `/admin/users/${encodeURIComponent(userId)}/activity`, token)),
 
@@ -808,7 +821,7 @@ function lazyDemoAdminApi(): AdminApi {
     login: (email, password) => impl().then((a) => a.login(email, password)),
     overview: (token, period) => impl().then((a) => a.overview(token, period)),
     dashboard: (token, period) => impl().then((a) => a.dashboard(token, period)),
-    dashboardPeople: (token, period, search) => impl().then((a) => a.dashboardPeople(token, period, search)),
+    dashboardPeople: (token, search) => impl().then((a) => a.dashboardPeople(token, search)),
     userActivity: (token, userId) => impl().then((a) => a.userActivity(token, userId)),
     summary: (token, period) => impl().then((a) => a.summary(token, period)),
     users: (token, q) => impl().then((a) => a.users(token, q)),

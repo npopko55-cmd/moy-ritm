@@ -510,11 +510,87 @@
   margin-top: 12px;
 }
 
-/* ═══════ Единое окно аналитики (/admin, AdminAnalytics.tsx) ═══════
-   Без графических библиотек: полоса — блок с шириной в процентах, тепловая
-   таблица — фон ячейки, смешанный из розового и белого по доле. Таблицы —
-   те же admin__table в рамке admin__scroll: на телефоне прокручиваются вбок
-   внутри себя, страница не расползается. */
+/* ═══════ Окно «Аналитика» (/admin, AdminAnalytics.tsx) ═══════
+   С 23.10.2026 — короткий экран главных цифр. Без графических библиотек:
+   полоса — блок с шириной в процентах, столбик тренда — с высотой в
+   процентах, ячейка возврата — фон, смешанный из розового и белого по доле.
+   Таблицы — те же admin__table в рамке admin__scroll: на телефоне
+   прокручиваются вбок внутри себя, страница не расползается. */
+
+/* Шесть главных цифр: на ноутбуке — три в ряд (две строки), на телефоне —
+   одна под другой. Плитки — те же overview__tile, что в общей статистике. */
+.analytics__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* Тренд за 30 дней: на день — две узкие полосы рядом (регистрации и
+   оплаты), общая шкала. Высота — не больше 120 px, чтобы карточка не
+   разрасталась. */
+.analytics__trend-wrap { margin-top: 18px; }
+
+.analytics__trend-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+
+.analytics__trend-head .admin__letters-title { margin: 0; }
+
+.analytics__legend { font-size: 12.5px; color: var(--gray-600); }
+
+.analytics__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 4px 0 10px;
+  border-radius: 2px;
+  vertical-align: 0;
+}
+
+.analytics__dot.is-reg,
+.analytics__trend-bar.is-reg { background: var(--pink-500); }
+.analytics__dot.is-pay,
+.analytics__trend-bar.is-pay { background: var(--violet-500); }
+
+.analytics__trend {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 3px;
+  height: 120px;
+  margin-top: 10px;
+  padding-bottom: 1px;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.analytics__trend-day {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  height: 100%;
+}
+
+.analytics__trend-bar {
+  display: block;
+  width: 45%;
+  max-width: 8px;
+  border-radius: 2px 2px 0 0;
+}
+
+.analytics__trend-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--gray-400);
+}
 
 .analytics__bar {
   display: block;
@@ -535,39 +611,6 @@
 .analytics__muted { font-size: 12.5px; font-weight: 500; color: var(--gray-500); }
 p.analytics__muted { margin: 8px 0 0; line-height: 1.4; }
 
-/* Воронка шагов: подпись и число над полосой, доля перехода под ней. */
-.analytics__funnel {
-  display: grid;
-  gap: 14px;
-  margin: 14px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.analytics__funnel-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-
-.analytics__funnel-label { font-size: 14px; font-weight: 600; color: var(--ink-800); }
-
-.analytics__funnel-value {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--ink-900);
-  font-variant-numeric: tabular-nums;
-}
-
-.analytics__funnel-pct { display: block; margin-top: 4px; font-size: 12.5px; color: var(--gray-500); }
-.analytics__funnel-main { font-weight: 700; color: var(--ink-800); }
-
-.analytics__funnel-step.is-worst .analytics__bar > span { background: var(--orange-500); }
-.analytics__funnel-step.is-worst .analytics__funnel-pct { color: var(--orange-600); font-weight: 700; }
-.analytics__funnel-step.is-worst .analytics__funnel-main { color: inherit; }
-
 .analytics__search {
   width: 100%;
   min-width: 0;
@@ -586,13 +629,6 @@ p.analytics__muted { margin: 8px 0 0; line-height: 1.4; }
 
 /* Возвращаемость: тепловая таблица. */
 
-/* Две группы переключателей рядом: кого считаем и шаг (дни / недели). */
-.analytics__toolbar { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 12px; }
-
-/* «Показать все (N)» под длинной таблицей — по ширине текста, не во всю строку. */
-.analytics__more { margin-top: 12px; }
-.analytics__more .chip { flex: 0 1 auto; }
-
 .admin__table.analytics__cohorts { min-width: 620px; }
 
 .analytics__heat { min-width: 70px; color: var(--ink-900); }
@@ -606,7 +642,17 @@ p.analytics__muted { margin: 8px 0 0; line-height: 1.4; }
   opacity: 0.75;
 }
 
-.analytics__cohort-total td { font-weight: 700; border-bottom: 2px solid var(--gray-200); }
+.admin__table.analytics__cohorts th .admin__cell-pct { display: block; font-weight: 500; }
+
+/* Итоговые строки «Купили» и «Не купили» под неделями: жирные, отделены чертой. */
+.analytics__cohort-sum td { font-weight: 700; }
+tr:not(.analytics__cohort-sum) + .analytics__cohort-sum td { border-top: 2px solid var(--gray-200); }
+
+/* Средний чек и выручка на регистрацию — под тарифами, через черту. */
+.analytics__facts--sum { padding-top: 10px; border-top: 1px solid var(--gray-100); }
+
+/* Список истекающих доступов — под блоками «Деньги и продления». */
+.analytics__expiring { margin-top: 16px; }
 
 /* Поведение: блоки сеткой, на телефоне — один под другим. */
 .analytics__grid {
@@ -652,36 +698,7 @@ p.analytics__muted { margin: 8px 0 0; line-height: 1.4; }
 .analytics__facts dt { color: var(--gray-600); }
 .analytics__facts dd { margin: 0; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* 24 часа — столбики по высоте. */
-.analytics__hours {
-  display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
-  align-items: end;
-  gap: 2px;
-  height: 64px;
-  margin-top: 14px;
-}
-
-.analytics__hour { display: flex; align-items: flex-end; height: 100%; }
-
-.analytics__hour > span {
-  display: block;
-  width: 100%;
-  min-height: 1px;
-  border-radius: 2px 2px 0 0;
-  background: var(--pink-400);
-}
-
-.analytics__hours-axis {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--gray-400);
-}
-
-.admin__table.analytics__channels { min-width: 760px; }
-.admin__table.analytics__days { min-width: 860px; }
+.admin__table.analytics__channels { min-width: 820px; }
 
 /* Люди: почта — кнопка, под строкой раскрывается карточка. */
 .analytics__person-btn {
