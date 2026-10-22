@@ -10,10 +10,13 @@
  *
  * Сверху вниз: период → итоги → воронка шагов с конверсиями и самым большим
  * провалом → экономика (расходы вводятся руками и живут только в этом
- * браузере) → возвращаемость по дням регистрации (тепловая таблица, все /
- * купили / не купили) → поведение (частота, тренировки, время суток) →
- * каналы (метки ссылок) → по дням → люди с поиском и карточкой человека,
- * которая раскрывается прямо в таблице (всплывающих окон в продукте нет).
+ * браузере) → возвращаемость по дням или неделям регистрации (тепловая
+ * таблица, все / купили / не купили) → поведение (частота, тренировки, время
+ * суток) → каналы (метки ссылок) → по дням → люди с поиском и карточкой
+ * человека, которая раскрывается прямо в таблице (всплывающих окон в
+ * продукте нет). Длинные таблицы (возвращаемость, по дням) по умолчанию
+ * свёрнуты до последних строк: за всё время они растягивались на тысячи
+ * пикселей.
  *
  * Данные — три запроса: окно целиком (/admin/dashboard), таблица людей
  * (/admin/dashboard/people, повторяется при поиске) и карточка человека по
@@ -22,7 +25,7 @@
  * Графических библиотек нет: полосы — это ширина блока в процентах.
  */
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   adminApi,
   type CohortCells,
@@ -64,7 +67,9 @@ const dayText = (day: string) =>
   dayDate(day).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
 /** «13.10». */
-const shortDay = (day: string) => dayDate(day).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+const shortDate = (date: Date) => date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+
+const shortDay = (day: string) => shortDate(dayDate(day))
 
 /** «пн». */
 const weekday = (day: string) => dayDate(day).toLocaleDateString('ru-RU', { weekday: 'short' })
@@ -241,9 +246,14 @@ function FunnelSteps({ data }: { data: Dashboard | null }) {
     },
   ]
   const top = Math.max(1, ...steps.map((s) => s.value))
-  // Где теряем больше всего — шаг с самой низкой долей перехода. Доля
-  // больше единицы (регистрируются не только гости) провалом не бывает.
-  const candidates = steps.filter((s) => s.share !== null && s.share < 1)
+  const visits = t?.visits ?? 0
+  // Доля от предыдущего шага осмысленна, только пока она не больше 100%:
+  // ссылки /go/… ведут сразу на регистрацию, поэтому регистраций бывает
+  // больше, чем гостей, и «174% от гостей» ничего не говорит.
+  const meaningful = (s: (typeof steps)[number]) => s.share !== null && s.share <= 1
+  // Где теряем больше всего — шаг с самой низкой осмысленной долей перехода.
+  // Переход без потерь (ровно 100%) провалом не считаем.
+  const candidates = steps.filter((s) => meaningful(s) && (s.share ?? 1) < 1)
   const worst = candidates.length
     ? candidates.reduce((a, b) => ((b.share ?? 1) < (a.share ?? 1) ? b : a))
     : null
@@ -264,19 +274,32 @@ function FunnelSteps({ data }: { data: Dashboard | null }) {
                 <span className="analytics__bar" aria-hidden="true">
                   <span style={{ width: `${(s.value / top) * 100}%` }} />
                 </span>
-                {i > 0 && (
-                  <span className="analytics__funnel-pct">
-                    {pct(s.share)} от предыдущего шага
-                    {worst === s && ' · здесь теряем больше всего'}
-                  </span>
-                )}
+                <span className="analytics__funnel-pct">
+                  {i === 0 ? (
+                    visits ? (
+                      'от этого шага считаем остальные'
+                    ) : (
+                      'заходов не было — считать не от чего'
+                    )
+                  ) : (
+                    <>
+                      <span className="analytics__funnel-main">
+                        {visits ? pct(s.value / visits) : '—'} от заходов на сайт
+                      </span>
+                      {/* У второго шага предыдущий — и есть заходы: та же цифра дважды не нужна. */}
+                      {i > 1 && meaningful(s) && ` · ${pct(s.share)} от предыдущего шага`}
+                      {worst === s && ' · здесь теряем больше всего'}
+                    </>
+                  )}
+                </span>
               </li>
             ))}
           </ol>
           <p className="admin__period-note">
-            Сквозная конверсия из захода в оплату — {pct(c?.visit_to_paid)}. Шаги считаются за
-            период каждый сам по себе, поэтому регистраций бывает больше, чем гостей: регистрируются
-            не только гости. «Оплатили» — из зарегистрированных за период, оплата в любой момент.
+            Главная цифра — доля от заходов на сайт; у «Оплатили» это и есть сквозная конверсия, сейчас{' '}
+            {pct(c?.visit_to_paid)}. Процент от предыдущего шага — только где он не больше 100%:
+            регистрируются не только гости. «Оплатили» — из зарегистрированных за период, оплата в
+            любой момент.
           </p>
         </>
       )}
@@ -387,14 +410,157 @@ const COHORT_GROUPS: { group: CohortGroup; label: string }[] = [
   { group: 'not_bought', label: 'Не купили' },
 ]
 
+type CohortStep = 'day' | 'week'
+
+const COHORT_STEPS: { step: CohortStep; label: string }[] = [
+  { step: 'day', label: 'По дням' },
+  { step: 'week', label: 'По неделям' },
+]
+
+/** Больше стольких дневных когорт — по умолчанию показываем недели. */
+const COHORT_WEEKLY_AFTER = 21
+
+/** Сколько строк возвращаемости видно, пока не нажали «Показать все». */
+const COHORT_ROWS = 12
+
+/**
+ * Ячейки строки и знаменатель доли по каждому столбцу. В неделе и в итоге
+ * в столбец входят только когорты, дожившие до этого дня, поэтому «из
+ * скольких» у столбцов разное, а не размер строки целиком.
+ */
+type HeatCells = CohortCells & { base: (number | null)[] }
+
+/** Строка таблицы: день регистрации, неделя или итог. */
+type CohortLine = {
+  key: string
+  title: ReactNode
+  size: number
+  paid: number
+  cells: Record<CohortGroup, HeatCells>
+  total?: boolean
+}
+
+const isReady = (cells: CohortCells, i: number) => cells.returned[i] !== null && cells.returned[i] !== undefined
+
+/**
+ * Складывает когорты так же, как сервер считает строку «Все когорты»: в
+ * столбец — только когорты с готовой ячейкой, доля — от суммы их размеров.
+ * Если готовых нет — ячейка пустая. Сложить готовые доли нельзя: у когорт
+ * разный размер.
+ */
+function sumCells(list: CohortCells[], columns: number): HeatCells {
+  const returned: (number | null)[] = []
+  const share: (number | null)[] = []
+  const base: (number | null)[] = []
+  for (let i = 0; i < columns; i++) {
+    const ready = list.filter((cells) => isReady(cells, i))
+    if (ready.length === 0) {
+      returned.push(null)
+      share.push(null)
+      base.push(null)
+      continue
+    }
+    const count = ready.reduce((sum, cells) => sum + (cells.returned[i] ?? 0), 0)
+    const whole = ready.reduce((sum, cells) => sum + cells.size, 0)
+    returned.push(count)
+    share.push(whole ? count / whole : null)
+    base.push(whole)
+  }
+  return { size: list.reduce((sum, cells) => sum + cells.size, 0), returned, share, base }
+}
+
+/** Серверные ячейки как есть, плюс знаменатель по столбцам из тех же когорт. */
+const withBase = (cells: CohortCells, parts: CohortCells[], columns: number): HeatCells => ({
+  ...cells,
+  base: sumCells(parts, columns).base,
+})
+
+function dayLine(c: DashboardCohort, columns: number): CohortLine {
+  const day = c.day ?? ''
+  return {
+    key: day,
+    title: (
+      <>
+        {dayText(day)} <span className="overview__weekday">{weekday(day)}</span>
+      </>
+    ),
+    size: c.size,
+    paid: c.paid,
+    cells: {
+      everyone: withBase(c.everyone, [c.everyone], columns),
+      bought: withBase(c.bought, [c.bought], columns),
+      not_bought: withBase(c.not_bought, [c.not_bought], columns),
+    },
+  }
+}
+
+/** Понедельник недели, в которую попал день. */
+function mondayOf(day: string): Date {
+  const date = dayDate(day)
+  const back = (date.getDay() + 6) % 7
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() - back)
+}
+
+/** Недели понедельник–воскресенье по дню регистрации; порядок — как у дней, от новых к старым. */
+function weekLines(cohorts: DashboardCohort[], columns: number): CohortLine[] {
+  const weeks = new Map<number, DashboardCohort[]>()
+  for (const c of cohorts) {
+    if (!c.day) continue
+    const monday = mondayOf(c.day).getTime()
+    const list = weeks.get(monday)
+    if (list) list.push(c)
+    else weeks.set(monday, [c])
+  }
+  return [...weeks].map(([monday, list]) => {
+    const start = new Date(monday)
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6)
+    const pick = (group: CohortGroup) => sumCells(list.map((c) => c[group]), columns)
+    return {
+      key: String(monday),
+      title: `${shortDate(start)}–${shortDate(end)}`,
+      size: list.reduce((sum, c) => sum + c.size, 0),
+      paid: list.reduce((sum, c) => sum + c.paid, 0),
+      cells: { everyone: pick('everyone'), bought: pick('bought'), not_bought: pick('not_bought') },
+    }
+  })
+}
+
+/** Итог берём с сервера, знаменатель по столбцам — из всех когорт. */
+function totalLine(total: DashboardCohort, cohorts: DashboardCohort[], columns: number): CohortLine {
+  const pick = (group: CohortGroup) =>
+    withBase(
+      total[group],
+      cohorts.map((c) => c[group]),
+      columns,
+    )
+  return {
+    key: 'total',
+    title: 'Все когорты',
+    size: total.size,
+    paid: total.paid,
+    cells: { everyone: pick('everyone'), bought: pick('bought'), not_bought: pick('not_bought') },
+    total: true,
+  }
+}
+
 /** Ячейка тепловой таблицы: чем выше доля, тем насыщеннее розовый. */
-function HeatCell({ cells, index }: { cells: CohortCells; index: number }) {
+function HeatCell({ cells, index }: { cells: HeatCells; index: number }) {
   const share = cells.share[index]
   const count = cells.returned[index]
-  if (share === null || count === null) {
+  const base = cells.base[index] ?? cells.size
+  if (count === null || count === undefined) {
     return (
       <td className="is-num analytics__heat is-future" title="Этот день для когорты ещё не закончился">
         ·
+      </td>
+    )
+  }
+  // День прошёл, но в группе никого (например, никто из когорты не купил):
+  // долю считать не от чего — это не «рано», а «некого».
+  if (share === null || share === undefined) {
+    return (
+      <td className="is-num analytics__heat is-future" title="В этой группе никого">
+        —
       </td>
     )
   }
@@ -403,77 +569,112 @@ function HeatCell({ cells, index }: { cells: CohortCells; index: number }) {
     <td
       className={`is-num analytics__heat ${strength >= 55 ? 'is-strong' : ''}`}
       style={{ background: `color-mix(in srgb, var(--pink-500) ${strength}%, var(--white))` }}
-      title={`${num(count)} из ${num(cells.size)}`}
+      title={`${num(count)} из ${num(base)}`}
     >
       {pct(share)}
       <span className="analytics__heat-count">
-        {num(count)} из {num(cells.size)}
+        {num(count)} из {num(base)}
       </span>
     </td>
   )
 }
 
-function CohortRow({
-  cohort,
-  group,
-  days,
-  total,
-}: {
-  cohort: DashboardCohort
-  group: CohortGroup
-  days: number[]
-  total?: boolean
-}) {
-  const cells = cohort[group]
+function CohortRow({ line, group, columns }: { line: CohortLine; group: CohortGroup; columns: number }) {
+  const cells = line.cells[group]
   return (
-    <tr className={total ? 'analytics__cohort-total' : undefined}>
-      <td>
-        {cohort.day ? (
-          <>
-            {dayText(cohort.day)} <span className="overview__weekday">{weekday(cohort.day)}</span>
-          </>
-        ) : (
-          'Все когорты'
-        )}
-      </td>
+    <tr className={line.total ? 'analytics__cohort-total' : undefined}>
+      <td>{line.title}</td>
       <td className="is-num">{num(cells.size)}</td>
       <td className="is-num">
-        {num(cohort.paid)}
-        {cohort.size > 0 && <span className="admin__cell-pct">{pct(cohort.paid / cohort.size)}</span>}
+        {num(line.paid)}
+        {line.size > 0 && <span className="admin__cell-pct">{pct(line.paid / line.size)}</span>}
       </td>
-      {days.map((day, i) => (
-        <HeatCell key={day} cells={cells} index={i} />
+      {Array.from({ length: columns }, (_, i) => (
+        <HeatCell key={i} cells={cells} index={i} />
       ))}
     </tr>
   )
 }
 
+/** Кнопка под длинной таблицей: «Показать все (N)» / «Свернуть». */
+function ShowAll({ total, limit, all, onToggle }: { total: number; limit: number; all: boolean; onToggle(): void }) {
+  if (total <= limit) return null
+  return (
+    <div className="chips analytics__more">
+      <button type="button" className="chip" onClick={onToggle}>
+        {all ? 'Свернуть' : `Показать все (${num(total)})`}
+      </button>
+    </div>
+  )
+}
+
 function Cohorts({ data }: { data: Dashboard | null }) {
   const [group, setGroup] = useState<CohortGroup>('everyone')
+  // null — шаг выбираем сами по числу когорт, пока человек не нажал сам.
+  const [chosenStep, setChosenStep] = useState<CohortStep | null>(null)
+  const [all, setAll] = useState(false)
+  // Новые данные приходят только при смене периода — тогда снова короткий
+  // список и шаг по умолчанию для нового периода.
+  useEffect(() => {
+    setChosenStep(null)
+    setAll(false)
+  }, [data])
+
   const days = data?.cohort_days ?? [1, 3, 7, 14, 30]
+  const columns = days.length
+  const cohorts = useMemo(() => data?.cohorts ?? [], [data])
+  const step: CohortStep = chosenStep ?? (cohorts.length > COHORT_WEEKLY_AFTER ? 'week' : 'day')
+
+  const lines = useMemo(
+    () => (step === 'week' ? weekLines(cohorts, columns) : cohorts.map((c) => dayLine(c, columns))),
+    [step, cohorts, columns],
+  )
+  const total = useMemo(
+    () => (data && cohorts.length > 0 ? totalLine(data.cohort_total, cohorts, columns) : null),
+    [data, cohorts, columns],
+  )
+  // Строки идут от новых к старым — последние по времени наверху.
+  const shown = all ? lines : lines.slice(0, COHORT_ROWS)
 
   return (
     <Card
       title="Возвращаемость"
       text="Люди, зарегистрированные в один день (по их часовому поясу), и доля тех, кто двигался на 1-й, 3-й, 7-й, 14-й и 30-й день после регистрации. «Купили» — есть оплата, когда бы она ни была."
     >
-      <div className="chips admin__chips analytics__chips">
-        {COHORT_GROUPS.map((g) => (
-          <button
-            key={g.group}
-            type="button"
-            className={`chip ${group === g.group ? 'is-on' : ''}`}
-            onClick={() => setGroup(g.group)}
-          >
-            {g.label}
-          </button>
-        ))}
+      <div className="analytics__toolbar">
+        <div className="chips admin__chips">
+          {COHORT_GROUPS.map((g) => (
+            <button
+              key={g.group}
+              type="button"
+              className={`chip ${group === g.group ? 'is-on' : ''}`}
+              onClick={() => setGroup(g.group)}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+        <div className="chips admin__chips">
+          {COHORT_STEPS.map((s) => (
+            <button
+              key={s.step}
+              type="button"
+              className={`chip ${step === s.step ? 'is-on' : ''}`}
+              onClick={() => {
+                setChosenStep(s.step)
+                setAll(false)
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="admin__scroll">
         <table className="admin__table analytics__cohorts">
           <thead>
             <tr>
-              <th>Регистрация</th>
+              <th>{step === 'week' ? 'Неделя регистрации' : 'Регистрация'}</th>
               <th className="is-num">Людей</th>
               <th className="is-num">Купили</th>
               {days.map((d) => (
@@ -484,22 +685,20 @@ function Cohorts({ data }: { data: Dashboard | null }) {
             </tr>
           </thead>
           <tbody>
-            {data && data.cohorts.length > 0 && (
-              <CohortRow cohort={data.cohort_total} group={group} days={days} total />
-            )}
-            {data?.cohorts.map((c) => (
-              <CohortRow key={c.day} cohort={c} group={group} days={days} />
+            {total && <CohortRow line={total} group={group} columns={columns} />}
+            {shown.map((line) => (
+              <CohortRow key={line.key} line={line} group={group} columns={columns} />
             ))}
-            {data && data.cohorts.length === 0 && (
+            {data && cohorts.length === 0 && (
               <tr>
-                <td className="admin__empty" colSpan={3 + days.length}>
+                <td className="admin__empty" colSpan={3 + columns}>
                   За эти даты никто не зарегистрировался
                 </td>
               </tr>
             )}
             {!data && (
               <tr>
-                <td className="admin__empty" colSpan={3 + days.length}>
+                <td className="admin__empty" colSpan={3 + columns}>
                   Загружаем…
                 </td>
               </tr>
@@ -507,9 +706,11 @@ function Cohorts({ data }: { data: Dashboard | null }) {
           </tbody>
         </table>
       </div>
+      <ShowAll total={lines.length} limit={COHORT_ROWS} all={all} onToggle={() => setAll((v) => !v)} />
       <p className="admin__period-note">
-        D1 — следующий день после регистрации. Точка — день ещё не закончился, считать рано. В строке
-        «Все когорты» в каждый день входят только когорты, которые до него дожили.
+        D1 — следующий день после регистрации. Точка — день ещё не закончился, считать рано. В неделе
+        и в строке «Все когорты» в каждый день входят только когорты, которые до него дожили, — поэтому
+        «из скольких» у столбцов разное.
       </p>
     </Card>
   )
@@ -712,8 +913,19 @@ function Channels({ data }: { data: Dashboard | null }) {
 
 /* ——— По дням ——— */
 
+/** Сколько последних дней видно, пока не нажали «Показать все». */
+const DAYS_ROWS = 14
+
 function Days({ data }: { data: Dashboard | null }) {
-  const maxVisits = Math.max(1, ...(data?.days ?? []).map((d) => d.visits))
+  const [all, setAll] = useState(false)
+  // Новые данные — новый период: снова только последние дни.
+  useEffect(() => setAll(false), [data])
+
+  const list = data?.days ?? []
+  // Полоса заходов — от максимума всего периода, чтобы при раскрытии не прыгала.
+  const maxVisits = Math.max(1, ...list.map((d) => d.visits))
+  // Дни идут от новых к старым — последние наверху.
+  const shown = all ? list : list.slice(0, DAYS_ROWS)
   return (
     <Card title="По дням">
       <div className="admin__scroll">
@@ -732,7 +944,7 @@ function Days({ data }: { data: Dashboard | null }) {
             </tr>
           </thead>
           <tbody>
-            {data?.days.map((d) => (
+            {shown.map((d) => (
               <tr key={d.day}>
                 <td>
                   {dayText(d.day)} <span className="overview__weekday">{weekday(d.day)}</span>
@@ -772,6 +984,7 @@ function Days({ data }: { data: Dashboard | null }) {
           </tbody>
         </table>
       </div>
+      <ShowAll total={list.length} limit={DAYS_ROWS} all={all} onToggle={() => setAll((v) => !v)} />
       <p className="admin__period-note">
         Тренировки — засчитанные, от минуты движения; ниже мелко — сколько начато всего.
       </p>
