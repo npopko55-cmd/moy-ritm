@@ -568,18 +568,6 @@ p.analytics__muted { margin: 8px 0 0; line-height: 1.4; }
 .analytics__funnel-step.is-worst .analytics__funnel-pct { color: var(--orange-600); font-weight: 700; }
 .analytics__funnel-step.is-worst .analytics__funnel-main { color: inherit; }
 
-/* Экономика: поле расходов. */
-.analytics__spend {
-  display: grid;
-  gap: 6px;
-  max-width: 360px;
-  margin-top: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-800);
-}
-
-.analytics__spend input,
 .analytics__search {
   width: 100%;
   min-width: 0;
@@ -594,7 +582,6 @@ p.analytics__muted { margin: 8px 0 0; line-height: 1.4; }
 
 .analytics__search { display: block; max-width: 360px; margin-top: 12px; }
 
-.analytics__spend input:focus,
 .analytics__search:focus { outline: 2px solid var(--pink-200); border-color: var(--pink-400); }
 
 /* Возвращаемость: тепловая таблица. */

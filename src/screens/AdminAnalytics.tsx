@@ -9,8 +9,7 @@
  * конверсии». Никита: «одно единое окно, где выведешь всё необходимое».
  *
  * Сверху вниз: период → итоги → воронка шагов с конверсиями и самым большим
- * провалом → экономика (расходы вводятся руками и живут только в этом
- * браузере) → возвращаемость по дням или неделям регистрации (тепловая
+ * провалом → возвращаемость по дням или неделям регистрации (тепловая
  * таблица, все / купили / не купили) → поведение (частота, тренировки, время
  * суток) → каналы (метки ссылок) → по дням → люди с поиском и карточкой
  * человека, которая раскрывается прямо в таблице (всплывающих окон в
@@ -21,7 +20,8 @@
  * Данные — три запроса: окно целиком (/admin/dashboard), таблица людей
  * (/admin/dashboard/people, повторяется при поиске) и карточка человека по
  * нажатию. Правила подсчёта — на сервере (docs/STATS.md бэкенда, раздел 12);
- * здесь только показ и экономика, которой серверу знать не нужно.
+ * здесь только показ. Блок «Экономика» (расходы руками → цена регистрации
+ * и окупаемость) убран по просьбе Никиты 22.10.
  * Графических библиотек нет: полосы — это ширина блока в процентах.
  */
 
@@ -168,7 +168,6 @@ export default function AdminAnalytics({ token, fail }: { token: string; fail: F
 
       <Totals data={data} />
       <FunnelSteps data={data} />
-      <Economy data={data} period={period} />
       <Cohorts data={data} />
       <Behavior data={data} />
       <Channels data={data} />
@@ -302,99 +301,6 @@ function FunnelSteps({ data }: { data: Dashboard | null }) {
             любой момент.
           </p>
         </>
-      )}
-    </Card>
-  )
-}
-
-/* ——— Экономика ——— */
-
-const SPEND_KEY = 'moy-ritm.admin_spend'
-
-/** Ключ расходов — период: «за 7 дней» и «за всё время» — разные суммы. */
-const spendKey = (period: Period) => `${SPEND_KEY}:${period.from ?? 'all'}:${period.to ?? 'all'}`
-
-function readSpend(key: string): string {
-  try {
-    return localStorage.getItem(key) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-function saveSpend(key: string, value: string): void {
-  try {
-    if (value) localStorage.setItem(key, value)
-    else localStorage.removeItem(key)
-  } catch {
-    /* приватный режим — сумма проживёт до перезагрузки страницы */
-  }
-}
-
-function Economy({ data, period }: { data: Dashboard | null; period: Period }) {
-  const key = spendKey(period)
-  const [spendText, setSpendText] = useState(() => readSpend(key))
-  // Сменили период — подставляем сумму, сохранённую для него.
-  useEffect(() => setSpendText(readSpend(key)), [key])
-
-  const spend = Number(spendText.replace(/\s/g, '').replace(',', '.'))
-  const hasSpend = Number.isFinite(spend) && spend > 0
-  const t = data?.totals
-
-  const rows: { label: string; value: string; note: string }[] =
-    t && hasSpend
-      ? [
-          {
-            label: 'Цена регистрации',
-            value: t.registered ? money(spend / t.registered) : '—',
-            note: 'расходы / регистрации за период',
-          },
-          {
-            label: 'Цена оплатившего',
-            value: t.paid_users ? money(spend / t.paid_users) : '—',
-            note: 'расходы / оплатившие за период',
-          },
-          { label: 'Выручка', value: money(t.revenue), note: 'оплаты за период' },
-          {
-            label: 'Окупаемость',
-            value: pct(t.revenue / spend),
-            note: 'выручка / расходы; 100% — вышли в ноль',
-          },
-        ]
-      : []
-
-  return (
-    <Card title="Экономика">
-      <label className="analytics__spend">
-        <span>Расходы на привлечение за период, ₽</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          value={spendText}
-          placeholder="например, 25 000"
-          onChange={(e) => {
-            setSpendText(e.target.value)
-            saveSpend(key, e.target.value.trim())
-          }}
-        />
-      </label>
-      {!hasSpend ? (
-        <p className="admin__period-note">
-          Введите расходы — посчитаем цену регистрации, цену оплатившего и окупаемость. Сумма
-          хранится только в этом браузере, отдельно для каждого периода.
-        </p>
-      ) : !t ? (
-        <p className="admin__letters-note">Загружаем…</p>
-      ) : (
-        <div className="overview__tiles">
-          {rows.map((row) => (
-            <div key={row.label} className="overview__tile">
-              <span className="admin__step-label">{row.label}</span>
-              <span className="admin__step-value">{row.value}</span>
-              <span className="admin__step-pct">{row.note}</span>
-            </div>
-          ))}
-        </div>
       )}
     </Card>
   )
