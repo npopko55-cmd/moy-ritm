@@ -130,10 +130,16 @@ const sessionsWord = (n: number) => `${n} ${pluralWord(n, 'занятие', 'з�
  * Показывать ли блок «Ваши потоки».
  *
  * Пока поток один, разбивка по потокам — это та же цифра, что уже стоит
- * выше в общих итогах, только в карточке. Появится второй видимый поток —
- * блок вернётся сам.
+ * выше в общих итогах, только в карточке.
+ *
+ * С 27.10.2026 видимых потоков два (появилась «Спина»), но блок пока не
+ * возвращаем: его карточки — сентябрьские фотографии людей из
+ * public/streams/ под старый выбор потоков, а в продукте теперь маскоты и
+ * ряд пилюль над кругом. Владелец решит, нужен ли блок и в каком виде, —
+ * тогда поставьте STREAMS_BLOCK_ON = true.
  */
-const SHOW_STREAMS = VISIBLE_STREAMS.length > 1
+const STREAMS_BLOCK_ON: boolean = false
+const SHOW_STREAMS = STREAMS_BLOCK_ON && VISIBLE_STREAMS.length > 1
 
 export default function Progress() {
   const navigate = useNavigate()

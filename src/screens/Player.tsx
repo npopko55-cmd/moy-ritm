@@ -30,7 +30,7 @@ import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
 import StreamSwitcher from '../components/StreamSwitcher'
 import Unlock, { GuestUnlock } from '../components/Unlock'
-import { DEFAULT_FREE_TIER, getStream } from '../data/streams'
+import { DEFAULT_FREE_TIER, getStream, streamLocked } from '../data/streams'
 import { loopPoster, loopSrc, SECONDS_PER_MOVE, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
 import {
@@ -68,7 +68,7 @@ import { recentMoves, rememberMove } from '../lib/moveHistory'
 import { loadMoveInterval } from '../lib/settings'
 import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
-import { onTelegramEvent, telegramActive } from '../lib/telegram'
+import { onTelegramEvent, openTariffsOnSite, telegramActive, useInTelegram } from '../lib/telegram'
 import { uuid } from '../lib/uuid'
 import { playChime, unlockChime } from '../media/chime'
 import { holdAwake, keepAwake, releaseAwake } from '../media/keepAwake'
@@ -324,10 +324,19 @@ export default function Player() {
   /**
    * Движения этого потока — то, из чего собирается колода. Без доступа
    * это первые exercise_limit движений: остальные закрыты оплатой.
+   *
+   * Поток не бесплатный (не free_tier.stream_code — «Спина» с 27.10.2026)
+   * без доступа закрыт целиком — streamLocked в src/data/streams.ts. Тогда
+   * движений нет вовсе, и на месте круга встаёт блок разблокировки, как при
+   * нуле бесплатных. Сюда попадают только по старой ссылке или «Вернуться в
+   * поток» после конца доступа: пилюля закрытого потока ведёт на тарифы
+   * (openStream ниже), а ряд потоков над блоком остаётся — вернуться в
+   * «Подвигаться» можно одним касанием.
    */
+  const locked = streamLocked(stream.id, limited, freeTier)
   const moves = useMemo(
-    () => (limited ? stream.loops.slice(0, freeTier.exercise_limit) : stream.loops),
-    [stream, limited, freeTier.exercise_limit],
+    () => (locked ? [] : limited ? stream.loops.slice(0, freeTier.exercise_limit) : stream.loops),
+    [stream, locked, limited, freeTier.exercise_limit],
   )
 
   /**
@@ -1448,22 +1457,31 @@ export default function Player() {
   }, [guestToken, navigate])
 
   /**
-   * Нажали включённый поток в ряду над кругом (src/components/StreamSwitcher.tsx).
-   * Сейчас включён только текущий — «Подвигаться», и сюда никто не попадает;
-   * это заготовка на день, когда у потока появятся свои ролики
-   * (src/data/streamSwitcher.ts, «Как включить поток»).
+   * Нажали включённый поток в ряду над кругом (src/components/StreamSwitcher.tsx):
+   * с 27.10.2026 это «Размять спину» из кардио или «Подвигаться» из спины.
    *
    * Вошедшего — на отсчёт нового потока, как с главной: /start/<id> заведёт
-   * новый заход, а плеер откроется заново со своим набором движений. У гостя
-   * адрес /play/<токен> без потока — ему поток откроется после регистрации,
-   * поэтому ведём туда же, куда «Открой весь функционал Ритма!».
+   * новый заход, а плеер откроется заново со своим набором движений. Музыка
+   * и счёт минут при этом те же: отсчёт включает общий проигрыватель, а
+   * куски уходят на сервер с кодом нового потока. У гостя адрес /play/<токен>
+   * без потока — ему поток откроется после регистрации, поэтому ведём туда
+   * же, куда «Открой весь функционал Ритма!».
+   *
+   * Поток закрыт этому человеку (без оплаты открыт только бесплатный,
+   * streamLocked) — сразу на тарифы, как кнопка «Открыть» блока
+   * разблокировки: отсчёт, после которого вместо круга замок, только злил
+   * бы. В мини-апе тарифы — во внешнем браузере: платить в Telegram нельзя.
    */
+  const inTelegram = useInTelegram()
   const openStream = useCallback(
     (id: string) => {
       if (guest) toGuestTariffs()
-      else navigate(`/start/${id}`)
+      else if (streamLocked(id, limited, freeTier)) {
+        if (inTelegram) openTariffsOnSite()
+        else navigate('/tariffs')
+      } else navigate(`/start/${id}`)
     },
-    [guest, toGuestTariffs, navigate],
+    [guest, toGuestTariffs, limited, freeTier, inTelegram, navigate],
   )
 
   /** «Попробовать…» в окне: событие prompt_cta с видом окна — и на тарифы. */
@@ -1684,8 +1702,9 @@ export default function Player() {
         </div>
         </>
         ) : (
-          // Бесплатно не открыто ни одного движения: вместо круга — вход в
-          // тарифы. Ни вверху, ни в правой колонке его тогда не дублируем.
+          // Бесплатно не открыто ни одного движения или весь поток закрыт
+          // (streamLocked): вместо круга — вход в тарифы. Ни вверху, ни в
+          // правой колонке его тогда не дублируем.
           <div className="stage__empty">{limited && <Unlock place="player" />}</div>
         )}
         </div>

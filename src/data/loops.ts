@@ -11,6 +11,11 @@
  * который повторяется без рывка. Пересборка: scripts/build-loops-v2.py,
  * найденные петли — scripts/loops-v2-manifest.json.
  * duration — длительность одного цикла в секундах.
+ *
+ * С 27.10.2026 есть второй поток — «Спина и осанка» (id потока 'back'): у
+ * него свой маскот, парень, и свои ролики back-*. Пересборка:
+ * scripts/build-loops-back.py, петли и вердикты стыка —
+ * scripts/loops-back-manifest.json. Записи — в конце каталога.
  */
 
 import { asset } from '../lib/asset'
@@ -23,8 +28,17 @@ import { asset } from '../lib/asset'
  *   • legs — колени, прыжки, выпады, твист;
  *   • arms — ноги почти на месте, работают руки.
  * Новое движение — впишите вид по тому, что делают ноги.
+ *
+ * В потоке «Спина» ноги стоят на месте во всех движениях, и вид по ногам
+ * сделал бы их одинаковыми — круг перестал бы что-либо разводить. Поэтому
+ * там вид — по тому, что работает:
+ *   • arms — плечи и руки (вращения, подъёмы, вытяжение, раскрытие);
+ *   • neck — шея и голова;
+ *   • torso — корпус: наклон или поворот.
+ * Круг сравнивает виды только внутри набора одного потока, так что arms у
+ * кардио и у спины друг другу не мешают.
  */
-export type MoveKind = 'steps' | 'legs' | 'arms'
+export type MoveKind = 'steps' | 'legs' | 'arms' | 'neck' | 'torso'
 
 export type Loop = {
   id: string
@@ -117,6 +131,57 @@ export const LOOPS: Record<string, Loop> = {
   'diagonal-punches': { id: 'diagonal-punches', title: 'Удары по диагонали', duration: 1.75, stepsPerMinute: 60, kind: 'arms', family: 'punches' },
   'twist-steps': { id: 'twist-steps', title: 'Скручивания с шагом', duration: 2, stepsPerMinute: 100, kind: 'steps', family: 'twist' },
   'arms-up-steps': { id: 'arms-up-steps', title: 'Руки вверх с шагом', duration: 3.75, stepsPerMinute: 80, kind: 'steps', family: 'reach' },
+
+  /*
+   * ─── Поток «Спина и осанка» (27.10.2026) ───
+   *
+   * Названия и длительность цикла — из scripts/loops-back-manifest.json.
+   * Вид (kind) здесь — по работающей части тела, см. MoveKind.
+   *
+   * Шагов нет ни в одном: парень стоит на месте и тянется, а счётчик шагов
+   * у нас — оценка по темпу ног (см. stepsPerMinute). Поэтому 0: минуты в
+   * движении засчитываются, а шаги «Спина» не прибавляет.
+   *
+   * Семейства: overhead — руки согнуты «воротами» над плечами (вращения в
+   * плечах, подъём из W, руки вверх — локти вниз): со стороны это одна и та
+   * же поза, круг разносит их подальше; opener — руки раскрыты в стороны
+   * (раскрытие рук и раскрытие с поворотом). Остальные — сами себе семейство.
+   *
+   * back-forward-reach в манифесте — «на грани» по общей оценке стыка, но по
+   * проверке готового файла разница на стыке (seam_mad 1,15) меньше
+   * обычного шага между кадрами (1,18), то есть рывка не видно; владелец
+   * включил его в поток.
+   */
+  'back-shoulder-rotations': { id: 'back-shoulder-rotations', title: 'Вращения в плечах', duration: 4.125, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back-w-raise': { id: 'back-w-raise', title: 'Подъём рук из W', duration: 3.583, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back-pull-downs': { id: 'back-pull-downs', title: 'Руки вверх, локти вниз', duration: 5, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back-hip-hinge': { id: 'back-hip-hinge', title: 'Наклоны, руки на пояснице', duration: 4.125, stepsPerMinute: 0, kind: 'torso', family: 'back-hip-hinge' },
+  'back-chin-tuck': { id: 'back-chin-tuck', title: 'Втягивание подбородка', duration: 2.667, stepsPerMinute: 0, kind: 'neck', family: 'back-chin-tuck' },
+  'back-forward-reach': { id: 'back-forward-reach', title: 'Вытяжение рук вперёд', duration: 2.833, stepsPerMinute: 0, kind: 'arms', family: 'back-forward-reach' },
+  'back-elbow-squeeze': { id: 'back-elbow-squeeze', title: 'Сведение локтей за головой', duration: 3.583, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze' },
+  'back-neck-turns': { id: 'back-neck-turns', title: 'Повороты головы', duration: 2.583, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns' },
+  'back-open-twist': { id: 'back-open-twist', title: 'Раскрытие с поворотом', duration: 3.5, stepsPerMinute: 0, kind: 'torso', family: 'opener' },
+  'back-chest-opener': { id: 'back-chest-opener', title: 'Раскрытие рук в стороны', duration: 2.667, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
+
+  /*
+   * Ещё шесть роликов «Спины» лежат в public/loops/, но в поток не входят:
+   * стык рваный или на грани — ждут решения владельца (перегенерировать или
+   * взять как есть). Решит взять — раскомментируйте запись и впишите id в
+   * BACK_MOVES (src/data/streams.ts). Вид и семейство уже подобраны.
+   *
+   * стык на грани (seam 1,35; loop_check 4,37):
+   * 'back-palm-turns': { id: 'back-palm-turns', title: 'Повороты рук в стороны', duration: 3.167, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
+   * стык рваный (seam 2,07):
+   * 'back-arm-raises': { id: 'back-arm-raises', title: 'Подъёмы рук вверх', duration: 3.458, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+   * стык рваный (seam 27,89):
+   * 'back-forward-fold': { id: 'back-forward-fold', title: 'Наклоны к коленям', duration: 5.875, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
+   * стык рваный (seam 4,71):
+   * 'back-arms-up-bend': { id: 'back-arms-up-bend', title: 'Наклоны с руками вверх', duration: 4.792, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
+   * стык рваный (seam 1,9; loop_check 4,02):
+   * 'back-standing-cat': { id: 'back-standing-cat', title: 'Кошка стоя', duration: 3.208, stepsPerMinute: 0, kind: 'torso', family: 'back-standing-cat' },
+   * стык на грани (seam 1,56):
+   * 'back-pelvic-tilt': { id: 'back-pelvic-tilt', title: 'Наклоны таза', duration: 3.333, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt' },
+   */
 }
 
 /**

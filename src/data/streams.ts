@@ -135,12 +135,42 @@ export const HIDDEN_MOVES = [
  */
 export const WARM_MOVES = 6
 
+/**
+ * Поток «Спина и осанка» (27.10.2026): свои ролики с парнем-маскотом,
+ * записи — в конце src/data/loops.ts. Только движения с чистым стыком
+ * петли, в порядке владельца.
+ *
+ * Шесть роликов того же потока сюда не вошли — стык рваный или на грани,
+ * ждут решения владельца: back-palm-turns, back-arm-raises,
+ * back-forward-fold, back-arms-up-bend, back-standing-cat, back-pelvic-tilt
+ * (их записи закомментированы в loops.ts).
+ *
+ * Бесплатного уровня у «Спины» нет: сервер отдаёт его на один поток —
+ * free_tier.stream_code, сейчас 'cardio' (см. streamLocked ниже). Поэтому
+ * порядок здесь важен только для отсчёта: он качает постеры первых
+ * WARM_MOVES движений этого списка. В предкэш сервис-воркера они не идут —
+ * scripts/build-sw.mjs берёт только ALL_MOVES.
+ */
+export const BACK_MOVES: Loop[] = pick(
+  'back-shoulder-rotations',
+  'back-w-raise',
+  'back-pull-downs',
+  'back-hip-hinge',
+  'back-chin-tuck',
+  'back-forward-reach',
+  'back-elbow-squeeze',
+  'back-neck-turns',
+  'back-open-twist',
+  'back-chest-opener',
+)
+
 /*
- * Временно: пока нет отдельных роликов по потокам, в каждом потоке
- * крутится весь каталог — заказчик просил «догрузить всё, что есть».
- * У «Спины», «Офиса», «Танцев» и «60+» это те же файлы, что у «Кардио»,
- * поэтому с 11.09.2026 они помечены hidden и в интерфейс не попадают.
- * Когда появятся свои ролики, у каждого потока снова будет свой список.
+ * Свои ролики есть у «Кардио» (весь каталог ALL_MOVES) и с 27.10.2026 у
+ * «Спины» (BACK_MOVES). У «Офиса», «Танцев» и «60+» своих роликов пока нет:
+ * когда-то в них крутился весь каталог кардио — заказчик просил «догрузить
+ * всё, что есть», — поэтому с 11.09.2026 они помечены hidden и в интерфейс
+ * не попадают. Появятся свои ролики — свой список и снять hidden, как у
+ * «Спины».
  */
 export const STREAMS: Stream[] = [
   {
@@ -157,8 +187,7 @@ export const STREAMS: Stream[] = [
     subtitle: 'здоровая осанка и сильная спина',
     theme: 'back',
     cover: asset('streams/back.jpg'),
-    loops: ALL_MOVES,
-    hidden: true,
+    loops: BACK_MOVES,
   },
   {
     id: 'office',
@@ -190,8 +219,9 @@ export const STREAMS: Stream[] = [
 ]
 
 /**
- * Потоки, которые видит человек. Сейчас в списке только «Кардио»: под
- * остальные нет своего контента, см. hidden в типе Stream.
+ * Потоки, которые видит человек: «Кардио» и с 27.10.2026 «Спина». Под
+ * остальные нет своего контента, см. hidden в типе Stream. Первым остаётся
+ * «Кардио» — от этого зависит DEFAULT_STREAM.
  */
 export const VISIBLE_STREAMS: Stream[] = STREAMS.filter((s) => !s.hidden)
 
@@ -205,6 +235,26 @@ export const DEFAULT_STREAM: Stream = VISIBLE_STREAMS[0]
 /** Поток по идентификатору. Скрытый и незнакомый — это поток по умолчанию. */
 export const getStream = (id?: string): Stream =>
   VISIBLE_STREAMS.find((s) => s.id === id) ?? DEFAULT_STREAM
+
+/**
+ * Поток закрыт этому человеку целиком.
+ *
+ * Правило сервера (app/services/stream_service.py, get_player_streams): без
+ * оплаты открыт один поток — free_tier.stream_code, и тот лишь первыми
+ * free_tier.exercise_limit движениями; остальные потоки приходят пустыми с
+ * замком. Фронт повторяет его по тем же полям, а не по своим числам.
+ *
+ * Одно исключение — пробный период trial3d, пока он открывает весь каталог
+ * (лимит не меньше ALL_MOVES, как и в trialOpensAll из src/lib/trial.ts):
+ * человеку обещано «открыты все движения», а «Спина» тогда тоже его. Сервер
+ * в bootstrap.streams и тогда рисует «Спине» замок, но фронт этот список
+ * не читает: ролики — статика сайта, и что показать, решает здесь.
+ *
+ * limited — у человека нет оплаченного доступа (!hasAccess). Оплата,
+ * выданный доступ и grace — открыто всё.
+ */
+export const streamLocked = (streamId: string, limited: boolean, tier: FreeTier): boolean =>
+  limited && streamId !== tier.stream_code && tier.exercise_limit < ALL_MOVES.length
 
 // Мотивационных фраз над кругом больше нет (правка Димы 14.10.2026): их
 // место занял ряд потоков — src/data/streamSwitcher.ts, там же порядок
