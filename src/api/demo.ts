@@ -1630,6 +1630,8 @@ function demoDashboard(period: Period, people: FunnelUser[]): Dashboard {
         expired: 23,
         renewed: 9,
         renewal_share: demoRatio(9, 23),
+        recent_expired: 4,
+        recent_renewed: 1,
       },
     },
     top: people.filter((p) => p.active_days > 0).map(demoPerson).sort(demoByActivity).slice(0, 20),

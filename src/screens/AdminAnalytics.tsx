@@ -626,16 +626,24 @@ function MoneyCard({ data }: { data: Dashboard | null }) {
           <dl className="analytics__facts">
             <dt>Доступ кончается в ближайшие {num(r.window_days)} дней</dt>
             <dd>{num(r.expiring_total)}</dd>
-            <dt>Оплаченных сроков уже кончилось</dt>
+            <dt>Оплаченных сроков кончилось больше {num(r.grace_days)} дней назад</dt>
             <dd>{num(r.expired)}</dd>
             <dt>Из них продлили</dt>
             <dd>
               {pct(r.renewal_share)} <span className="analytics__muted">{num(r.renewed)}</span>
             </dd>
+            <dt>Кончились за последние {num(r.grace_days)} дней — ещё могут продлить</dt>
+            <dd>
+              {num(r.recent_expired)}{' '}
+              {r.recent_renewed > 0 && (
+                <span className="analytics__muted">уже продлили {num(r.recent_renewed)}</span>
+              )}
+            </dd>
           </dl>
           <p className="analytics__muted">
-            Продлил — новая оплата не раньше чем за {num(r.grace_days)} дней до конца срока или после
-            него. Ручные выдачи и пробный доступ не считаются.
+            Продлил — после оплаты срока у человека есть любая следующая оплата, когда угодно: заранее
+            или после конца. Сроки, кончившиеся меньше {num(r.grace_days)} дней назад, в долю не
+            входят — у человека ещё есть время. Ручные выдачи и пробный доступ не считаются.
           </p>
         </div>
       </div>

@@ -285,9 +285,15 @@ export type DashboardMoney = {
     grace_days: number
     expiring_total: number
     expiring: ExpiringAccess[]
+    /** Сроки, кончившиеся больше grace_days дней назад, — база доли продлений. */
     expired: number
+    /** Из них продлены — любой следующей оплатой того же человека. */
     renewed: number
     renewal_share: number | null
+    /** Кончились в последние grace_days дней: ещё могут продлить, в долю не входят. */
+    recent_expired: number
+    /** Из них уже продлили. */
+    recent_renewed: number
   }
 }
 

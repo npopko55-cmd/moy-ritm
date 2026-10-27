@@ -21,6 +21,11 @@
  * Платят виджетом GetCourse, встроенным в /pay. Если после оплаты GetCourse
  * вернёт человека сюда внутри рамки виджета, а не во всё окно, экран сам
  * выходит из рамки на всё окно (inOwnFrame).
+ *
+ * Сюда же возвращает форма Продамуса (backend/docs/PRODAMUS.md). Проверка та
+ * же: доступ открывает уведомление Продамуса. Отличается только текст
+ * «Пока не видим оплату» — сверки с GetCourse за Продамусом нет, зато он сам
+ * повторяет уведомление (readPayProvider).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -37,6 +42,20 @@ import { keepAwake } from '../media/keepAwake'
 import { unlockMedia } from '../media/unlock'
 import { AccountShell, FormError, FormOk, errorText } from './Account'
 import './PaymentSuccess.css'
+
+/**
+ * Через кого ушли платить: 'prodamus' запоминает /pay (rememberPayProvider в
+ * Pay.tsx — ключ держать одинаковым). Нет записи — GetCourse, как раньше.
+ */
+const PAY_PROVIDER_KEY = 'moyritm:pay-provider'
+
+function readPayProvider(): 'getcourse' | 'prodamus' {
+  try {
+    return sessionStorage.getItem(PAY_PROVIDER_KEY) === 'prodamus' ? 'prodamus' : 'getcourse'
+  } catch {
+    return 'getcourse'
+  }
+}
 
 /** Сколько всего ждём, прежде чем сказать «доступ откроется сам». */
 const TOTAL_WAIT_MS = 120_000
@@ -298,7 +317,11 @@ export default function PaymentSuccess() {
     return (
       <AccountShell
         title="Пока не видим оплату"
-        lead="Иногда GetCourse задерживает уведомление до часа — доступ откроется сам, и мы напишем на почту. Закрывать страницу не обязательно."
+        lead={
+          readPayProvider() === 'prodamus'
+            ? 'Иногда уведомление об оплате приходит с задержкой — доступ откроется сам, и мы напишем на почту. Закрывать страницу не обязательно.'
+            : 'Иногда GetCourse задерживает уведомление до часа — доступ откроется сам, и мы напишем на почту. Закрывать страницу не обязательно.'
+        }
       >
         <div className="form__actions">
           <button className="form__submit" type="button" onClick={again}>

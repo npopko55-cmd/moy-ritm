@@ -23,6 +23,13 @@
  * профиль перечитывается сам), а как только оплата видна — уводим на
  * /payment/success: он покажет итог и откроет поток.
  *
+ * Продамус (checkout вернул provider: 'prodamus', backend/docs/PRODAMUS.md):
+ * виджета нет — сразу кнопка «Перейти к оплате» на его форму, с тем же
+ * ожиданием оплаты в установленном приложении. Подсказки про VPN нет: она
+ * про GetCourse, а в справке Продамуса о VPN ничего нет. Начнутся жалобы —
+ * вернуть её одним свойством vpn у PayLink. Форма Продамуса после
+ * оплаты возвращает на тот же /payment/success.
+ *
  * Незнакомый тариф — обратно на /tariffs. Всплывающих окон нет: всё —
  * блоками на странице.
  */
@@ -101,6 +108,7 @@ export default function Pay() {
         // Нажатие «Перейти к оплате» внутри формы GetCourse отсюда не видно,
         // поэтому срок доступа запоминаем, как только показываем оплату.
         rememberAccessBefore(accessNow.current)
+        rememberPayProvider(checkout.provider ?? 'getcourse')
         setLoad({ kind: 'ready', checkout })
       },
       (e: unknown) => {
@@ -167,6 +175,15 @@ export default function Pay() {
           </button>
         )}
       </div>
+    )
+  } else if (load.kind === 'ready' && load.checkout.provider === 'prodamus') {
+    payment = (
+      <PayLink
+        url={load.checkout.page_url}
+        provider="prodamus"
+        note="Откроется защищённая страница оплаты Продамуса — почта там уже подставлена. После оплаты вы вернётесь на сайт."
+        vpn="none"
+      />
     )
   } else if (load.kind === 'ready') {
     const { widget, prefill, page_url } = load.checkout
@@ -271,30 +288,65 @@ function TariffCardSkeleton() {
 }
 
 /**
- * Уход на страницу оплаты GetCourse. Срок доступа до оплаты — для «Проверяем
- * оплату». В установленном приложении ещё и включаем ожидание оплаты: айфон
- * откроет GetCourse поверх приложения, и вернувшегося после «Готово» встретит
- * эта же страница — профиль перечитается сам (src/lib/sitePayment.ts).
+ * Уход на страницу оплаты GetCourse или Продамуса. Срок доступа до оплаты —
+ * для «Проверяем оплату». В установленном приложении ещё и включаем ожидание
+ * оплаты: айфон откроет страницу оплаты поверх приложения, и вернувшегося
+ * после «Готово» встретит эта же страница — профиль перечитается сам
+ * (src/lib/sitePayment.ts).
  */
-function leaveToPay(access: Access | null): void {
+function leaveToPay(access: Access | null, provider: PayProvider = 'getcourse'): void {
   rememberAccessBefore(access)
+  rememberPayProvider(provider)
   if (STANDALONE) markSitePayment()
 }
 
+type PayProvider = 'getcourse' | 'prodamus'
+
 /**
- * Переход на страницу оплаты GetCourse — обычной ссылкой в этой же вкладке:
- * без виджета это единственный путь, с виджетом — запасной. Под кнопкой —
- * подсказка про VPN: в запасном блоке (форма не пришла) заметнее.
+ * Через кого ушли платить — для текста «Пока не видим оплату» на
+ * /payment/success: про «GetCourse задерживает уведомление» Продамусу
+ * говорить неправильно. Ключ и чтение — в PaymentSuccess.tsx (readPayProvider),
+ * держать одинаковыми. Хранилище недоступно — экран покажет текст GetCourse,
+ * как раньше.
  */
-function PayLink({ url, note, vpn = 'quiet' }: { url: string; note: string; vpn?: 'quiet' | 'loud' }) {
+const PAY_PROVIDER_KEY = 'moyritm:pay-provider'
+
+function rememberPayProvider(provider: PayProvider): void {
+  try {
+    if (provider === 'prodamus') sessionStorage.setItem(PAY_PROVIDER_KEY, provider)
+    else sessionStorage.removeItem(PAY_PROVIDER_KEY)
+  } catch {
+    // Приватный режим без хранилища — не беда, см. выше.
+  }
+}
+
+/**
+ * Переход на страницу оплаты — обычной ссылкой в этой же вкладке. У GetCourse
+ * без виджета это единственный путь, с виджетом — запасной; у Продамуса —
+ * всегда. Под кнопкой — подсказка про VPN (только GetCourse): в запасном
+ * блоке (форма не пришла) заметнее.
+ */
+function PayLink({
+  url,
+  note,
+  vpn = 'quiet',
+  provider = 'getcourse',
+}: {
+  url: string
+  note: string
+  vpn?: 'quiet' | 'loud' | 'none'
+  provider?: PayProvider
+}) {
   const { access } = useSession()
   return (
     <div className="checkout__link">
       <p className="checkout__note">{note}</p>
-      <a className="form__submit" href={url} onClick={() => leaveToPay(access)}>
+      <a className="form__submit" href={url} onClick={() => leaveToPay(access, provider)}>
         Перейти к оплате
       </a>
-      <p className={`checkout__vpn ${vpn === 'loud' ? 'is-loud' : ''}`}>{VPN_HINT}</p>
+      {vpn !== 'none' && (
+        <p className={`checkout__vpn ${vpn === 'loud' ? 'is-loud' : ''}`}>{VPN_HINT}</p>
+      )}
     </div>
   )
 }

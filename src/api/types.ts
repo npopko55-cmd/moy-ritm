@@ -167,12 +167,17 @@ export type CheckoutWidget = { src: string; element_id: string }
  * widget пустой — виджета у оффера нет, платят по page_url. page_url нужен
  * и при виджете: на него ведёт запасная кнопка, если виджет не загрузился.
  * prefill — почта и метки: виджет берёт их из адреса родительской страницы.
+ *
+ * provider — только у Продамуса (на сервере PAYMENT_PROVIDER=prodamus):
+ * тогда виджета нет, prefill пуст, а page_url — подписанная ссылка на форму
+ * оплаты Продамуса с уже подставленной почтой. Нет поля — GetCourse, как было.
  */
 export type Checkout = {
   tariff: CheckoutTariff
   page_url: string
   widget: CheckoutWidget | null
   prefill: Record<string, string>
+  provider?: 'prodamus'
 }
 
 export type PaymentCheck = {
