@@ -26,6 +26,44 @@ import './Legal.css'
 /** [текст](адрес) внутри пункта. */
 const LINK_RE = /\[([^\]]+)\]\(([^)\s]+)\)/g
 
+/** Домены самого сайта: ссылки на них — переход внутри сайта, а не новая вкладка. */
+const OWN_HOSTS = new Set(['ritmritm.ru', 'www.ritmritm.ru'])
+
+/**
+ * Путь внутри сайта для ссылки на свой сайт, иначе null.
+ *
+ * «/privacy» — уже путь. «https://ritmritm.ru/tariffs» — тоже свой сайт:
+ * отдаём «/tariffs». Раньше такие адреса (реквизиты «Сайт: ritmritm.ru»)
+ * открывались с target="_blank", и в приложении, поставленном на экран
+ * «Домой», iPhone выкидывал человека из приложения в Safari. Переход внутри
+ * сайта оставляет его в приложении. Чужие домены (Telegram, GetCourse) —
+ * по-прежнему в новой вкладке.
+ */
+function ownPath(href: string): string | null {
+  if (href.startsWith('/')) return href
+  try {
+    const url = new URL(href)
+    if ((url.protocol === 'https:' || url.protocol === 'http:') && OWN_HOSTS.has(url.hostname)) {
+      return `${url.pathname}${url.search}${url.hash}` || '/'
+    }
+  } catch {
+    /* не адрес — значит, не наш сайт */
+  }
+  return null
+}
+
+/** Ссылка документа: свой сайт — переходом внутри сайта, чужой — в новой вкладке. */
+function DocLink({ href, children }: { href: string; children: ReactNode }) {
+  const path = ownPath(href)
+  return path !== null ? (
+    <Link to={path}>{children}</Link>
+  ) : (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  )
+}
+
 /** Пункт со ссылками: свои адреса — переходом внутри сайта, чужие — в новой вкладке. */
 function withLinks(text: string): ReactNode[] {
   const out: ReactNode[] = []
@@ -35,15 +73,9 @@ function withLinks(text: string): ReactNode[] {
     const start = match.index ?? 0
     if (start > at) out.push(text.slice(at, start))
     out.push(
-      href.startsWith('/') ? (
-        <Link key={start} to={href}>
-          {label}
-        </Link>
-      ) : (
-        <a key={start} href={href} target="_blank" rel="noopener noreferrer">
-          {label}
-        </a>
-      ),
+      <DocLink key={start} href={href}>
+        {label}
+      </DocLink>,
     )
     at = start + whole.length
   }
@@ -157,15 +189,11 @@ export default function Legal() {
             <li>ОГРНИП {OPERATOR.ogrnip}</li>
             <li>
               Связь: Telegram{' '}
-              <a href={OPERATOR.telegram} target="_blank" rel="noopener noreferrer">
-                {OPERATOR.telegramName}
-              </a>
+              <DocLink href={OPERATOR.telegram}>{OPERATOR.telegramName}</DocLink>
             </li>
             <li>
-              Сайт:{' '}
-              <a href={OPERATOR.site} target="_blank" rel="noopener noreferrer">
-                ritmritm.ru
-              </a>
+              {/* Свой сайт — внутри приложения, не в Safari (ownPath выше). */}
+              Сайт: <DocLink href={OPERATOR.site}>ritmritm.ru</DocLink>
               , мини-приложение в Telegram — бот {OPERATOR.bot}
             </li>
           </ul>

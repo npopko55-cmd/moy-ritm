@@ -74,12 +74,19 @@
 /* ═══════ Центр ═══════ */
 .player__stage {
   /*
-   * Размер фразы и её межстрочный интервал объявлены здесь, а не в
-   * .stage__top: от них считается и высота блока с фразой, и остаток
-   * высоты, который достаётся кругу.
+   * Высота ряда потоков над кругом (src/components/StreamSwitcher.tsx) и
+   * зазор под ним объявлены здесь, а не в .stage__top: от них считается и
+   * сам ряд, и остаток высоты, который достаётся кругу.
+   *
+   * Раньше на этом месте стояла мотивационная фраза в две строки — блок
+   * 2 × 1,2 × clamp(17px, 2.17vh, 32px), около 5,2vh. Ряд пилюль чуть выше
+   * (5,6vh + зазор 0,6vh, но не меньше 42 + 2 px), и круг стал меньше на
+   * 5–9 px: при 1440×900 — на 9 px, при 1280×650 — на 5 px, при 1180×640 —
+   * с 571 до 566 px. Пауза в углу квадрата при 566 px ещё помещается
+   * (свободный угол ≈ 83 px при кнопке 72 px), см. расчёт у .stage__pause.
    */
-  --headline-sm: clamp(17px, 2.17vh, 32px); /* ≈0,7 от обычного размера */
-  --headline-lh: 1.2;
+  --switch-h: clamp(42px, 5.6vh, 72px);
+  --switch-gap: clamp(2px, 0.6vh, 10px);
   /* Тот же вертикальный отступ, что и в padding у .player. */
   --stage-pad: clamp(14px, 1.6vh, 24px);
   /*
@@ -89,18 +96,18 @@
    */
   --pause-row: 88px;
   /*
-   * Всё, что забирает высоту у круга: отступы плеера сверху и снизу, блок
-   * с фразой, строка с кнопкой паузы и нижний зазор.
+   * Всё, что забирает высоту у круга: отступы плеера сверху и снизу, ряд
+   * потоков с зазором под ним, строка с кнопкой паузы и нижний зазор.
    */
-  --stage-chrome: calc(2 * var(--stage-pad) + 2 * var(--headline-lh) * var(--headline-sm) + 4px + var(--pause-row));
+  --stage-chrome: calc(2 * var(--stage-pad) + var(--switch-h) + var(--switch-gap) + 4px + var(--pause-row));
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* На десктопе фраза и круг заполняют колонку ровно, и центрирование
+  /* На десктопе ряд потоков и круг заполняют колонку ровно, и центрирование
      ничего не двигает; на планшете круг упирается в ширину, и остаток
      высоты делится поровну сверху и снизу. safe — чтобы при нехватке
-     места фраза не уезжала за верхний край. */
+     места ряд не уезжал за верхний край. */
   justify-content: center;
   justify-content: safe center;
   height: 100%;
@@ -109,48 +116,22 @@
 }
 
 /*
- * Высота блока с фразой ЖЁСТКАЯ — ровно две строки уменьшенного размера.
- * Фразы разной длины меняются каждые несколько секунд, и без этого круг
- * прыгал бы вверх-вниз. Короткая фраза просто центрируется внутри.
+ * Ряд потоков над кругом (правка Димы 14.10.2026, вместо мотивационных
+ * фраз). Высота ЖЁСТКАЯ — ровно высота пилюли: от неё считается круг, и
+ * ничто в ряду (прокрутка, бирки «скоро», строка-подсказка) её не меняет.
+ * Бирки и тень ряд держит в своих полях с отрицательными отступами, строка
+ * «скоро откроем» лежит поверх круга (StreamSwitcher.css).
+ *
+ * На десктопе ряд стоит в средней колонке и шире неё не бывает: меню слева
+ * и колонку с треком и счётчиками он не задевает. Не хватает ширины
+ * (ноутбук 1024–1179 px) — листается вбок.
  */
 .stage__top {
   display: flex;
   flex: none;
-  align-items: center;
-  justify-content: center;
   width: 100%;
-  height: calc(2 * var(--headline-lh) * var(--headline-sm));
-}
-
-.stage__headline {
-  text-align: center;
-  font-size: clamp(24px, 3.1vh, 46px);
-  line-height: var(--headline-lh);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  /* Обычная фраза — всегда одна строка, третьей строки не бывает никогда. */
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  overflow: hidden;
-}
-
-/* Длинная фраза (больше 40 знаков) — мельче и до двух строк. */
-.stage__headline.is-long {
-  font-size: var(--headline-sm);
-  -webkit-line-clamp: 2;
-  text-wrap: balance;
-}
-
-/*
- * Совсем длинная фраза (больше 56 знаков) — ещё на пятую часть мельче.
- * На узком экране в «длинном» кегле она уходила в третью строку, и её
- * обрезало: высота блока над кругом жёсткая, две строки, и меняется
- * только вместе с размером круга. Кегль самой фразы на эту высоту не
- * влияет — короткая просто центрируется внутри.
- */
-.stage__headline.is-xlong {
-  font-size: calc(var(--headline-sm) * 0.8);
+  height: var(--switch-h);
+  margin-bottom: var(--switch-gap);
 }
 
 /* В строке осталась одна карточка трека: кнопку «на весь экран» убрали. */
@@ -218,7 +199,7 @@
 
 .stage__figure {
   position: relative;
-  /* Круг забирает всю высоту, что остаётся под фразой. Кнопок «назад» и
+  /* Круг забирает всю высоту, что остаётся под рядом потоков. Кнопок «назад» и
      «вперёд» под ним больше нет, поэтому места ему досталось заметно больше.
      var(--vh) — dvh, а где его нет, vh (tokens.css). */
   width: min(calc(100 * var(--vh) - var(--stage-chrome)), 100%);
@@ -757,8 +738,11 @@
     padding-bottom: 0;
   }
 
-  .player__stage { --headline-sm: clamp(16px, 4.6vw, 20px); }
-  .stage__headline { font-size: var(--headline-sm); -webkit-line-clamp: 2; text-wrap: balance; }
+  /* Ряд потоков в одной колонке — фиксированной высоты: на высоком планшете
+     vh раздул бы его. 50 px — почти та же высота, что у прежней фразы в две
+     строки (до 48 px), поэтому запасы под круг ниже не менялись. Зазор под
+     рядом даёт сам gap сцены. */
+  .player__stage { --switch-h: 50px; --switch-gap: 0px; }
 
   /* Круг = остаток высоты после шапки, статистики и меню. Лента потоков
      забирала здесь около 86 px — половину этого отдали кругу, половину
@@ -908,6 +892,9 @@
   /* Ноты по бокам круга на узком экране только лезут за край. */
   .stage__note { display: none; }
 
+  /* Ряд потоков на телефоне — 46 px, как пилюли в макете Димы. */
+  .player__stage { --switch-h: 46px; }
+
   /* Ленты потоков над кругом больше нет, и круг забрал её место: по ширине
      86vw → 92vw, по высоте 52dvh → 58dvh. Строка с паузой из предела по
      высоте по-прежнему вычитается, чтобы не отодвигать статистику под
@@ -953,7 +940,7 @@
       "unlock unlock";
   }
 
-  /* Плашка «Открой все 40» — под карточкой музыки, над фразой и кругом.
+  /* Плашка «Открой все 40» — под карточкой музыки, над рядом потоков и кругом.
      Заголовок в две строки, кнопка справа; на самых узких (до ~355 px)
      кнопка уходит под заголовок — это решает сама плашка (Unlock.css). */
   .player--banner {
@@ -973,7 +960,7 @@
    * Плашка сдвигает круг вниз на свою высоту, а панель вкладок прибита к
    * низу экрана. На невысоких телефонах (ниже ~600 px) строка «Играть» /
    * «Пауза» ушла бы под панель — там круг ужимается ровно настолько, чтобы
-   * строка осталась над ней. 340 px — шапка, плашка, фраза, строка с
+   * строка осталась над ней. 340 px — шапка, плашка, ряд потоков, строка с
    * кнопкой, панель и зазоры между ними. Ниже 200 px этот предел круг не
    * ужимает: на совсем маленьких экранах страница просто прокручивается.
    * На высоких телефонах он не срабатывает — там круг и так меньше по
@@ -1077,13 +1064,14 @@
 
   /* Кнопки занимают свободное место по бокам круга, а не отдельный ряд
      под ним. Так кругу достаётся почти вся высота короткого экрана. */
-  .player__stage { --headline-sm: 13px; --pause-row: 0px; --control-clearance: 224px; }
-  .stage__top { height: 22px; }
-  .stage__headline { font-size: 14px; -webkit-line-clamp: 1; }
+  /* Ряд потоков — пилюли в одну строку высотой 34 px (StreamSwitcher.css).
+     Прежняя фраза занимала 22 px, поэтому из высоты круга вычитается на
+     12 px больше: 50 вместо 38. */
+  .player__stage { --switch-h: 34px; --switch-gap: 0px; --pause-row: 0px; --control-clearance: 224px; }
   .stage__figure,
   .player--banner .stage__figure {
     width: min(
-      calc(100 * var(--vh) - 38px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      calc(100 * var(--vh) - 50px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
       calc(100% - var(--control-clearance)),
       100%
     );
@@ -1246,9 +1234,9 @@
 
   /*
    * Круг — во всю ширину сцены, а по высоте — сколько останется на первом
-   * экране: 136 px — верхний отступ, шапка с треком (52), зазор, фраза в
-   * две строки (до 48), зазор и запас снизу; ещё строка звука и паузы и
-   * отступы под чёлку и полоску «домой». Счётчики — ниже, до них листают.
+   * экране: 136 px — верхний отступ, шапка с треком (52), зазор, ряд
+   * потоков (46, как прежняя фраза в две строки), зазор и запас снизу;
+   * ещё строка звука и паузы и отступы под чёлку и полоску «домой». Счётчики — ниже, до них листают.
    * Меньше 220 px круг не становится: на совсем низком экране листается
    * и он.
    */
@@ -1270,9 +1258,11 @@
 /* На телефоне в портрете отдельная строка кнопок уменьшала круг. Кнопки
    помещаются в его нижних углах; высоту круга ограничивает нижнее меню. */
 @media (orientation: portrait) and (max-width: 767.98px) {
-  .player:not(.player--immersive) .player__stage { --pause-row: 0px; --phone-circle-reserve: 300px; }
-  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 340px; }
-  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 410px; }
+  /* Запасы выросли на 4 px вместе с рядом потоков: он 46 px против
+     прежней фразы в две строки (40–48 px на ширине 360–430). */
+  .player:not(.player--immersive) .player__stage { --pause-row: 0px; --phone-circle-reserve: 304px; }
+  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 344px; }
+  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 414px; }
 
   .player:not(.player--immersive) .stage__figure {
     width: min(92vw, max(200px, calc(100 * var(--vh) - var(--phone-circle-reserve) + 16vw)), 100%);
@@ -1289,9 +1279,9 @@
 /* Между 431 и 767 px плашка занимает больше высоты, поэтому перед нижним
    меню нужен дополнительный запас. */
 @media (orientation: portrait) and (min-width: 431px) and (max-width: 767.98px) {
-  .player:not(.player--immersive) .player__stage { --phone-circle-reserve: 330px; }
-  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 370px; }
-  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 440px; }
+  .player:not(.player--immersive) .player__stage { --phone-circle-reserve: 334px; }
+  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 374px; }
+  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 444px; }
 }
 
 /* В портретном iPad размер берётся из реальной высоты ряда сцены. Прежний
@@ -1375,10 +1365,11 @@
   .stats__top { grid-area: top; padding-left: 0; }
   .player__banner { grid-area: banner; }
 
-  .player__stage { grid-area: stage; --pause-row: 0px; --headline-sm: clamp(16px, 2vw, 22px); gap: 8px; }
+  .player__stage { grid-area: stage; --pause-row: 0px; gap: 8px; }
+  /* 98 px — ряд потоков (50), зазор и отступы; при фразе было 90. */
   .stage__area {
     flex: 0 0 auto;
-    width: min(100%, calc(100 * var(--vh) - 90px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+    width: min(100%, calc(100 * var(--vh) - 98px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
   }
   .stage__figure,
   .player--banner .stage__figure { width: 100%; height: auto; }
@@ -1469,12 +1460,12 @@
 
   .player .player__collapse { grid-area: menu; justify-self: end; align-self: start; }
 
-  /* Круг — вся высота без фразы (22), строки кнопок и отступов; по ширине
+  /* Круг — вся высота без ряда потоков (34), строки кнопок и отступов; по ширине
      — до половины экрана: правый столбец со счётчиками остаётся. */
   .player.player--immersive .stage__figure {
     width: min(
       calc(
-        100 * var(--vh) - var(--pause-row) - 40px
+        100 * var(--vh) - var(--pause-row) - 52px
         - max(env(safe-area-inset-top), var(--tg-inset-top))
         - max(env(safe-area-inset-bottom), var(--tg-inset-bottom))
       ),

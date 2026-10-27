@@ -206,6 +206,7 @@ export const DEFAULT_STREAM: Stream = VISIBLE_STREAMS[0]
 export const getStream = (id?: string): Stream =>
   VISIBLE_STREAMS.find((s) => s.id === id) ?? DEFAULT_STREAM
 
-// Мотивационные фразы переехали в src/data/motivation.ts: там они разбиты
-// по ярусам времени в движении. Плоский список, который отдаёт бэкенд на
-// GET /api/v1/motivation, устарел — фронт его больше не читает.
+// Мотивационных фраз над кругом больше нет (правка Димы 14.10.2026): их
+// место занял ряд потоков — src/data/streamSwitcher.ts, там же порядок
+// включения нового потока. Список фраз, который отдаёт бэкенд на
+// GET /api/v1/motivation, фронт не читает.

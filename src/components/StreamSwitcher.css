@@ -1,0 +1,253 @@
+/*
+ * Ряд потоков над кругом плеера (StreamSwitcher.tsx, макет Димы 14.10.2026).
+ *
+ * Высоту пилюли задаёт плеер переменной --switch-h на .player__stage
+ * (Player.css): от неё считается размер круга, поэтому она и живёт там же,
+ * где остальной расчёт. Размеры на десктопе, как и у всего плеера, — от
+ * высоты окна (vh): на ноутбуке и на большом мониторе ряд одинаково
+ * соразмерен кругу.
+ *
+ * Ряд — горизонтальная прокрутка без видимой полосы. Где пилюлям хватает
+ * места (десктоп от ~1180 px, планшет стоймя), он просто стоит по центру;
+ * где не хватает (телефон, ноутбук 1024–1179 px), листается вбок.
+ */
+
+.streams {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /*
+   * Поля ряда. Сверху — место под пометку «скоро», которая заходит за верх
+   * пилюли, снизу — под тень активной пилюли: прокрутка обрезает всё, что
+   * вылезает за её коробку. Отрицательные поля ниже возвращают их обратно,
+   * так что на раскладку ряд влияет ровно высотой пилюли.
+   *
+   * По бокам — то же самое для тени и обводки фокуса крайних пилюль; на
+   * телефоне поле бока равно отступу плеера, и ряд листается от края до
+   * края экрана (правила для узких экранов ниже).
+   */
+  --row-top: 10px;
+  --row-bottom: 16px;
+  --bleed-l: 12px;
+  --bleed-r: 12px;
+}
+
+.streams__row {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.9vh, 12px);
+  padding: var(--row-top) var(--bleed-r) var(--row-bottom) var(--bleed-l);
+  margin: calc(-1 * var(--row-top)) calc(-1 * var(--bleed-r)) calc(-1 * var(--row-bottom)) calc(-1 * var(--bleed-l));
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Пилюля после прокрутки встаёт ровно к краю, а не обрезанной на полслова.
+     proximity — на десктопе тачпад не дёргает ряд к пилюле на каждом
+     движении; на телефоне ниже — mandatory, как в макете. */
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--bleed-l) var(--bleed-r);
+  /* Свайп вбок по ряду не должен листать страницу или «Назад» в браузере. */
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  /* Полосы прокрутки не видно ни в одном браузере. */
+  scrollbar-width: none;
+}
+
+.streams__row::-webkit-scrollbar { display: none; }
+
+/*
+ * Центрирование, которое не ломает прокрутку: пока ряд помещается, свободное
+ * место съедают auto-поля крайних пилюль, и ряд стоит по центру. Не
+ * помещается — поля обнуляются, и ряд начинается с первой пилюли. С
+ * justify-content: center начало ряда уехало бы за левый край, куда не
+ * долистать.
+ */
+.streams__row > :first-child { margin-left: auto; }
+.streams__row > :last-child { margin-right: auto; }
+
+/* ——— Пилюля ——— */
+.streams__pill {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1vh, 14px);
+  height: var(--switch-h, 48px);
+  padding: 0 clamp(16px, 1.9vh, 26px) 0 clamp(12px, 1.5vh, 20px);
+  border-radius: var(--r-pill);
+  background: var(--white);
+  box-shadow: 0 4px 14px rgba(20, 22, 26, 0.07);
+  text-align: left;
+  white-space: nowrap;
+  scroll-snap-align: start;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .16s ease;
+}
+
+.streams__pill:active { transform: scale(0.97); }
+
+.streams__pill:focus-visible {
+  outline: 2px solid var(--pink-500);
+  outline-offset: 2px;
+}
+
+.streams__emoji {
+  flex: none;
+  font-size: clamp(20px, 2.6vh, 32px);
+  line-height: 1;
+}
+
+.streams__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.streams__text strong {
+  font-size: clamp(13px, 1.55vh, 19px);
+  font-weight: 700;
+  color: var(--ink-800);
+}
+
+.streams__text span {
+  font-size: clamp(11px, 1.25vh, 15px);
+  color: var(--gray-500);
+}
+
+/* Активный поток — в цвет кольца вокруг круга: от розового к оранжевому. */
+.streams__pill.is-active {
+  background: linear-gradient(100deg, #ff2d8e 0%, #ff5a7e 55%, #ff8a3d 100%);
+  box-shadow: 0 6px 14px rgba(255, 45, 142, 0.3);
+  cursor: default;
+}
+
+.streams__pill.is-active:active { transform: none; }
+.streams__pill.is-active strong { color: var(--white); }
+.streams__pill.is-active .streams__text span { color: rgba(255, 255, 255, 0.88); }
+
+/*
+ * Неактивный — «пока серенький» (Дима): та же белая пилюля, но текст серый,
+ * а эмодзи обесцвечен. Цвет эмодзи иначе перетягивал бы взгляд с активного.
+ */
+.streams__pill.is-soon strong { color: var(--gray-500); }
+.streams__pill.is-soon .streams__text span { color: var(--gray-400); }
+.streams__pill.is-soon .streams__emoji { filter: grayscale(1); opacity: 0.55; }
+
+/* Пометка «скоро» — бирка на верхнем краю пилюли: ширину ряда она не
+   прибавляет. Место под неё — в верхнем поле ряда (--row-top). */
+.streams__soon {
+  position: absolute;
+  top: -7px;
+  right: 12px;
+  padding: 1px 7px 2px;
+  border: 1px solid var(--white);
+  border-radius: var(--r-pill);
+  background: var(--gray-100);
+  color: var(--gray-500);
+  font-size: clamp(9.5px, 1vh, 12px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+/*
+ * «Этот поток скоро откроем» — строка под рядом, а не окно. Она лежит поверх
+ * верхнего края круга и ничего не сдвигает: круг не прыгает ни при её
+ * появлении, ни при исчезновении. Пустая — без фона и полей, то есть
+ * невидима, но остаётся в разметке: так aria-live надёжно озвучивает текст.
+ */
+.streams__hint {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 14px rgba(20, 22, 26, 0.1);
+  color: var(--gray-600);
+  font-size: clamp(12px, 1.3vh, 15px);
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.streams__hint:empty { padding: 0; background: none; box-shadow: none; }
+.streams__hint.is-on { animation: streams-hint-in .2s ease; }
+
+@keyframes streams-hint-in {
+  from { opacity: 0; transform: translate(-50%, -4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streams__hint.is-on { animation: none; }
+  .streams__pill { transition: none; }
+}
+
+@media (hover: hover) {
+  .streams__pill:not(.is-active):hover { box-shadow: 0 6px 18px rgba(20, 22, 26, 0.1); }
+}
+
+/* ═══════ Одна колонка: планшет стоймя и всё до 1024 ═══════
+   Размеры здесь в пикселях: на высоком планшете vh раздул бы пилюли так,
+   что четыре перестали бы помещаться в ширину. Бока ряда — до краёв экрана,
+   на отступ плеера (16 px). */
+@media (max-width: 1023.98px),
+       (min-width: 1024px) and (max-width: 1179.98px) and (orientation: portrait) {
+  .streams {
+    --bleed-l: calc(16px + env(safe-area-inset-left));
+    --bleed-r: calc(16px + env(safe-area-inset-right));
+  }
+
+  .streams__row { gap: 8px; }
+  .streams__pill { gap: 9px; padding: 0 18px 0 14px; }
+  .streams__emoji { font-size: 24px; }
+  .streams__text strong { font-size: 14px; }
+  .streams__text span { font-size: 11.5px; }
+  .streams__soon { font-size: 9.5px; }
+  .streams__hint { font-size: 13px; }
+}
+
+/* ═══════ Телефон в портрете ═══════
+   Как в макете: ряд сразу под шапкой, листается от края до края экрана,
+   активный первым, следующий виден краешком. Отступ плеера здесь 12 px. */
+@media (max-width: 767.98px) {
+  .streams {
+    --bleed-l: calc(12px + env(safe-area-inset-left));
+    --bleed-r: calc(12px + env(safe-area-inset-right));
+  }
+
+  .streams__row { gap: 6px; scroll-snap-type: x mandatory; }
+  .streams__pill { gap: 7px; padding: 0 14px 0 11px; }
+  .streams__emoji { font-size: 21px; }
+  .streams__text strong { font-size: 13px; }
+  .streams__text span { font-size: 10.5px; }
+  .streams__soon { right: 10px; font-size: 9px; }
+  .streams__hint { font-size: 12.5px; }
+}
+
+/* ═══════ Телефон в ландшафте ═══════
+   На 390 px высоты каждый пиксель отдан кругу: пилюли в одну строку, без
+   подписи. Ряд стоит над кругом в левом столбце; вправо, к столбцу
+   статистики, он не вылезает. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1023.98px) {
+  .streams {
+    --row-top: 8px;
+    --row-bottom: 12px;
+    --bleed-l: calc(10px + env(safe-area-inset-left));
+    --bleed-r: 0px;
+  }
+
+  .streams__row { gap: 6px; }
+  .streams__pill { gap: 6px; padding: 0 12px 0 9px; }
+  .streams__emoji { font-size: 17px; }
+  .streams__text strong { font-size: 12.5px; }
+  .streams__text span { display: none; }
+  .streams__soon { top: -6px; right: 8px; padding: 0 5px 1px; font-size: 8.5px; }
+  .streams__hint { top: calc(100% + 4px); padding: 4px 10px; font-size: 12px; }
+}

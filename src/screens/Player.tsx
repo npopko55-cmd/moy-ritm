@@ -28,6 +28,7 @@ import {
 } from '../components/Icons'
 import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
+import StreamSwitcher from '../components/StreamSwitcher'
 import Unlock, { GuestUnlock } from '../components/Unlock'
 import { DEFAULT_FREE_TIER, getStream } from '../data/streams'
 import { loopPoster, loopSrc, SECONDS_PER_MOVE, stepRate, stepsFor, type Loop } from '../data/loops'
@@ -55,7 +56,6 @@ import {
   reportGuestStart,
 } from '../lib/guest'
 import { createRotation, type Deck } from '../lib/deck'
-import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { onAppReturn } from '../lib/appReturn'
 import {
   closeFullscreen,
@@ -123,22 +123,6 @@ function emptyWeek(): DayStats[] {
   })
 }
 
-/**
- * Кегль фразы по её длине. Считаем по код-поинтам, иначе эмодзи в конце
- * тянет на два знака.
- *
- * Длинную показываем мельче и в две строки; совсем длинную — ещё мельче.
- * Второй порог появился вместе с обращением на «вы»: «Хотите продолжать —
- * кайфуйте…» в «длинном» кегле уходило в третью строку на узком экране, а
- * высота блока над кругом жёстко равна двум строкам и трогать её нельзя —
- * от неё считается размер круга.
- */
-const phraseClass = (text: string): string => {
-  const length = [...text].length
-  if (length > 56) return ' is-long is-xlong'
-  return length > 40 ? ' is-long' : ''
-}
-
 /** Открытый кусок движения: живёт в ref, чтобы не перерисовывать плеер. */
 type OpenChunk = { startedAt: number; seconds: number; stream: string; move: string }
 
@@ -200,7 +184,9 @@ export default function Player() {
   // гостю не относится — окно регистрации рассчитано на круг 3 × 30 с.
   const moveInterval =
     settings?.move_interval_seconds ?? (guest ? SECONDS_PER_MOVE : loadMoveInterval())
-  const motivationOn = settings?.motivation_enabled ?? true
+  // Мотивационных фраз над кругом больше нет (правка Димы 14.10.2026): их
+  // место занял ряд потоков. Настройка motivation_enabled осталась на
+  // сервере, но плеер её не читает.
 
   /* ─────────────  Бесплатный уровень  ───────────── */
 
@@ -292,10 +278,6 @@ export default function Player() {
   const [pendingSteps, setPendingSteps] = useState(0)
   const [openSeconds, setOpenSeconds] = useState(0)
 
-  // Колода фраз одна на всё время жизни экрана, иначе они пошли бы по кругу.
-  const picker = useRef(createMotivationPicker()).current
-  const [motivation, setMotivation] = useState(() => picker.next(0))
-
   // Секунды В ДВИЖЕНИИ в этой тренировке: с нуля при открытии плеера, на
   // паузе не растут. Возвращение в начатый заход подхватывает их с той
   // секунды, на которой человек ушёл. Тот же счётчик продублирован в ref,
@@ -309,16 +291,6 @@ export default function Player() {
   // в сохранённую тренировку и возвращаются, когда человек вернулся в поток.
   // Дробная часть копится в ref, округляем при записи.
   const stepsRef = useRef(resume?.sessionSteps ?? 0)
-
-  // Фразу меняем не чаще раза в секунду: смена движения и переход в новый
-  // ярус времени могут совпасть, а прочитать фразу надо успеть.
-  const phraseAt = useRef(0)
-  const showPhrase = useCallback(() => {
-    const now = Date.now()
-    if (now - phraseAt.current < 1000) return
-    phraseAt.current = now
-    setMotivation(picker.next(sessionRef.current))
-  }, [picker])
 
   const {
     track,
@@ -845,7 +817,6 @@ export default function Player() {
   const nextMove = useCallback(() => {
     setStep((s) => s + 1)
     setInMove(0)
-    showPhrase()
     // Сигнал «смена упражнения» (src/media/chime.ts) — поверх музыки, тем же
     // путём (<audio>). Только при смене по интервалу: звучит на каждой смене,
     // начиная с первой на вторую, а на самом старте тренировки его нет.
@@ -859,7 +830,7 @@ export default function Player() {
     ) {
       playChime()
     }
-  }, [showPhrase])
+  }, [])
 
   // Секундный тик: ведёт время тренировки, смену движения и открытый кусок.
   useEffect(() => {
@@ -897,17 +868,6 @@ export default function Player() {
     }, 1000)
     return () => clearInterval(id)
   }, [playing, empty, nextMove, moveInterval])
-
-  // Переход в новый ярус времени — сразу новая фраза, не дожидаясь смены
-  // движения. Сравниваем с показанным ярусом, а не с флагом первого рендера:
-  // в StrictMode эффекты прогоняются дважды.
-  const tier = tierIndex(sessionSeconds)
-  const shownTier = useRef(tier)
-  useEffect(() => {
-    if (shownTier.current === tier) return
-    shownTier.current = tier
-    showPhrase()
-  }, [tier, showPhrase])
 
   /**
    * Ролик и постер каждому из двух элементов: на виду — текущее движение,
@@ -1487,6 +1447,25 @@ export default function Player() {
     navigate(GUEST_TARIFFS_PATH)
   }, [guestToken, navigate])
 
+  /**
+   * Нажали включённый поток в ряду над кругом (src/components/StreamSwitcher.tsx).
+   * Сейчас включён только текущий — «Подвигаться», и сюда никто не попадает;
+   * это заготовка на день, когда у потока появятся свои ролики
+   * (src/data/streamSwitcher.ts, «Как включить поток»).
+   *
+   * Вошедшего — на отсчёт нового потока, как с главной: /start/<id> заведёт
+   * новый заход, а плеер откроется заново со своим набором движений. У гостя
+   * адрес /play/<токен> без потока — ему поток откроется после регистрации,
+   * поэтому ведём туда же, куда «Открой весь функционал Ритма!».
+   */
+  const openStream = useCallback(
+    (id: string) => {
+      if (guest) toGuestTariffs()
+      else navigate(`/start/${id}`)
+    },
+    [guest, toGuestTariffs, navigate],
+  )
+
   /** «Попробовать…» в окне: событие prompt_cta с видом окна — и на тарифы. */
   const promptCta = useCallback(() => {
     const kind = promptRef.current
@@ -1593,12 +1572,12 @@ export default function Player() {
 
       {/* ——— Центр ——— */}
       <main className="player__stage">
+        {/* Ряд потоков вместо мотивационных фраз (макет Димы 14.10.2026):
+            активный — тот, что играет, остальные серые «скоро». Тот же ряд у
+            вошедшего, у гостя по /play/ и в мини-апе Telegram. Высота блока
+            жёсткая (Player.css, --switch-h) — от неё считается круг. */}
         <header className="stage__top">
-          {/* Фразы выключены в настройках — блок остаётся на месте пустым,
-              иначе круг подпрыгивал бы вверх. */}
-          <h1 className={`stage__headline${motivationOn ? phraseClass(motivation) : ''}`}>
-            {motivationOn ? motivation : ' '}
-          </h1>
+          <StreamSwitcher current={stream.id} onOpen={openStream} />
         </header>
 
         {/* Круг и кнопка паузы лежат в одной обёртке: от неё считается и

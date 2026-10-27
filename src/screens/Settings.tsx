@@ -243,16 +243,10 @@ export default function Settings() {
         {note('music')}
       </Card>
 
-      <Card title="Мотивация">
-        <Row label="Фразы над кругом" hint="Короткие подбадривания во время движения.">
-          <Switch
-            label="Фразы над кругом"
-            on={s.motivation_enabled}
-            onChange={(on) => void patch('motivation', { motivation_enabled: on })}
-          />
-        </Row>
-        {note('motivation')}
-      </Card>
+      {/* Карточки «Мотивация» («Фразы над кругом») больше нет: фраз над
+          кругом нет вовсе, их место занял ряд потоков (правка Димы
+          14.10.2026). Поле motivation_enabled на сервере и в типах осталось
+          — его просто никто не читает и не меняет. */}
 
       <Card
         title="Часовой пояс"
