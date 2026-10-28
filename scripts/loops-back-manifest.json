@@ -69,41 +69,6 @@
       "loop_check_p90": 0.59
     }
   },
-  "hf_20261027_140445_35f631b8-c3e4-491a-8cab-76f348f095c7.mp4": {
-    "n": 3,
-    "source": "hf_20261027_140445_35f631b8-c3e4-491a-8cab-76f348f095c7.mp4",
-    "id": "back-palm-turns",
-    "title": "Повороты рук в стороны",
-    "size": [
-      940,
-      940
-    ],
-    "i": 42,
-    "j": 118,
-    "frames": 76,
-    "seconds": 3.167,
-    "seam_score": 1.35,
-    "seam": "на грани",
-    "figure_step": 0.05,
-    "mse_ratio": 5.06,
-    "total_frames": 120,
-    "motion_span": 0.72,
-    "best_found": {
-      "i": 42,
-      "j": 118,
-      "seam_score": 1.35
-    },
-    "square_side": 940,
-    "mp4_kb": 107.1,
-    "webp_kb": 4.2,
-    "check": {
-      "frames_x2": 152,
-      "seam_mad": 1.33,
-      "adjacent_mad_median": 0.3,
-      "loop_check": 4.37,
-      "loop_check_p90": 1.22
-    }
-  },
   "hf_20261027_142233_3caf723c-4634-4a5c-b823-b2ff7b6d18f7.mp4": {
     "n": 4,
     "source": "hf_20261027_142233_3caf723c-4634-4a5c-b823-b2ff7b6d18f7.mp4",
@@ -137,41 +102,6 @@
       "adjacent_mad_median": 1.59,
       "loop_check": 0.97,
       "loop_check_p90": 0.56
-    }
-  },
-  "hf_20261027_142305_65bd974d-f611-45c4-8a35-5e033529e6c3.mp4": {
-    "n": 5,
-    "source": "hf_20261027_142305_65bd974d-f611-45c4-8a35-5e033529e6c3.mp4",
-    "id": "back-arm-raises",
-    "title": "Подъёмы рук вверх",
-    "size": [
-      940,
-      940
-    ],
-    "i": 10,
-    "j": 93,
-    "frames": 83,
-    "seconds": 3.458,
-    "seam_score": 2.07,
-    "seam": "рвано",
-    "figure_step": 0.12,
-    "mse_ratio": 1.45,
-    "total_frames": 121,
-    "motion_span": 0.98,
-    "best_found": {
-      "i": 10,
-      "j": 93,
-      "seam_score": 2.07
-    },
-    "square_side": 940,
-    "mp4_kb": 133.3,
-    "webp_kb": 4.8,
-    "check": {
-      "frames_x2": 166,
-      "seam_mad": 2.45,
-      "adjacent_mad_median": 0.93,
-      "loop_check": 2.65,
-      "loop_check_p90": 1.16
     }
   },
   "hf_20261027_142337_9e8fc385-1786-42db-8976-2e349bec12d7.mp4": {
@@ -279,76 +209,6 @@
       "loop_check_p90": 0.54
     }
   },
-  "hf_20261027_143600_dd4a0af5-f013-4793-b2c6-1c4c9bea9287.mp4": {
-    "n": 9,
-    "source": "hf_20261027_143600_dd4a0af5-f013-4793-b2c6-1c4c9bea9287.mp4",
-    "id": "back-forward-fold",
-    "title": "Наклоны к коленям",
-    "size": [
-      940,
-      940
-    ],
-    "i": 6,
-    "j": 147,
-    "frames": 141,
-    "seconds": 5.875,
-    "seam_score": 27.89,
-    "seam": "рвано",
-    "figure_step": 0.05,
-    "mse_ratio": 7.31,
-    "total_frames": 149,
-    "motion_span": 0.94,
-    "best_found": {
-      "i": 6,
-      "j": 147,
-      "seam_score": 27.89
-    },
-    "square_side": 940,
-    "mp4_kb": 210.7,
-    "webp_kb": 3.5,
-    "check": {
-      "frames_x2": 282,
-      "seam_mad": 3.84,
-      "adjacent_mad_median": 1.04,
-      "loop_check": 3.69,
-      "loop_check_p90": 2.39
-    }
-  },
-  "hf_20261027_143703_bd250139-ae5a-4b0a-8908-ef6dd19274fb.mp4": {
-    "n": 10,
-    "source": "hf_20261027_143703_bd250139-ae5a-4b0a-8908-ef6dd19274fb.mp4",
-    "id": "back-arms-up-bend",
-    "title": "Наклоны с руками вверх",
-    "size": [
-      940,
-      940
-    ],
-    "i": 6,
-    "j": 121,
-    "frames": 115,
-    "seconds": 4.792,
-    "seam_score": 4.71,
-    "seam": "рвано",
-    "figure_step": 0.05,
-    "mse_ratio": 3.17,
-    "total_frames": 123,
-    "motion_span": 0.99,
-    "best_found": {
-      "i": 6,
-      "j": 121,
-      "seam_score": 4.71
-    },
-    "square_side": 940,
-    "mp4_kb": 179.1,
-    "webp_kb": 3.5,
-    "check": {
-      "frames_x2": 230,
-      "seam_mad": 3.01,
-      "adjacent_mad_median": 0.96,
-      "loop_check": 3.13,
-      "loop_check_p90": 1.3
-    }
-  },
   "hf_20261027_143733_01aa341c-2a80-4dd9-9f9c-3ce81a5be14e.mp4": {
     "n": 11,
     "source": "hf_20261027_143733_01aa341c-2a80-4dd9-9f9c-3ce81a5be14e.mp4",
@@ -454,41 +314,6 @@
       "loop_check_p90": 1.2
     }
   },
-  "hf_20261027_144056_6f119c2a-abed-4b75-a254-4c2cdb4ef562.mp4": {
-    "n": 14,
-    "source": "hf_20261027_144056_6f119c2a-abed-4b75-a254-4c2cdb4ef562.mp4",
-    "id": "back-standing-cat",
-    "title": "Кошка стоя",
-    "size": [
-      940,
-      940
-    ],
-    "i": 15,
-    "j": 92,
-    "frames": 77,
-    "seconds": 3.208,
-    "seam_score": 1.9,
-    "seam": "рвано",
-    "figure_step": 0.05,
-    "mse_ratio": 6.12,
-    "total_frames": 112,
-    "motion_span": 0.56,
-    "best_found": {
-      "i": 15,
-      "j": 92,
-      "seam_score": 1.9
-    },
-    "square_side": 940,
-    "mp4_kb": 112.4,
-    "webp_kb": 3.7,
-    "check": {
-      "frames_x2": 154,
-      "seam_mad": 2.75,
-      "adjacent_mad_median": 0.68,
-      "loop_check": 4.02,
-      "loop_check_p90": 2.38
-    }
-  },
   "hf_20261027_144139_2f6a85aa-b2bf-4d03-8f61-2825657b6263.mp4": {
     "n": 15,
     "source": "hf_20261027_144139_2f6a85aa-b2bf-4d03-8f61-2825657b6263.mp4",
@@ -524,39 +349,214 @@
       "loop_check_p90": 1.33
     }
   },
-  "hf_20261027_144319_fabb9165-20df-49cb-890c-ac13f37ecdc1.mp4": {
-    "n": 16,
-    "source": "hf_20261027_144319_fabb9165-20df-49cb-890c-ac13f37ecdc1.mp4",
+  "hf_20261027_200806_23ad55b8-043a-4d5a-8f3a-b84640e44f95.mp4": {
+    "n": 1,
+    "source": "hf_20261027_200806_23ad55b8-043a-4d5a-8f3a-b84640e44f95.mp4",
+    "id": "back-palm-turns",
+    "title": "Повороты рук в стороны",
+    "size": [
+      940,
+      940
+    ],
+    "i": 42,
+    "j": 125,
+    "frames": 83,
+    "seconds": 3.458,
+    "seam_score": 1.14,
+    "seam": "чисто",
+    "figure_step": 0.05,
+    "mse_ratio": 5.25,
+    "total_frames": 144,
+    "motion_span": 0.95,
+    "best_found": {
+      "i": 42,
+      "j": 125,
+      "seam_score": 1.14
+    },
+    "square_side": 940,
+    "mp4_kb": 139.8,
+    "webp_kb": 5.1,
+    "check": {
+      "frames_x2": 166,
+      "seam_mad": 1.18,
+      "adjacent_mad_median": 0.35,
+      "loop_check": 3.42,
+      "loop_check_p90": 0.97
+    }
+  },
+  "hf_20261027_200806_aeb336b8-a0d4-42db-bd57-9f4197a9c518.mp4": {
+    "n": 2,
+    "source": "hf_20261027_200806_aeb336b8-a0d4-42db-bd57-9f4197a9c518.mp4",
+    "id": "back-arms-up-bend",
+    "title": "Наклоны с руками вверх",
+    "size": [
+      940,
+      940
+    ],
+    "i": 29,
+    "j": 142,
+    "frames": 113,
+    "seconds": 4.708,
+    "seam_score": 2.31,
+    "seam": "рвано",
+    "figure_step": 0.05,
+    "mse_ratio": 2.78,
+    "total_frames": 168,
+    "motion_span": 0.99,
+    "best_found": {
+      "i": 29,
+      "j": 142,
+      "seam_score": 2.31
+    },
+    "square_side": 940,
+    "mp4_kb": 191.2,
+    "webp_kb": 3.8,
+    "check": {
+      "frames_x2": 226,
+      "seam_mad": 1.75,
+      "adjacent_mad_median": 1.01,
+      "loop_check": 1.73,
+      "loop_check_p90": 0.79
+    }
+  },
+  "hf_20261027_200807_d0f2f956-4290-48c0-8b54-3b52ff809721.mp4": {
+    "n": 3,
+    "source": "hf_20261027_200807_d0f2f956-4290-48c0-8b54-3b52ff809721.mp4",
+    "id": "back-standing-cat",
+    "title": "Кошка стоя",
+    "size": [
+      940,
+      940
+    ],
+    "i": 32,
+    "j": 113,
+    "frames": 81,
+    "seconds": 3.375,
+    "seam_score": 1.7,
+    "seam": "рвано",
+    "figure_step": 0.05,
+    "mse_ratio": 2.65,
+    "total_frames": 144,
+    "motion_span": 0.89,
+    "best_found": {
+      "i": 32,
+      "j": 113,
+      "seam_score": 1.7
+    },
+    "square_side": 940,
+    "mp4_kb": 152.6,
+    "webp_kb": 4.6,
+    "check": {
+      "frames_x2": 162,
+      "seam_mad": 1.7,
+      "adjacent_mad_median": 1.09,
+      "loop_check": 1.56,
+      "loop_check_p90": 1.12
+    }
+  },
+  "hf_20261027_200807_da709ea7-e4e8-4085-ab23-6d680aed3edd.mp4": {
+    "n": 4,
+    "source": "hf_20261027_200807_da709ea7-e4e8-4085-ab23-6d680aed3edd.mp4",
     "id": "back-pelvic-tilt",
     "title": "Наклоны таза",
     "size": [
       940,
       940
     ],
-    "i": 119,
-    "j": 199,
-    "frames": 80,
-    "seconds": 3.333,
-    "seam_score": 1.56,
-    "seam": "на грани",
+    "i": 31,
+    "j": 117,
+    "frames": 86,
+    "seconds": 3.583,
+    "seam_score": 1.02,
+    "seam": "чисто",
     "figure_step": 0.05,
-    "mse_ratio": 2.63,
-    "total_frames": 201,
-    "motion_span": 0.72,
+    "mse_ratio": 3.02,
+    "total_frames": 144,
+    "motion_span": 0.77,
     "best_found": {
-      "i": 119,
-      "j": 199,
-      "seam_score": 1.56
+      "i": 31,
+      "j": 117,
+      "seam_score": 1.02
     },
     "square_side": 940,
-    "mp4_kb": 115.4,
-    "webp_kb": 4.1,
+    "mp4_kb": 113.9,
+    "webp_kb": 4.2,
     "check": {
-      "frames_x2": 160,
-      "seam_mad": 1.53,
-      "adjacent_mad_median": 0.57,
-      "loop_check": 2.67,
-      "loop_check_p90": 1.55
+      "frames_x2": 172,
+      "seam_mad": 0.98,
+      "adjacent_mad_median": 0.39,
+      "loop_check": 2.51,
+      "loop_check_p90": 1.2
+    }
+  },
+  "hf_20261027_202731_730ca332-899d-427b-9165-450ea26390c7.mp4": {
+    "n": 5,
+    "source": "hf_20261027_202731_730ca332-899d-427b-9165-450ea26390c7.mp4",
+    "id": "back-arm-raises",
+    "title": "Подъёмы рук вверх",
+    "size": [
+      940,
+      940
+    ],
+    "i": 28,
+    "j": 120,
+    "frames": 92,
+    "seconds": 3.833,
+    "seam_score": 0.8,
+    "seam": "чисто",
+    "figure_step": 0.08,
+    "mse_ratio": 0.53,
+    "total_frames": 144,
+    "motion_span": 0.95,
+    "best_found": {
+      "i": 28,
+      "j": 120,
+      "seam_score": 0.8
+    },
+    "square_side": 940,
+    "mp4_kb": 152.9,
+    "webp_kb": 4.6,
+    "check": {
+      "frames_x2": 184,
+      "seam_mad": 1.02,
+      "adjacent_mad_median": 0.76,
+      "loop_check": 1.35,
+      "loop_check_p90": 0.58
+    }
+  },
+  "hf_20261027_214634_8ff8c185-1553-48cd-8a93-6ac621510963.mp4": {
+    "n": 6,
+    "source": "hf_20261027_214634_8ff8c185-1553-48cd-8a93-6ac621510963.mp4",
+    "id": "back-forward-fold",
+    "title": "Наклоны к коленям",
+    "size": [
+      940,
+      940
+    ],
+    "i": 7,
+    "j": 45,
+    "frames": 38,
+    "seconds": 1.583,
+    "seam_score": 26.01,
+    "seam": "рвано",
+    "figure_step": 0.05,
+    "mse_ratio": 5.61,
+    "total_frames": 288,
+    "motion_span": 0.55,
+    "best_found": {
+      "i": 7,
+      "j": 45,
+      "seam_score": 26.01
+    },
+    "square_side": 940,
+    "mp4_kb": 60.8,
+    "webp_kb": 3.9,
+    "check": {
+      "frames_x2": 76,
+      "seam_mad": 4.35,
+      "adjacent_mad_median": 1.32,
+      "loop_check": 3.31,
+      "loop_check_p90": 2.78
     }
   }
 }

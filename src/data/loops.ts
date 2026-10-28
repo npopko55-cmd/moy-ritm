@@ -162,25 +162,27 @@ export const LOOPS: Record<string, Loop> = {
   'back-neck-turns': { id: 'back-neck-turns', title: 'Повороты головы', duration: 2.583, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns' },
   'back-open-twist': { id: 'back-open-twist', title: 'Раскрытие с поворотом', duration: 3.5, stepsPerMinute: 0, kind: 'torso', family: 'opener' },
   'back-chest-opener': { id: 'back-chest-opener', title: 'Раскрытие рук в стороны', duration: 2.667, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
+  /*
+   * Перегенерированы 27.10.2026 вместо рваных: стык чистый (seam 1,14 / 1,02 /
+   * 0,80). loop_check у первых двух 3,42 и 2,51 — кадры на стыке сверены
+   * глазами, позы совпадают, рывка нет.
+   */
+  'back-palm-turns': { id: 'back-palm-turns', title: 'Повороты рук в стороны', duration: 3.458, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
+  'back-pelvic-tilt': { id: 'back-pelvic-tilt', title: 'Наклоны таза', duration: 3.583, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt' },
+  'back-arm-raises': { id: 'back-arm-raises', title: 'Подъёмы рук вверх', duration: 3.833, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
 
   /*
-   * Ещё шесть роликов «Спины» лежат в public/loops/, но в поток не входят:
-   * стык рваный или на грани — ждут решения владельца (перегенерировать или
-   * взять как есть). Решит взять — раскомментируйте запись и впишите id в
-   * BACK_MOVES (src/data/streams.ts). Вид и семейство уже подобраны.
+   * Ещё три ролика «Спины» лежат в public/loops/, но в поток не входят —
+   * ждут решения владельца (перегенерация 27.10 не помогла). Решит взять —
+   * раскомментируйте запись и впишите id в BACK_MOVES (src/data/streams.ts).
+   * Вид и семейство уже подобраны.
    *
-   * стык на грани (seam 1,35; loop_check 4,37):
-   * 'back-palm-turns': { id: 'back-palm-turns', title: 'Повороты рук в стороны', duration: 3.167, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
-   * стык рваный (seam 2,07):
-   * 'back-arm-raises': { id: 'back-arm-raises', title: 'Подъёмы рук вверх', duration: 3.458, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
-   * стык рваный (seam 27,89):
-   * 'back-forward-fold': { id: 'back-forward-fold', title: 'Наклоны к коленям', duration: 5.875, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
-   * стык рваный (seam 4,71):
-   * 'back-arms-up-bend': { id: 'back-arms-up-bend', title: 'Наклоны с руками вверх', duration: 4.792, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
-   * стык рваный (seam 1,9; loop_check 4,02):
-   * 'back-standing-cat': { id: 'back-standing-cat', title: 'Кошка стоя', duration: 3.208, stepsPerMinute: 0, kind: 'torso', family: 'back-standing-cat' },
-   * стык на грани (seam 1,56):
-   * 'back-pelvic-tilt': { id: 'back-pelvic-tilt', title: 'Наклоны таза', duration: 3.333, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt' },
+   * стык рваный (seam 2,31; loop_check 1,73):
+   * 'back-arms-up-bend': { id: 'back-arms-up-bend', title: 'Наклоны с руками вверх', duration: 4.708, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
+   * стык рваный (seam 1,70; loop_check 1,56):
+   * 'back-standing-cat': { id: 'back-standing-cat', title: 'Кошка стоя', duration: 3.375, stepsPerMinute: 0, kind: 'torso', family: 'back-standing-cat' },
+   * не петля — наклон один раз, дальше стоит (seam 26,01):
+   * 'back-forward-fold': { id: 'back-forward-fold', title: 'Наклоны к коленям', duration: 1.583, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
    */
 }
 
