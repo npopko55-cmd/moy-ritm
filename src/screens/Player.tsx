@@ -292,6 +292,16 @@ export default function Player() {
   // Дробная часть копится в ref, округляем при записи.
   const stepsRef = useRef(resume?.sessionSteps ?? 0)
 
+  // Движения этого захода — вместо шагов там, где шагов нет («Размять
+  // спину»: stepsPerMinute 0 у всех движений). Засчитывается движение,
+  // пройденное до конца: кольцо замкнулось и плеер сам сменил его на
+  // следующее (nextMove). Начатое, но не законченное не считаем — иначе
+  // «Играть» и сразу «Пауза» уже давали бы движение. Счёт живёт столько же,
+  // сколько минуты захода: уходит в сохранённую тренировку, возвращается с
+  // ней и обнуляется вместе с ними (renew).
+  const movesRef = useRef(resume?.sessionMoves ?? 0)
+  const [sessionMoves, setSessionMoves] = useState(movesRef.current)
+
   const {
     track,
     blocked: soundBlocked,
@@ -572,7 +582,9 @@ export default function Player() {
   const renew = useCallback(() => {
     sessionRef.current = 0
     stepsRef.current = 0
+    movesRef.current = 0
     setSessionSeconds(0)
+    setSessionMoves(0)
     begun.current = false
   }, [])
 
@@ -833,6 +845,10 @@ export default function Player() {
   const nextMove = useCallback(() => {
     setStep((s) => s + 1)
     setInMove(0)
+    // Зовёт его только секундный тик, когда кольцо замкнулось: движение
+    // пройдено целиком.
+    movesRef.current += 1
+    setSessionMoves(movesRef.current)
     // Сигнал «смена упражнения» (src/media/chime.ts) — поверх музыки, тем же
     // путём (<audio>). Только при смене по интервалу: звучит на каждой смене,
     // начиная с первой на вторую, а на самом старте тренировки его нет.
@@ -1089,6 +1105,7 @@ export default function Player() {
         streamId: stream.id,
         sessionSeconds: sessionRef.current,
         sessionSteps: Math.round(stepsRef.current),
+        sessionMoves: movesRef.current,
         deck: (orderRef.current?.list ?? []).map((l) => l.id),
         moveIndex: stepRef.current,
         moveSeconds: inMoveRef.current,
@@ -1564,6 +1581,9 @@ export default function Player() {
    */
   const todayServerSteps = week.find((d) => isToday(d.local_date))?.steps ?? 0
   const todaySteps = todayServerSteps + pendingSteps + (loopId ? stepsFor(loopId, openSeconds) : 0)
+  // Поток без шагов — у всех его движений темп 0 («Размять спину»): вместо
+  // шагов, которые там всегда ~0, карточка и пауза показывают движения захода.
+  const countsMoves = stream.loops.every((l) => l.stepsPerMinute === 0)
 
   return (
     <>
@@ -1823,15 +1843,17 @@ export default function Player() {
 
         {/* Шаги те же, что на экране паузы: один счётчик, одна величина.
             «Сегодня» стоит в заголовке, поэтому под цифрой его нет: дважды
-            одно и то же в одной карточке только путает. */}
+            одно и то же в одной карточке только путает. В потоке без шагов
+            (спина) — движения захода: «сегодня» нет, их считает только
+            этот заход, а «~» нет, потому что это точный счёт. */}
         <section className="stat">
           <header className="stat__head">
-            <span>Шагов набрано сегодня</span>
+            <span>{countsMoves ? 'Движений сделано' : 'Шагов набрано сегодня'}</span>
           </header>
           <div className="stat__row">
             <span className="stat__steps">
-              {/* «~» здесь и везде: шаги мы оцениваем по темпу движения. */}
-              <strong className="stat__mid">~{todaySteps}</strong>
+              {/* «~» у шагов здесь и везде: их мы оцениваем по темпу движения. */}
+              <strong className="stat__mid">{countsMoves ? sessionMoves : `~${todaySteps}`}</strong>
             </span>
           </div>
         </section>
@@ -1866,6 +1888,7 @@ export default function Player() {
         <PlayerPause
           sessionSeconds={sessionSeconds}
           todaySteps={todaySteps}
+          sessionMoves={countsMoves ? sessionMoves : null}
           todaySeconds={todaySeconds}
           summary={summary}
           locked={limited && !guest}

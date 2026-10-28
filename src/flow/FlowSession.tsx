@@ -45,6 +45,11 @@ export type FlowSession = {
   sessionSeconds: number
   /** Шаги этого захода — оценка по темпу движений. */
   sessionSteps: number
+  /**
+   * Движений этого захода, пройденных до конца (кольцо замкнулось). Нет —
+   * тренировка сохранена до 28.10.2026, тогда считаем с нуля.
+   */
+  sessionMoves?: number
   /** Порядок уже выданных движений: по нему восстанавливается колода. */
   deck: string[]
   /** Позиция в колоде — какое движение сейчас на экране. */
@@ -145,6 +150,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
         streamId,
         sessionSeconds: 0,
         sessionSteps: 0,
+        sessionMoves: 0,
         deck: [],
         moveIndex: 0,
         moveSeconds: 0,
