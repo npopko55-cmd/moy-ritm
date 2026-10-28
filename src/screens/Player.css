@@ -596,6 +596,37 @@
    растягивает, высоту задаёт содержимое. */
 .stat--chart { flex: 0 0 auto; }
 
+/*
+ * «Движений сделано» и «Шагов набрано сегодня» в одной карточке (Дима
+ * 28.10.2026). Друг под другом: и в колонке справа на десктопе, и в узкой
+ * карточке телефона рядом с недельным графиком, который и так выше неё
+ * (при 375×812 карточка не выросла). Рядом половины встают, только если на
+ * каждую есть 128 px. Высота половины — подпись и число, как была у
+ * карточки целиком.
+ */
+.stat--split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: clamp(8px, 1vh, 12px) 16px;
+}
+.stat__part { min-width: 0; }
+.stat__part + .stat__part {
+  border-top: 1px solid var(--gray-100);
+  padding-top: clamp(8px, 1vh, 12px);
+}
+/* Половины рядом: вместо черты сверху — черта слева. */
+@supports (container-type: inline-size) {
+  .stat--split { container-type: inline-size; }
+  @container (min-width: 272px) {
+    .stat__part + .stat__part {
+      border-top: 0;
+      padding-top: 0;
+      border-left: 1px solid var(--gray-100);
+      padding-left: 16px;
+    }
+  }
+}
+
 .week {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

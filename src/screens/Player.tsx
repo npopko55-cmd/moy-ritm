@@ -1696,8 +1696,9 @@ export default function Player() {
    */
   const todayServerSteps = week.find((d) => isToday(d.local_date))?.steps ?? 0
   const todaySteps = todayServerSteps + pendingSteps + (loopId ? stepsFor(loopId, openSeconds) : 0)
-  // Поток без шагов — у всех его движений темп 0 («Размять спину»): вместо
-  // шагов, которые там всегда ~0, карточка и пауза показывают движения захода.
+  // Поток без шагов — у всех его движений темп 0 («Размять спину»): блок
+  // разблокировки не обещает в нём шагов. Карточка и пауза показывают и
+  // движения, и шаги во всех потоках.
   const countsMoves = stream.loops.every((l) => l.stepsPerMinute === 0)
 
   return (
@@ -1965,20 +1966,33 @@ export default function Player() {
           </div>
         </section>
 
-        {/* Шаги те же, что на экране паузы: один счётчик, одна величина.
-            «Сегодня» стоит в заголовке, поэтому под цифрой его нет: дважды
-            одно и то же в одной карточке только путает. В потоке без шагов
-            (спина) — движения захода: «сегодня» нет, их считает только
-            этот заход, а «~» нет, потому что это точный счёт. */}
-        <section className="stat">
-          <header className="stat__head">
-            <span>{countsMoves ? 'Движений сделано' : 'Шагов набрано сегодня'}</span>
-          </header>
-          <div className="stat__row">
-            <span className="stat__steps">
-              {/* «~» у шагов здесь и везде: их мы оцениваем по темпу движения. */}
-              <strong className="stat__mid">{countsMoves ? sessionMoves : `~${todaySteps}`}</strong>
-            </span>
+        {/* Карточка из двух половин (Дима 28.10.2026: «количество движений
+            считаем всегда, а вторую часть заполняем шагами») — во всех
+            потоках, как и на экране паузы. Движения — этого захода,
+            пройденные до конца: точный счёт, поэтому без «~». Шаги — за
+            сегодня целиком; в потоке без шагов (спина) это шаги из других
+            потоков или ~0, строку не прячем. «Сегодня» стоит в подписи,
+            поэтому под цифрой его нет. Половины — друг под другом
+            (Player.css, .stat--split). */}
+        <section className="stat stat--split">
+          <div className="stat__part">
+            <header className="stat__head">
+              <span>Движений сделано</span>
+            </header>
+            <div className="stat__row">
+              <strong className="stat__mid">{sessionMoves}</strong>
+            </div>
+          </div>
+          <div className="stat__part">
+            <header className="stat__head">
+              <span>Шагов набрано сегодня</span>
+            </header>
+            <div className="stat__row">
+              <span className="stat__steps">
+                {/* «~» у шагов здесь и везде: их мы оцениваем по темпу движения. */}
+                <strong className="stat__mid">~{todaySteps}</strong>
+              </span>
+            </div>
           </div>
         </section>
 
@@ -2012,7 +2026,7 @@ export default function Player() {
         <PlayerPause
           sessionSeconds={sessionSeconds}
           todaySteps={todaySteps}
-          sessionMoves={countsMoves ? sessionMoves : null}
+          sessionMoves={sessionMoves}
           todaySeconds={todaySeconds}
           summary={summary}
           locked={limited && !guest}

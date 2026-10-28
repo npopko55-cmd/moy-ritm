@@ -76,11 +76,8 @@ type Props = {
   sessionSeconds: number
   /** Шаги за сегодня целиком — оценка, поэтому печатается с «~». */
   todaySteps: number
-  /**
-   * Движения этого захода, пройденные до конца, — в потоке без шагов
-   * («Размять спину») строка шагов показывает их. null — поток с шагами.
-   */
-  sessionMoves: number | null
+  /** Движения этого захода, пройденные до конца, — во всех потоках. */
+  sessionMoves: number
   /** Сегодня всего, вместе с тем, что сервер ещё не видел. */
   todaySeconds: number
   summary: StatsSummary | null
@@ -166,25 +163,23 @@ export default function PlayerPause({
                 будто движение не засчиталось. */}
             <strong className="sum__value">{mmss(sessionSeconds)}</strong>
           </li>
-          {sessionMoves !== null ? (
-            // Поток без шагов: точный счёт движений захода, поэтому без «~».
-            <li className="sum">
-              <span className="sum__icon sum__icon--orange">
-                <Check size={19} />
-              </span>
-              <span className="sum__label">Движений сделано в этом заходе</span>
-              <strong className="sum__value">{sessionMoves}</strong>
-            </li>
-          ) : (
-            <li className="sum">
-              <span className="sum__icon sum__icon--orange">
-                <Steps size={19} />
-              </span>
-              <span className="sum__label">Шагов набрано сегодня</span>
-              {/* «~» здесь и везде: шаги мы оцениваем по темпу движения. */}
-              <strong className="sum__value">~{todaySteps}</strong>
-            </li>
-          )}
+          {/* Движения и шаги — обе строки во всех потоках (Дима 28.10.2026),
+              как в карточке под кругом. Движения — точный счёт, без «~». */}
+          <li className="sum">
+            <span className="sum__icon sum__icon--orange">
+              <Check size={19} />
+            </span>
+            <span className="sum__label">Движений сделано в этом заходе</span>
+            <strong className="sum__value">{sessionMoves}</strong>
+          </li>
+          <li className="sum">
+            <span className="sum__icon sum__icon--orange">
+              <Steps size={19} />
+            </span>
+            <span className="sum__label">Шагов набрано сегодня</span>
+            {/* «~» здесь и везде: шаги мы оцениваем по темпу движения. */}
+            <strong className="sum__value">~{todaySteps}</strong>
+          </li>
           <li className="sum">
             <span className="sum__icon sum__icon--green">
               <PulseWave size={20} />
