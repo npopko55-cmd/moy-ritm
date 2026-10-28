@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Сжимает музыку для плеера.
 #
-# Исходники — mp3 128 кбит/с (~41 МБ на 13 треков). На выходе HE-AAC v1
+# Исходники — mp3 128 кбит/с (~41 МБ на 13 треков кардио). На выходе HE-AAC v1
 # 40 кбит/с в .m4a через кодировщик Apple AudioToolbox: SBR достраивает верх
 # спектра, поэтому на слух это примерно как обычный AAC 64 кбит/с, а весит
 # в полтора раза меньше. Формат понимают все браузеры, а декодеры без SBR
 # играют базовый слой — тишины не будет.
 #
 # Запуск: bash scripts/build-music.sh "/путь/к/Архив 2"
+#
+# Собирает только те mp3, что лежат в папке: остальные .m4a в public/music
+# не трогает. Так плейлист спины собран отдельно от кардио — папкой с одними
+# его семью треками.
 
 set -euo pipefail
 
@@ -43,6 +47,14 @@ slug_for() {
     Ryan\ Blyth\ Show\ Me*) echo ryan-blyth-show-me ;;
     Ship\ Wrek\ Stimulate*) echo ship-wrek-stimulate ;;
     Tony\ Dark\ Eyes\ Games*) echo tony-dark-eyes-games ;;
+    # Плейлист «Размять спину» (BACK_TRACKS), прислал Никита 28.10.
+    Mount\ Eminest\ Morning*) echo mount-eminest-morning-breeze ;;
+    Dmxr\ Lofi\ Sleep*)   echo dmxr-lofi-sleep ;;
+    Abilene\ Sweetest*)   echo abilene-sweetest-rain ;;
+    Sweep\ Sleep\ Night*) echo sweep-sleep-night-light ;;
+    Lamp\ Camp\ Empty*)   echo lamp-camp-empty-reading-room ;;
+    Pokesh\ Goodbye*)     echo pokesh-goodbye-sea ;;
+    Assol\ Lunar\ Rain*)  echo assol-lunar-rain ;;
     *)                    echo "" ;;
   esac
 }

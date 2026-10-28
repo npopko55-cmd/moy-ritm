@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
@@ -44,7 +44,7 @@ export default function Countdown() {
   // поток у него по умолчанию, а уводит отсчёт в плеер гостя.
   const { streamId, token: guestToken } = useParams()
   const [left, setLeft] = useState(START_FROM)
-  const { start, setPlaying: setMusicPlaying } = useMusic()
+  const { start, setPlaying: setMusicPlaying, selectStream } = useMusic()
   // Отсчёт дошёл до конца и сам уводит в плеер: музыку тогда не трогаем.
   const toPlayer = useRef(false)
   const { session: flow } = useFlow()
@@ -68,6 +68,14 @@ export default function Countdown() {
    * плеер закроет сам, когда откроется.
    */
   const resume = flow?.streamId === target
+
+  // Музыка этого потока (у спины своя, src/data/music.ts) — до пуска ниже:
+  // эффекты отсчёта идут после layout-эффектов, и первым пуском встанет уже
+  // трек нужного плейлиста. Из переключателя в плеере плейлист сменён ещё в
+  // касании — тогда здесь ничего не меняется.
+  useLayoutEffect(() => {
+    selectStream(target)
+  }, [selectStream, target])
 
   // Музыка включается сразу на отсчёте, а не при появлении плеера. Плеер
   // подхватывает её из общего проигрывателя без перезапуска. Ушли с отсчёта

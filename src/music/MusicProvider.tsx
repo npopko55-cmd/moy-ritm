@@ -12,7 +12,7 @@ import { api } from '../api/client'
 import { ApiError, type Me } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { bumpSettingsRevision, currentSettingsRevision } from '../lib/settings'
-import { LONG_INTRO_SECONDS, TRACKS, type Track, shuffled, trackSrc } from '../data/music'
+import { LONG_INTRO_SECONDS, TRACKS, type Track, playlistFor, shuffled, trackSrc } from '../data/music'
 import { setMusicUnlock } from '../media/unlock'
 import { isNotAllowed } from '../media/videoPool'
 
@@ -55,6 +55,14 @@ type MusicValue = {
    * новый трек ставится и запускается в том же жесте.
    */
   next: () => void
+  /**
+   * Музыка потока: у «Размять спину» свой плейлист (playlistFor в
+   * src/data/music.ts). Отсчёт и плеер зовут это со своим потоком, а
+   * переключатель потоков — прямо в касании, чтобы новый трек встал и
+   * заиграл в том же жесте. Тот же плейлист — ничего не меняется, музыка
+   * играет дальше.
+   */
+  selectStream: (streamId: string) => void
 }
 
 const MusicContext = createContext<MusicValue | null>(null)
@@ -116,7 +124,11 @@ function wishHolds(wish: MusicWish | null, me: Me | null): boolean {
  * продолжает играть при переходе в плеер без паузы и перезапуска.
  */
 export function MusicProvider({ children }: { children: ReactNode }) {
-  const playlist = useMemo(() => shuffled(TRACKS), [])
+  /** Плейлист потока как в src/data/music.ts — по нему видно, сменился ли он. */
+  const sourceRef = useRef<Track[]>(TRACKS)
+  const [playlist, setPlaylist] = useState(() => shuffled(TRACKS))
+  /** Очередь для обработчиков: смена потока подменяет её сразу, до перерисовки. */
+  const playlistRef = useRef(playlist)
   const [index, setIndex] = useState(0)
   /**
    * Номер трека для обработчиков. Меняет его только «следующий» (next) — и
@@ -159,7 +171,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const track = playlist[index % playlist.length]
   /** Трек, который сейчас стоит или встанет следующим пуском. */
-  const currentTrack = useCallback(() => playlist[indexRef.current % playlist.length], [playlist])
+  const currentTrack = useCallback(() => {
+    const list = playlistRef.current
+    return list[indexRef.current % list.length]
+  }, [])
 
   // Состояние для обработчиков касаний — свежее, без пересоздания. Кнопка
   // звука правит их сразу: разблокировка в том же касании должна видеть уже
@@ -312,19 +327,49 @@ export function MusicProvider({ children }: { children: ReactNode }) {
    */
   const next = useCallback(() => {
     advanced.current = true
-    const i = (indexRef.current + 1) % playlist.length
+    const list = playlistRef.current
+    const i = (indexRef.current + 1) % list.length
     indexRef.current = i
     setIndex(i)
     setBlocked(false)
     // Музыку ещё ни разу не запускали — источник подставит первый пуск.
     if (!armed.current) return
-    load(playlist[i])
+    load(list[i])
     if (onRef.current) {
       play(FADE_START)
       fresh.current = false
     }
-  }, [playlist, load, play])
+  }, [load, play])
   nextRef.current = next
+
+  /**
+   * Сменить плейлист на музыку потока. Тем же путём, что и «следующий»:
+   * играла музыка — новый трек встаёт и разгорается сразу (FADE_START), стояла
+   * — подставляется и ждёт пуска. Новый плейлист — это новый заход в музыку:
+   * свежая перемешанная очередь, и её первый трек снова с «разгара».
+   */
+  const selectStream = useCallback(
+    (streamId: string) => {
+      const source = playlistFor(streamId)
+      if (source === sourceRef.current) return
+      sourceRef.current = source
+      const list = shuffled(source)
+      playlistRef.current = list
+      indexRef.current = 0
+      setPlaylist(list)
+      setIndex(0)
+      advanced.current = false
+      failures.current = 0
+      setBlocked(false)
+      if (!armed.current) return
+      load(list[0])
+      if (onRef.current) {
+        play(FADE_START)
+        fresh.current = false
+      }
+    },
+    [load, play],
+  )
 
   /**
    * Пуск уже сделан прямо в касании (toggleSound, resumeNow), и эффекту
@@ -588,8 +633,22 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       start,
       setPlaying,
       next,
+      selectStream,
     }),
-    [track, playing, blocked, enabled, toggleSound, resumeNow, pauseNow, resetSoundForEntry, start, setPlaying, next],
+    [
+      track,
+      playing,
+      blocked,
+      enabled,
+      toggleSound,
+      resumeNow,
+      pauseNow,
+      resetSoundForEntry,
+      start,
+      setPlaying,
+      next,
+      selectStream,
+    ],
   )
   return <MusicContext.Provider value={value}>{children}</MusicContext.Provider>
 }

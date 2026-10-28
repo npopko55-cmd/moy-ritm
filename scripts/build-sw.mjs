@@ -127,7 +127,8 @@ const urls = precache.map((f) => BASE + f)
 // Версии кэшей — хеши содержимого: поменялся хоть один файл — у кэша новое
 // имя, и старый удаляется при активации воркера.
 const version = contentHash(precache)
-const musicVersion = contentHash(filesIn('music').filter((f) => f.endsWith('.m4a')))
+const musicFiles = filesIn('music').filter((f) => f.endsWith('.m4a'))
+const musicVersion = contentHash(musicFiles)
 
 const bytes = precache.reduce((sum, f) => {
   try {
@@ -145,7 +146,10 @@ const MUSIC = 'myrithm-music-${musicVersion}'
 // Кэша роликов больше нет (см. fetch ниже): прежний myrithm-loops-* удалит activate.
 // Кэша анимации маскота тоже: на главной её больше нет, myrithm-mascot-* удалит activate.
 const CURRENT = [PRECACHE, MUSIC]
-const MUSIC_LIMIT = 13
+// Лимит — все треки всех плейлистов (src/data/music.ts): с 28.10 у спины
+// своя музыка, и при меньшем лимите треки кардио и спины вытесняли бы друг
+// друга при каждом переключении потока.
+const MUSIC_LIMIT = ${musicFiles.length}
 
 /** Сети, на которых второй поток того же файла ради кэша — плохая сделка. */
 const SLOW = ['slow-2g', '2g']
@@ -372,7 +376,7 @@ self.addEventListener('fetch', (e) => {
   // плеер играет запасной синтез.
   if (url.pathname.startsWith(BASE + 'sounds/')) return
 
-  // Музыка: тринадцать треков по 0,6–1,3 МБ, больше в кэше держать незачем.
+  // Музыка: треки по 0,6–1,3 МБ, в кэше — не больше, чем их всего (MUSIC_LIMIT).
   if (url.pathname.endsWith('.m4a')) {
     e.respondWith(media(e, req, MUSIC, MUSIC_LIMIT))
     return

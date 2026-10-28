@@ -1,9 +1,10 @@
 /**
- * Плейлист тренировки.
+ * Плейлисты тренировки: свой у «Размять спину», общий у остальных потоков
+ * (playlistFor ниже).
  *
- * Файлы в public/music/ — HE-AAC v1 40 кбит/с в .m4a. Исходные mp3 весили
- * 41 МБ, после сжатия около 11 МБ, и грузится всегда только текущий трек.
- * Пересборка: scripts/build-music.sh
+ * Файлы в public/music/ — HE-AAC v1 40 кбит/с в .m4a. Исходные mp3 кардио
+ * весили 41 МБ, после сжатия около 11 МБ, и грузится всегда только текущий
+ * трек. Пересборка: scripts/build-music.sh
  */
 
 import { asset } from '../lib/asset'
@@ -56,6 +57,43 @@ export const TRACKS: Track[] = [
   { id: 'ship-wrek-stimulate', title: "Stimulate", artist: "Ship Wrek", duration: 182.9, startAt: 45.5 },
   { id: 'tony-dark-eyes-games', title: "Games", artist: "Tony Dark Eyes", duration: 129.9, startAt: 13 },
 ]
+
+/**
+ * Спокойный плейлист «Размять спину» — прислал Никита 28.10.2026: под
+ * разминку спины бодрые дропы кардио не годятся.
+ *
+ * Разгар тем же скриптом, но правило другое: в этой музыке громкость почти
+ * ровная, и «разгар», найденный по медиане (способ relaxed), — случайная
+ * точка, а не припев. Поэтому startAt взят только там, где за вступлением
+ * явный подъём громкости и он не дальше LONG_INTRO_SECONDS: Assol (тихое
+ * вступление, к 25-й секунде громче на 16 LU) и Mount Eminest (на 7 LU к
+ * 30-й). Остальные — с начала: у Dmxr, Pokesh, Lamp Camp и Sweep Sleep
+ * музыка звучит в полную силу с первых секунд; у Abilene вступление
+ * минута, и с разгара (69 с) она игралась бы при каждом включении —
+ * спокойному треку незачем терять первую минуту.
+ */
+export const BACK_TRACKS: Track[] = [
+  { id: 'mount-eminest-morning-breeze', title: "Morning Breeze (feat. Simonas)", artist: "Mount Eminest", duration: 118.0, startAt: 27 },
+  { id: 'dmxr-lofi-sleep', title: "Lofi Sleep", artist: "Dmxr", duration: 168.1, startAt: 0 },
+  { id: 'abilene-sweetest-rain', title: "Sweetest Rain", artist: "Abilene", duration: 157.8, startAt: 0 },
+  { id: 'sweep-sleep-night-light', title: "Night Light", artist: "Sweep Sleep", duration: 171.2, startAt: 0 },
+  { id: 'lamp-camp-empty-reading-room', title: "Empty Reading Room", artist: "Lamp Camp", duration: 162.7, startAt: 0 },
+  { id: 'pokesh-goodbye-sea', title: "Goodbye, Sea!", artist: "Pokesh", duration: 147.1, startAt: 0 },
+  { id: 'assol-lunar-rain', title: "Lunar Rain", artist: "Assol", duration: 165.1, startAt: 24 },
+]
+
+/** Потоки со своей музыкой. Кого здесь нет — играют TRACKS. */
+const STREAM_PLAYLISTS: Record<string, Track[]> = {
+  back: BACK_TRACKS,
+}
+
+/**
+ * Плейлист потока. Один и тот же массив для потоков с общей музыкой: по
+ * нему проигрыватель понимает, что при переходе между ними менять нечего.
+ */
+export function playlistFor(streamId: string): Track[] {
+  return STREAM_PLAYLISTS[streamId] ?? TRACKS
+}
 
 export function trackSrc(id: string): string {
   return asset(`music/${id}.m4a`)

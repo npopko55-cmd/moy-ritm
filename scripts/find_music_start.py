@@ -42,6 +42,14 @@ SLUG_RULES = [
     ("Ryan Blyth Show Me", "ryan-blyth-show-me"),
     ("Ship Wrek Stimulate", "ship-wrek-stimulate"),
     ("Tony Dark Eyes Games", "tony-dark-eyes-games"),
+    # Плейлист «Размять спину» (BACK_TRACKS в src/data/music.ts).
+    ("Mount Eminest Morning", "mount-eminest-morning-breeze"),
+    ("Dmxr Lofi Sleep", "dmxr-lofi-sleep"),
+    ("Abilene Sweetest", "abilene-sweetest-rain"),
+    ("Sweep Sleep Night", "sweep-sleep-night-light"),
+    ("Lamp Camp Empty", "lamp-camp-empty-reading-room"),
+    ("Pokesh Goodbye", "pokesh-goodbye-sea"),
+    ("Assol Lunar Rain", "assol-lunar-rain"),
 ]
 
 MIN_START = 5.0           # раньше пятой секунды не стартуем

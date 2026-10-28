@@ -302,6 +302,7 @@ export default function Player() {
     resetSoundForEntry,
     setPlaying: setMusicPlaying,
     next: nextTrack,
+    selectStream: selectMusic,
   } = useMusic()
   // Кнопка звука выключила музыку — молчит и сигнал смены упражнения.
   const soundOnRef = useRef(soundOn)
@@ -318,6 +319,12 @@ export default function Player() {
   useLayoutEffect(() => {
     resetSoundForEntry()
   }, [resetSoundForEntry])
+
+  // Музыка потока — и когда плеер открыли мимо отсчёта: перезагрузка,
+  // возврат в идущую тренировку спины. Плейлист тот же — музыка не прерывается.
+  useLayoutEffect(() => {
+    selectMusic(stream.id)
+  }, [selectMusic, stream.id])
 
   /* ─────────────  Порядок движений  ───────────── */
 
@@ -1479,9 +1486,15 @@ export default function Player() {
       else if (streamLocked(id, limited, freeTier)) {
         if (inTelegram) openTariffsOnSite()
         else navigate('/tariffs')
-      } else navigate(`/start/${id}`)
+      } else {
+        // Музыка нового потока — здесь же, в касании: новый трек встаёт и
+        // разгорается, пока WebKit ещё считает это жестом. Отсчёт её не
+        // прервёт — общий проигрыватель играет и через смену экрана.
+        selectMusic(id)
+        navigate(`/start/${id}`)
+      }
     },
-    [guest, toGuestTariffs, limited, freeTier, inTelegram, navigate],
+    [guest, toGuestTariffs, limited, freeTier, inTelegram, navigate, selectMusic],
   )
 
   /** «Попробовать…» в окне: событие prompt_cta с видом окна — и на тарифы. */
