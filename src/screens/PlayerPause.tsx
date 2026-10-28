@@ -258,7 +258,7 @@ export default function PlayerPause({
             и есть момент, когда он думает, продолжать ли. */}
         {locked && (
           <div className="pause__unlock">
-            <Unlock place="pause" />
+            <Unlock place="pause" noSteps={sessionMoves !== null} />
           </div>
         )}
 

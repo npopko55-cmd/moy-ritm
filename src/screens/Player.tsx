@@ -1738,7 +1738,7 @@ export default function Player() {
           // Бесплатно не открыто ни одного движения или весь поток закрыт
           // (streamLocked): вместо круга — вход в тарифы. Ни вверху, ни в
           // правой колонке его тогда не дублируем.
-          <div className="stage__empty">{limited && <Unlock place="player" />}</div>
+          <div className="stage__empty">{limited && <Unlock place="player" noSteps={countsMoves} />}</div>
         )}
         </div>
       </main>
@@ -1778,7 +1778,7 @@ export default function Player() {
             кругом; в ландшафте — верх правой колонки. */}
         {(topBanner || guestUnlock) && (
           <div className="player__banner">
-            {guestUnlock ? <GuestUnlock onCta={toGuestTariffs} /> : <Unlock place="player" />}
+            {guestUnlock ? <GuestUnlock onCta={toGuestTariffs} /> : <Unlock place="player" noSteps={countsMoves} />}
           </div>
         )}
 
@@ -1862,7 +1862,7 @@ export default function Player() {
             Регистрация гостя находится выше, сразу после карточки музыки. */}
         {sideUnlock && (
           <div className="stats__unlock">
-            <Unlock place="player" />
+            <Unlock place="player" noSteps={countsMoves} />
           </div>
         )}
       </aside>

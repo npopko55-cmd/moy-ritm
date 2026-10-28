@@ -73,9 +73,14 @@ type Props = {
    * помечает, где её увидели.
    */
   place: BannerPlace
+  /**
+   * Поток без шагов («Размять спину»): «Шагайте без ограничений» там не к
+   * месту (тестирование 28.10.2026) — тот же блок зовёт «Заниматься».
+   */
+  noSteps?: boolean
 }
 
-export default function Unlock({ place }: Props) {
+export default function Unlock({ place, noSteps = false }: Props) {
   const { access } = useSession()
   const { trial } = useTrialState()
   const inTelegram = useInTelegram()
@@ -85,7 +90,11 @@ export default function Unlock({ place }: Props) {
   }, [inTelegram])
 
   return trialOpensAll(trial, access) ? (
-    <TrialUnlock compact={place === 'pause'} hint={trialHint(trial, access)} />
+    <TrialUnlock
+      compact={place === 'pause'}
+      hint={trialHint(trial, access)}
+      title={noSteps ? 'Занимайтесь без ограничений' : 'Шагайте без ограничений'}
+    />
   ) : (
     <UnlockBanner place={place} />
   )
@@ -133,15 +142,24 @@ function UnlockBanner({ place }: { place: BannerPlace }) {
 }
 
 /**
- * trial3d, открыто всё: «Шагайте без ограничений» и строка о пробном
+ * trial3d, открыто всё: «Шагайте без ограничений» («Занимайтесь…» в потоке
+ * без шагов) и строка о пробном
  * периоде. Цены здесь не было и нет — её место занимает эта строка.
  */
-function TrialUnlock({ compact, hint }: { compact: boolean; hint: string | null }) {
+function TrialUnlock({
+  compact,
+  hint,
+  title,
+}: {
+  compact: boolean
+  hint: string | null
+  title: string
+}) {
   const inTelegram = useInTelegram()
   return (
     <div className={`unlock ${compact ? 'unlock--compact' : ''}`}>
       <span className="unlock__text">
-        <span className="unlock__title">Шагайте без ограничений</span>
+        <span className="unlock__title">{title}</span>
         {hint && <span className="unlock__price">{hint}</span>}
       </span>
       {inTelegram ? (
