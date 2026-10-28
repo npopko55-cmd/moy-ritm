@@ -72,6 +72,263 @@
         }
       })();
     </script>
+    <!--
+      Сторож запуска. Приложение с экрана «Домой» на айфоне показывало белый
+      экран: главный скрипт не выполнился, а ErrorBoundary ловит ошибки только
+      внутри React. Вероятная причина — старая index.html из кэша ссылается на
+      кусок кода, который выкладка уже удалила (scripts/deploy-server.sh), но
+      повторить это на своём телефоне нельзя. Поэтому сторож сам замечает сбой,
+      сам лечит его и сообщает серверу, что видел (POST /client/boot-fail,
+      строка boot_fail в журнале бэкенда).
+
+      Сбой — #root пуст и main.tsx не поставил window.__moyRitmBooted, и при
+      этом: не скачался наш скрипт или стиль из /assets/ (проверяем через
+      секунду после DOMContentLoaded — к нему главный модуль уже выполнился
+      или упал) либо прошло 15 с после полной загрузки страницы. Пока
+      страница грузится, таймер не идёт: на медленной сети ложная
+      перезагрузка хуже ожидания.
+
+      Лечение — один раз в 10 минут: снять сервис-воркер, удалить его кэши
+      myrithm-* и перезагрузиться, свежая index.html придёт из сети. Не
+      помогло — понятная надпись с кнопкой «Обновить» вместо белого листа.
+      От цикла перезагрузок защищает отметка времени в localStorage (или
+      sessionStorage); записать её некуда — не лечим, сразу надпись. Адрес
+      в строке не трогаем: ?параметр ушёл бы в виджет GetCourse и в Telegram.
+
+      Синтаксис ES5, как у проверки выше: сторож обязан работать там, где
+      упал основной код. Адрес API подставляет Vite из VITE_API_URL; в
+      демо-сборке без API отчёт не шлём.
+    -->
+    <script>
+      (function () {
+        var HEAL_KEY = 'moy-ritm.boot_heal_at';
+        var HEAL_EVERY_MS = 10 * 60 * 1000;
+        var WAIT_AFTER_LOAD_MS = 15000;
+        var api = '%VITE_API_URL%';
+        var assetError = '';
+        var jsError = '';
+        var domReady = false;
+        var done = false;
+
+        function booted() {
+          if (window.__moyRitmBooted === true) return true;
+          var root = document.getElementById('root');
+          // Нет #root или в нём уже что-то есть (приложение или надпись
+          // о старом браузере) — не наше дело.
+          return !root || root.children.length > 0;
+        }
+
+        function stores() {
+          var list = [];
+          try { if (window.localStorage) list.push(window.localStorage); } catch (e) {}
+          try { if (window.sessionStorage) list.push(window.sessionStorage); } catch (e) {}
+          return list;
+        }
+
+        function lastHeal() {
+          var list = stores();
+          for (var i = 0; i < list.length; i++) {
+            try {
+              var at = Number(list[i].getItem(HEAL_KEY));
+              if (at) return at;
+            } catch (e) {}
+          }
+          return 0;
+        }
+
+        function markHeal() {
+          var list = stores();
+          var saved = false;
+          for (var i = 0; i < list.length; i++) {
+            try {
+              list[i].setItem(HEAL_KEY, String(new Date().getTime()));
+              saved = true;
+            } catch (e) {}
+          }
+          return saved;
+        }
+
+        function report(stage, healed) {
+          // Без адреса API (демо-сборка) Vite оставляет заготовку как есть.
+          if (!/^(https?:\/\/|\/[^\/])/.test(api)) return;
+          var url = api + '/client/boot-fail';
+          var standalone = false;
+          try {
+            standalone = navigator.standalone === true ||
+              window.matchMedia('(display-mode: standalone)').matches;
+          } catch (e) {}
+          var error = assetError || jsError;
+          if (assetError && jsError) error = assetError + ' | ' + jsError;
+          var body = JSON.stringify({
+            stage: stage,
+            error: error.slice(0, 300),
+            healed: healed,
+            standalone: standalone,
+            sw_controlled: !!navigator.serviceWorker && !!navigator.serviceWorker.controller,
+            online: navigator.onLine,
+            path: location.pathname,
+            ready_state: document.readyState
+          });
+          // sendBeacon переживает перезагрузку. С типом application/json он
+          // годится только для своего домена (на чужой нужен preflight) —
+          // в бою API на нём же; иначе fetch с keepalive.
+          try {
+            var sameOrigin = api.charAt(0) === '/' || url.indexOf(location.origin + '/') === 0;
+            if (sameOrigin && navigator.sendBeacon &&
+                navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))) return;
+          } catch (e) {}
+          try {
+            if (window.fetch) {
+              window.fetch(url, {
+                method: 'POST',
+                body: body,
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'omit',
+                keepalive: true
+              }).then(null, function () {});
+            }
+          } catch (e) {}
+        }
+
+        // Снять сервис-воркер и удалить его кэши, потом next. Ждём не больше
+        // 3 с: зависшая очистка не должна оставить человека на белом экране.
+        function cleanThen(next) {
+          var called = false;
+          function go() {
+            if (called) return;
+            called = true;
+            next();
+          }
+          setTimeout(go, 3000);
+          try {
+            if (typeof Promise === 'undefined') return go();
+            var jobs = [];
+            var sw = navigator.serviceWorker;
+            if (sw && sw.getRegistrations) {
+              jobs.push(sw.getRegistrations().then(function (regs) {
+                var all = [];
+                for (var i = 0; i < regs.length; i++) all.push(regs[i].unregister());
+                return Promise.all(all);
+              }));
+            }
+            if (window.caches && window.caches.keys) {
+              jobs.push(window.caches.keys().then(function (keys) {
+                var all = [];
+                for (var i = 0; i < keys.length; i++) {
+                  if (keys[i].indexOf('myrithm-') === 0) all.push(window.caches['delete'](keys[i]));
+                }
+                return Promise.all(all);
+              }));
+            }
+            Promise.all(jobs).then(go, go);
+          } catch (e) {
+            go();
+          }
+        }
+
+        function reload() {
+          location.reload();
+        }
+
+        function showNote() {
+          var root = document.getElementById('root');
+          if (!root) return;
+          var font = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
+          var box = document.createElement('div');
+          // Второй padding с env() — под чёлку и полоску; где env() не
+          // понимают, остаётся первый.
+          box.style.cssText =
+            'box-sizing:border-box;min-height:100vh;display:flex;flex-direction:column;' +
+            'align-items:center;justify-content:center;text-align:center;' +
+            'background:#fff;color:#101114;font-family:' + font + ';' +
+            'padding:48px 24px;' +
+            'padding:calc(48px + env(safe-area-inset-top)) 24px calc(48px + env(safe-area-inset-bottom))';
+          var title = document.createElement('p');
+          title.textContent = 'Не получилось загрузить «Мой ритм»';
+          title.style.cssText = 'margin:0 0 12px;font-weight:700;font-size:22px;line-height:1.3';
+          var hint = document.createElement('p');
+          hint.textContent = 'Проверьте интернет и нажмите «Обновить»';
+          hint.style.cssText = 'margin:0 0 28px;font-weight:500;font-size:16px;line-height:1.45';
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = 'Обновить';
+          button.style.cssText =
+            'min-width:220px;min-height:56px;padding:0 32px;border:0;border-radius:999px;' +
+            'background:#ff2d8e;color:#fff;font:700 18px/1 ' + font + ';cursor:pointer;' +
+            '-webkit-appearance:none;-webkit-tap-highlight-color:transparent';
+          button.onclick = function () {
+            button.disabled = true;
+            button.style.opacity = '0.6';
+            cleanThen(reload);
+          };
+          box.appendChild(title);
+          box.appendChild(hint);
+          box.appendChild(button);
+          root.appendChild(box);
+        }
+
+        function fail(stage) {
+          if (done || booted()) return;
+          done = true;
+          var last = lastHeal();
+          var now = new Date().getTime();
+          var recent = last > 0 && now - last >= 0 && now - last < HEAL_EVERY_MS;
+          if (!recent && markHeal()) {
+            report(stage, false);
+            cleanThen(reload);
+            return;
+          }
+          report(stage, recent);
+          showNote();
+        }
+
+        function checkAssets() {
+          if (assetError && domReady) setTimeout(function () { fail('asset_error'); }, 1000);
+        }
+
+        window.addEventListener('error', function (e) {
+          if (done || booted()) return;
+          var el = e && e.target;
+          // Ошибки загрузки <script> и <link> не всплывают — их видно только
+          // на погружении (третий аргумент true).
+          if (el && el !== window && el.tagName) {
+            var src = el.src || el.href || '';
+            if (!assetError && src.indexOf('/assets/') !== -1) {
+              assetError = 'load ' + src;
+              checkAssets();
+            }
+            return;
+          }
+          if (!jsError) {
+            jsError = String((e && e.message) || 'error') +
+              (e && e.filename ? ' @ ' + e.filename + ':' + e.lineno : '');
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function (e) {
+          if (done || booted() || jsError) return;
+          var reason = e && e.reason;
+          jsError = 'unhandledrejection: ' + String((reason && reason.message) || reason);
+        });
+
+        function onDomReady() {
+          if (domReady) return;
+          domReady = true;
+          checkAssets();
+        }
+
+        function onLoad() {
+          onDomReady();
+          setTimeout(function () { fail('timeout'); }, WAIT_AFTER_LOAD_MS);
+        }
+
+        if (document.readyState === 'complete') onLoad();
+        else {
+          document.addEventListener('DOMContentLoaded', onDomReady);
+          window.addEventListener('load', onLoad);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

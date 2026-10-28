@@ -33,6 +33,11 @@ window.addEventListener('vite:preloadError', (event) => {
   if (screenWaiting() && reloadOnce()) event.preventDefault()
 })
 
+// Сторож запуска в index.html ждёт этого флага: код дошёл до отрисовки,
+// белого экрана из-за недокачанного куска нет. React рисует не сразу, а
+// медленный телефон не должен успеть принять пустой #root за сбой.
+window.__moyRitmBooted = true
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>

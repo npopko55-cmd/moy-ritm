@@ -13,3 +13,8 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+interface Window {
+  /** Ставит main.tsx перед отрисовкой; читает сторож запуска в index.html. */
+  __moyRitmBooted?: boolean
+}
