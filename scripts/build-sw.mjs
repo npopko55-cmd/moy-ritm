@@ -150,6 +150,9 @@ const MUSIC_LIMIT = 13
 /** Сети, на которых второй поток того же файла ради кэша — плохая сделка. */
 const SLOW = ['slow-2g', '2g']
 
+/** Сколько ждём Cache API, прежде чем идти в сеть (см. cached). */
+const CACHE_WAIT_MS = 1500
+
 const ASSETS = ${JSON.stringify(urls, null, 2)}
 
 /** Куски сборки с хешем в имени: под тем же именем они не меняются никогда. */
@@ -220,10 +223,18 @@ function keep(cache, whole, response, limit) {
  * запрос уходит в сеть как есть: лучше без кэша, чем без ролика и музыки.
  */
 async function media(event, request, cacheName, limit) {
+  // Зависший Cache API (см. cached) не должен оставить без музыки:
+  // не ответил за CACHE_WAIT_MS — трек из сети.
+  let timer
   try {
-    return await mediaFromCache(event, request, cacheName, limit)
+    const late = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(fetch(request)), CACHE_WAIT_MS)
+    })
+    return await Promise.race([mediaFromCache(event, request, cacheName, limit), late])
   } catch (e) {
     return fetch(request)
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -299,9 +310,25 @@ async function trim(cache, limit) {
   for (let i = 0; i < keys.length - limit; i++) await cache.delete(keys[i])
 }
 
+/**
+ * Запись из кэша — но не дольше CACHE_WAIT_MS и без исключений: промах.
+ *
+ * Айфон, приложение с экрана «Домой» (28.10.2026): при повторном запуске
+ * поиск в Cache API у воркера не отвечал. Запрос, ждавший кэша, так и не
+ * уходил в сеть: постер в круге на главной не появлялся, а /me за ним —
+ * «Нет связи с сервером», хотя refresh (POST, мимо воркера) до сервера
+ * доходил. Кэш здесь только ускоряет — зависший кэш не должен держать сеть.
+ */
+function cached(request) {
+  return Promise.race([
+    caches.match(request),
+    new Promise((resolve) => setTimeout(resolve, CACHE_WAIT_MS)),
+  ]).catch(() => undefined)
+}
+
 /** Разметка приложения из кэша: роутер сам разберётся, какой это экран. */
 async function fallbackPage(networkResponse) {
-  const hit = await caches.match(BASE + 'index.html')
+  const hit = await cached(BASE + 'index.html')
   return hit || networkResponse || Response.error()
 }
 
@@ -310,6 +337,10 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return
+
+  // API — мимо воркера: в предкэше его нет и быть не может, а любой сбой
+  // воркера иначе выглядел бы как «нет связи с сервером».
+  if (url.pathname.startsWith(BASE + 'api/')) return
 
   // Переходы по ссылкам: сначала сеть (вдруг сайт обновился), иначе index.html.
   // Так работают и прямые ссылки вида /player/cardio.
@@ -347,8 +378,8 @@ self.addEventListener('fetch', (e) => {
     return
   }
 
-  // Всё остальное — из предкэша, если оно там есть.
-  e.respondWith(caches.match(req).then((hit) => hit || fetch(req)))
+  // Всё остальное — из предкэша, если оно там есть (и кэш ответил вовремя).
+  e.respondWith(cached(req).then((hit) => hit || fetch(req)))
 })
 `
 
