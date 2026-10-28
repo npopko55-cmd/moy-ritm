@@ -30,13 +30,14 @@ import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
 import StreamSwitcher from '../components/StreamSwitcher'
 import Unlock, { GuestUnlock } from '../components/Unlock'
-import { DEFAULT_FREE_TIER, getStream, streamLocked } from '../data/streams'
+import { DEFAULT_FREE_TIER, getStream, streamLocked, WARM_MOVES } from '../data/streams'
 import { loopPoster, loopSrc, SECONDS_PER_MOVE, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
 import {
   FLOW_RESUME_MINUTES,
   isStart,
   spendStart,
+  startState,
   useFlow,
   type FlowSession,
 } from '../flow/FlowSession'
@@ -126,13 +127,35 @@ function emptyWeek(): DayStats[] {
 /** Открытый кусок движения: живёт в ref, чтобы не перерисовывать плеер. */
 type OpenChunk = { startedAt: number; seconds: number; stream: string; move: string }
 
+/**
+ * Что плеер передаёт плееру другого потока, когда человек переключил поток
+ * над кругом (openStream): заход для человека один, и его минуты и шаги
+ * идут дальше, а не с нуля (решение Никиты 28.10.2026). Движения захода
+ * («Движений сделано» у спины) считаются с нуля: это счёт своего потока.
+ * Сводка дня — чтобы «Время в движении сегодня» не мигнуло нулём, пока
+ * новый плеер ждёт ответа сервера.
+ */
+type StreamCarry = { sessionSeconds: number; sessionSteps: number; summary: StatsSummary | null }
+
+/**
+ * Перенос из переключателя — только вместе с неистраченным стартом
+ * (isStart): «Назад» или «Вперёд» в ту же запись истории — уже обычное
+ * открытие плеера, и старые цифры из неё не подхватываются.
+ */
+function carryOf(state: unknown): StreamCarry | null {
+  if (!isStart(state)) return null
+  const carry = (state as { carry?: StreamCarry }).carry
+  return carry && typeof carry.sessionSeconds === 'number' ? carry : null
+}
+
 /** Вид движения для круга: соседние движения — разного вида (src/data/loops.ts). */
 const moveKind = (move: Loop) => move.kind
 
 export default function Player() {
   const { streamId, token: guestToken } = useParams()
   const navigate = useNavigate()
-  // Состояние записи истории: по нему видно, что плеер открыл отсчёт.
+  // Состояние записи истории: по нему видно, что плеер открыл отсчёт или
+  // переключатель потоков (тогда в нём и перенос захода, StreamCarry).
   const { state: routeState } = useLocation()
   const stream = getStream(streamId)
   const { access, me, reload } = useSession()
@@ -166,6 +189,10 @@ export default function Player() {
     resumeRef.current = flow && flow.streamId === stream.id ? flow : null
   }
   const resume = resumeRef.current
+  // Тоже один раз, в первом рендере: старт гасится после монтирования.
+  const carryRef = useRef<StreamCarry | null | undefined>(undefined)
+  if (carryRef.current === undefined) carryRef.current = resume ? null : carryOf(routeState)
+  const carry = carryRef.current
 
   // Плашка о конце доступа: строкой в колонке, а не всплывающим окном.
   const notice =
@@ -221,8 +248,9 @@ export default function Player() {
   /**
    * Идёт ли тренировка.
    *
-   * Сама она идёт только сразу после отсчёта — это явный старт человека
-   * (isStart в src/flow/FlowSession.tsx). Любое другое открытие плеера —
+   * Сама она идёт только сразу после отсчёта или переключения потока над
+   * кругом (openStream) — это явный старт человека (isStart в
+   * src/flow/FlowSession.tsx). Любое другое открытие плеера —
    * вкладка «Тренировка», логотип и «← На главную», «Вернуться в поток»,
    * «Назад», перезагрузка, повторный запуск мини-апа — встречает тренировку
    * на паузе: ролик и музыка стоят, кольцо и таймер замерли, под кругом
@@ -273,24 +301,26 @@ export default function Player() {
 
   // Цифры правой колонки. Серверная сводка — основа, к ней прибавляются
   // секунды и шаги, которые сервер ещё не видел (раздел 6.5 архитектуры).
-  const [summary, setSummary] = useState<StatsSummary | null>(null)
+  const [summary, setSummary] = useState<StatsSummary | null>(() => carry?.summary ?? null)
   const [pendingSeconds, setPendingSeconds] = useState(0)
   const [pendingSteps, setPendingSteps] = useState(0)
   const [openSeconds, setOpenSeconds] = useState(0)
 
   // Секунды В ДВИЖЕНИИ в этой тренировке: с нуля при открытии плеера, на
   // паузе не растут. Возвращение в начатый заход подхватывает их с той
-  // секунды, на которой человек ушёл. Тот же счётчик продублирован в ref,
-  // чтобы обработчики кнопок читали свежее значение и не пересоздавались
-  // каждую секунду.
-  const [sessionSeconds, setSessionSeconds] = useState(() => resume?.sessionSeconds ?? 0)
-  const sessionRef = useRef(resume?.sessionSeconds ?? 0)
+  // секунды, на которой человек ушёл, а переключение потока над кругом —
+  // с секунды прошлого потока (StreamCarry выше). Тот же счётчик
+  // продублирован в ref, чтобы обработчики кнопок читали свежее значение и
+  // не пересоздавались каждую секунду.
+  const startSeconds = resume?.sessionSeconds ?? carry?.sessionSeconds ?? 0
+  const [sessionSeconds, setSessionSeconds] = useState(startSeconds)
+  const sessionRef = useRef(startSeconds)
 
   // Шаги этой тренировки. На экране их больше не показывают — и в плеере, и
   // на паузе стоят шаги за сегодня, — но заход их всё равно копит: они уходят
   // в сохранённую тренировку и возвращаются, когда человек вернулся в поток.
   // Дробная часть копится в ref, округляем при записи.
-  const stepsRef = useRef(resume?.sessionSteps ?? 0)
+  const stepsRef = useRef(resume?.sessionSteps ?? carry?.sessionSteps ?? 0)
 
   // Движения этого захода — вместо шагов там, где шагов нет («Размять
   // спину»: stepsPerMinute 0 у всех движений). Засчитывается движение,
@@ -1115,8 +1145,9 @@ export default function Player() {
     [saveFlow, stream.id],
   )
 
-  // Плеер открылся: продолжаем начатое, а после отсчёта начинаем новый
-  // заход. Новый заход стирает прошлый — в том числе чужого потока. Открыли
+  // Плеер открылся: продолжаем начатое, а после отсчёта или переключения
+  // потока начинаем новый заход (минуты переключения уже в sessionRef —
+  // их запишет следующий эффект). Новый заход стирает прошлый — в том числе чужого потока. Открыли
   // на паузе без идущей тренировки — заход заведёт первое «Играть».
   useEffect(() => {
     if (resume) store(null)
@@ -1484,17 +1515,31 @@ export default function Player() {
    * Нажали включённый поток в ряду над кругом (src/components/StreamSwitcher.tsx):
    * с 27.10.2026 это «Размять спину» из кардио или «Подвигаться» из спины.
    *
-   * Вошедшего — на отсчёт нового потока, как с главной: /start/<id> заведёт
-   * новый заход, а плеер откроется заново со своим набором движений. Музыка
-   * и счёт минут при этом те же: отсчёт включает общий проигрыватель, а
-   * куски уходят на сервер с кодом нового потока. У гостя адрес /play/<токен>
-   * без потока — ему поток откроется после регистрации, поэтому ведём туда
-   * же, куда «Открой весь функционал Ритма!».
+   * Вошедшего — сразу в тренировку нового потока, без отсчёта (Никита,
+   * 28.10.2026: «убираем между переходами таймер»). Отсчёт нужен, чтобы
+   * встать из-за стола, а человек в плеере уже стоит и двигается. Первый
+   * старт — с главной, «Влиться в поток», вкладки — по-прежнему с отсчётом.
+   *
+   * Переход несёт тот же знак старта, что ставит отсчёт (startState), — плеер
+   * нового потока пускает тренировку сам. Плеер открывается заново (key в
+   * src/App.tsx) со своим набором движений и заводит новый заход; минуты и
+   * шаги захода он подхватывает отсюда (StreamCarry), куски уходят на сервер
+   * с кодом нового потока. Запись истории — новая, как и раньше через отсчёт:
+   * «Назад» возвращает в прошлый поток, на паузе.
+   *
+   * Всё, что отсчёт делал для старта, — здесь же, в касании, пока WebKit ещё
+   * считает его жестом: разблокировка роликов, экран не гаснет, звук снова
+   * включён (новый заход — со звуком), музыка нового потока встаёт и
+   * разгорается — и играет, даже если переключали с паузы. Постеры и первые
+   * ролики нового потока начинают качаться до перехода.
+   *
+   * У гостя адрес /play/<токен> без потока — ему поток откроется после
+   * регистрации, поэтому ведём туда же, куда «Открой весь функционал Ритма!».
    *
    * Поток закрыт этому человеку (без оплаты открыт только бесплатный,
    * streamLocked) — сразу на тарифы, как кнопка «Открыть» блока
-   * разблокировки: отсчёт, после которого вместо круга замок, только злил
-   * бы. В мини-апе тарифы — во внешнем браузере: платить в Telegram нельзя.
+   * разблокировки: тренировка, вместо которой замок, только злила бы. В
+   * мини-апе тарифы — во внешнем браузере: платить в Telegram нельзя.
    */
   const inTelegram = useInTelegram()
   const openStream = useCallback(
@@ -1504,14 +1549,40 @@ export default function Player() {
         if (inTelegram) openTariffsOnSite()
         else navigate('/tariffs')
       } else {
-        // Музыка нового потока — здесь же, в касании: новый трек встаёт и
-        // разгорается, пока WebKit ещё считает это жестом. Отсчёт её не
-        // прервёт — общий проигрыватель играет и через смену экрана.
+        unlockMedia()
+        keepAwake()
+        // Звук — до музыки: выключенный кнопкой живёт до конца захода, а
+        // это новый заход. Плеер при уходе сбросит его ещё раз — уже без
+        // разницы.
+        resetSoundForEntry()
+        // Новый трек встаёт и разгорается в касании. Общий проигрыватель
+        // играет и через смену плеера: уходящий его гасит, а новый тем же
+        // проходом эффектов включает, и трек не запинается.
         selectMusic(id)
-        navigate(`/start/${id}`)
+        resumeMusic()
+        const next = getStream(id)
+        prefetchImages(next.loops.slice(0, WARM_MOVES).map((l) => loopPoster(l.id)))
+        prefetchFiles(next.loops.slice(0, 2).map((l) => loopSrc(l.id)))
+        const carried: StreamCarry = {
+          sessionSeconds: sessionRef.current,
+          sessionSteps: Math.round(stepsRef.current),
+          summary,
+        }
+        navigate(`/player/${next.id}`, { state: { ...startState(), carry: carried } })
       }
     },
-    [guest, toGuestTariffs, limited, freeTier, inTelegram, navigate, selectMusic],
+    [
+      guest,
+      toGuestTariffs,
+      limited,
+      freeTier,
+      inTelegram,
+      navigate,
+      selectMusic,
+      resumeMusic,
+      resetSoundForEntry,
+      summary,
+    ],
   )
 
   /** «Попробовать…» в окне: событие prompt_cta с видом окна — и на тарифы. */

@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import Landing from './screens/Landing'
 import GoFunnel from './screens/GoFunnel'
 import PlayGuest from './screens/PlayGuest'
@@ -53,6 +53,20 @@ const TrialEnded = trialEnded.Screen
 const Offer = offer.Screen
 const Admin = admin.Screen
 const Legal = legal.Screen
+
+/**
+ * Плеер потока — свой на каждый поток (key). Переключатель над кругом с
+ * 28.10.2026 ведёт из плеера прямо в плеер другого потока, без отсчёта
+ * (openStream в src/screens/Player.tsx), и адрес меняется на том же
+ * маршруте. Плеер же рассчитан на один поток за всю жизнь: колода, куски,
+ * сохранённая тренировка, ролики в круге. С ключом он открывается заново,
+ * как раньше после отсчёта; элементы <video> при этом живут в пуле
+ * (src/media/videoPool.ts) и не пересоздаются.
+ */
+function StreamPlayer() {
+  const { streamId } = useParams()
+  return <Player key={streamId} />
+}
 
 export default function App() {
   return (
@@ -145,7 +159,7 @@ export default function App() {
             element={
               <RequireAuth>
                 <RequireTrial start>
-                  <Player />
+                  <StreamPlayer />
                 </RequireTrial>
               </RequireAuth>
             }
