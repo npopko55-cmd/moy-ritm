@@ -259,7 +259,7 @@ export const getStream = (id?: string): Stream =>
 export const streamLocked = (streamId: string, limited: boolean, tier: FreeTier): boolean =>
   limited && streamId !== tier.stream_code && tier.exercise_limit < ALL_MOVES.length
 
-// Мотивационных фраз над кругом больше нет (правка Димы 14.10.2026): их
-// место занял ряд потоков — src/data/streamSwitcher.ts, там же порядок
-// включения нового потока. Список фраз, который отдаёт бэкенд на
-// GET /api/v1/motivation, фронт не читает.
+// Мотивационные фразы — src/data/motivation.ts, по ярусам времени в
+// движении; в плеере они над рядом потоков (src/data/streamSwitcher.ts).
+// Плоский список, который отдаёт бэкенд на GET /api/v1/motivation, устарел —
+// фронт его не читает.

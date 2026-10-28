@@ -87,6 +87,14 @@
    */
   --switch-h: clamp(42px, 5.6vh, 72px);
   --switch-gap: clamp(2px, 0.6vh, 10px);
+  /*
+   * Мотивационная фраза над рядом потоков (Дима 28.10.2026: «вернуть
+   * мотивашки сверху»). Блок — ровно две строки уменьшенного кегля, как
+   * был до 27.10, и эта высота тоже отнимается у круга (--stage-chrome).
+   */
+  --headline-sm: clamp(17px, 2.17vh, 32px); /* ≈0,7 от обычного размера */
+  --headline-lh: 1.2;
+  --motto-h: calc(2 * var(--headline-lh) * var(--headline-sm));
   /* Тот же вертикальный отступ, что и в padding у .player. */
   --stage-pad: clamp(14px, 1.6vh, 24px);
   /*
@@ -96,10 +104,10 @@
    */
   --pause-row: 88px;
   /*
-   * Всё, что забирает высоту у круга: отступы плеера сверху и снизу, ряд
-   * потоков с зазором под ним, строка с кнопкой паузы и нижний зазор.
+   * Всё, что забирает высоту у круга: отступы плеера сверху и снизу, фраза,
+   * ряд потоков с зазором под ним, строка с кнопкой паузы и нижний зазор.
    */
-  --stage-chrome: calc(2 * var(--stage-pad) + var(--switch-h) + var(--switch-gap) + 4px + var(--pause-row));
+  --stage-chrome: calc(2 * var(--stage-pad) + var(--motto-h) + var(--switch-h) + var(--switch-gap) + 4px + var(--pause-row));
   position: relative;
   display: flex;
   flex-direction: column;
@@ -133,6 +141,53 @@
   height: var(--switch-h);
   margin-bottom: var(--switch-gap);
 }
+
+/*
+ * Высота блока с фразой ЖЁСТКАЯ — ровно две строки уменьшенного размера.
+ * Фразы разной длины меняются каждые несколько секунд, и без этого круг и
+ * ряд потоков прыгали бы вверх-вниз. Короткая фраза центрируется внутри.
+ */
+.stage__motto {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--motto-h);
+}
+
+.stage__headline {
+  text-align: center;
+  font-size: clamp(24px, 3.1vh, 46px);
+  line-height: var(--headline-lh);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  /* Обычная фраза — всегда одна строка, третьей строки не бывает никогда. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
+
+/* Длинная фраза (больше 40 знаков) — мельче и до двух строк. */
+.stage__headline.is-long {
+  font-size: var(--headline-sm);
+  -webkit-line-clamp: 2;
+  text-wrap: balance;
+}
+
+/*
+ * Совсем длинная фраза (больше 56 знаков) — ещё на пятую часть мельче:
+ * в «длинном» кегле на узком экране она уходила в третью строку.
+ */
+.stage__headline.is-xlong {
+  font-size: calc(var(--headline-sm) * 0.8);
+}
+
+/* На весь экран — только круг, ряд потоков и счётчики: фраза лишь
+   отнимала бы у круга высоту, рассчитанную без неё. */
+.player--immersive .stage__motto { display: none; }
+.player--immersive .player__stage { --motto-h: 0px; }
 
 /* В строке осталась одна карточка трека: кнопку «на весь экран» убрали. */
 .stats__top { display: flex; }
@@ -744,22 +799,27 @@
      рядом даёт сам gap сцены. */
   .player__stage { --switch-h: 50px; --switch-gap: 0px; }
 
+  /* Фраза в одной колонке — мельче и до двух строк, как была до 27.10.
+     Её высота (до 2 × 1,2 × 19 ≈ 46 px) прибавлена к запасам под круг ниже. */
+  .player__stage { --headline-sm: clamp(15px, 4.2vw, 19px); }
+  .stage__headline { font-size: var(--headline-sm); -webkit-line-clamp: 2; text-wrap: balance; }
+
   /* Круг = остаток высоты после шапки, статистики и меню. Лента потоков
      забирала здесь около 86 px — половину этого отдали кругу, половину
      вернули странице, которая на планшете была выше экрана.
      К 414 прибавляется строка с паузой: здесь она всегда под кругом.
      Предел по ширине поднят с 70vw: без ленты по бокам круга пусто. */
   .stage__figure {
-    --stage-chrome: calc(414px + var(--pause-row));
+    --stage-chrome: calc(414px + var(--motto-h) + var(--pause-row));
     width: min(78vw, calc(100 * var(--vh) - var(--stage-chrome)), 100%);
   }
 
   /* У вошедшего с пробным доступом под статистикой есть ещё одна строка. */
-  .player--locked .stage__figure { --stage-chrome: calc(480px + var(--pause-row)); }
+  .player--locked .stage__figure { --stage-chrome: calc(480px + var(--motto-h) + var(--pause-row)); }
 
   /* На iPad плашка над кругом занимает отдельный ряд. Отдаём ей место из
      диаметра круга, чтобы статистика и меню оставались на первом экране. */
-  .player--banner .stage__figure { --stage-chrome: calc(510px + var(--pause-row)); }
+  .player--banner .stage__figure { --stage-chrome: calc(510px + var(--motto-h) + var(--pause-row)); }
 
   .stage__pause,
   .stage__sound { gap: 10px; font-size: 12px; }
@@ -1068,10 +1128,16 @@
      Прежняя фраза занимала 22 px, поэтому из высоты круга вычитается на
      12 px больше: 50 вместо 38. */
   .player__stage { --switch-h: 34px; --switch-gap: 0px; --pause-row: 0px; --control-clearance: 224px; }
+  /* Фраза — одна строка 14 px над пилюлями, как была до 27.10 (блок 20 px);
+     её высота тоже вычитается из круга. */
+  .player__stage { --motto-h: 20px; }
+  .stage__headline,
+  .stage__headline.is-long,
+  .stage__headline.is-xlong { font-size: 14px; -webkit-line-clamp: 1; }
   .stage__figure,
   .player--banner .stage__figure {
     width: min(
-      calc(100 * var(--vh) - 50px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      calc(100 * var(--vh) - 50px - var(--motto-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
       calc(100% - var(--control-clearance)),
       100%
     );
@@ -1260,9 +1326,9 @@
 @media (orientation: portrait) and (max-width: 767.98px) {
   /* Запасы выросли на 4 px вместе с рядом потоков: он 46 px против
      прежней фразы в две строки (40–48 px на ширине 360–430). */
-  .player:not(.player--immersive) .player__stage { --pause-row: 0px; --phone-circle-reserve: 304px; }
-  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 344px; }
-  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 414px; }
+  .player:not(.player--immersive) .player__stage { --pause-row: 0px; --phone-circle-reserve: calc(304px + var(--motto-h)); }
+  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: calc(344px + var(--motto-h)); }
+  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: calc(414px + var(--motto-h)); }
 
   .player:not(.player--immersive) .stage__figure {
     width: min(92vw, max(200px, calc(100 * var(--vh) - var(--phone-circle-reserve) + 16vw)), 100%);
@@ -1279,9 +1345,9 @@
 /* Между 431 и 767 px плашка занимает больше высоты, поэтому перед нижним
    меню нужен дополнительный запас. */
 @media (orientation: portrait) and (min-width: 431px) and (max-width: 767.98px) {
-  .player:not(.player--immersive) .player__stage { --phone-circle-reserve: 334px; }
-  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 374px; }
-  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: 444px; }
+  .player:not(.player--immersive) .player__stage { --phone-circle-reserve: calc(334px + var(--motto-h)); }
+  .player--banner:not(.player--immersive) .player__stage { --phone-circle-reserve: calc(374px + var(--motto-h)); }
+  .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: calc(444px + var(--motto-h)); }
 }
 
 /* В портретном iPad размер берётся из реальной высоты ряда сцены. Прежний

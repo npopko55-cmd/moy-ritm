@@ -69,6 +69,7 @@ import { recentMoves, rememberMove } from '../lib/moveHistory'
 import { loadMoveInterval } from '../lib/settings'
 import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
+import { createMotivationPicker, tierIndex } from '../lib/motivation'
 import { onTelegramEvent, openTariffsOnSite, telegramActive, useInTelegram } from '../lib/telegram'
 import { uuid } from '../lib/uuid'
 import { playChime, unlockChime } from '../media/chime'
@@ -148,6 +149,22 @@ function carryOf(state: unknown): StreamCarry | null {
   return carry && typeof carry.sessionSeconds === 'number' ? carry : null
 }
 
+/**
+ * Кегль фразы по её длине. Считаем по код-поинтам, иначе эмодзи в конце
+ * тянет на два знака.
+ *
+ * Длинную показываем мельче и в две строки; совсем длинную — ещё мельче.
+ * Второй порог появился вместе с обращением на «вы»: «Хотите продолжать —
+ * кайфуйте…» в «длинном» кегле уходило в третью строку на узком экране, а
+ * высота блока с фразой жёстко равна двум строкам и трогать её нельзя —
+ * от неё считается размер круга.
+ */
+const phraseClass = (text: string): string => {
+  const length = [...text].length
+  if (length > 56) return ' is-long is-xlong'
+  return length > 40 ? ' is-long' : ''
+}
+
 /** Вид движения для круга: соседние движения — разного вида (src/data/loops.ts). */
 const moveKind = (move: Loop) => move.kind
 
@@ -211,9 +228,9 @@ export default function Player() {
   // гостю не относится — окно регистрации рассчитано на круг 3 × 30 с.
   const moveInterval =
     settings?.move_interval_seconds ?? (guest ? SECONDS_PER_MOVE : loadMoveInterval())
-  // Мотивационных фраз над кругом больше нет (правка Димы 14.10.2026): их
-  // место занял ряд потоков. Настройка motivation_enabled осталась на
-  // сервере, но плеер её не читает.
+  // Мотивационные фразы — над рядом потоков (Дима 28.10.2026: «вернуть
+  // мотивашки сверху»). Выключены в настройках — блок остаётся пустым.
+  const motivationOn = settings?.motivation_enabled ?? true
 
   /* ─────────────  Бесплатный уровень  ───────────── */
 
@@ -315,6 +332,21 @@ export default function Player() {
   const startSeconds = resume?.sessionSeconds ?? carry?.sessionSeconds ?? 0
   const [sessionSeconds, setSessionSeconds] = useState(startSeconds)
   const sessionRef = useRef(startSeconds)
+
+  // Колода фраз одна на всё время жизни экрана, иначе они пошли бы по кругу.
+  // Ярус — по минутам захода: после переключения потока они идут дальше.
+  const picker = useRef(createMotivationPicker()).current
+  const [motivation, setMotivation] = useState(() => picker.next(startSeconds))
+
+  // Фразу меняем не чаще раза в секунду: смена движения и переход в новый
+  // ярус времени могут совпасть, а прочитать фразу надо успеть.
+  const phraseAt = useRef(0)
+  const showPhrase = useCallback(() => {
+    const now = Date.now()
+    if (now - phraseAt.current < 1000) return
+    phraseAt.current = now
+    setMotivation(picker.next(sessionRef.current))
+  }, [picker])
 
   // Шаги этой тренировки. На экране их больше не показывают — и в плеере, и
   // на паузе стоят шаги за сегодня, — но заход их всё равно копит: они уходят
@@ -875,6 +907,7 @@ export default function Player() {
   const nextMove = useCallback(() => {
     setStep((s) => s + 1)
     setInMove(0)
+    showPhrase()
     // Зовёт его только секундный тик, когда кольцо замкнулось: движение
     // пройдено целиком.
     movesRef.current += 1
@@ -930,6 +963,17 @@ export default function Player() {
     }, 1000)
     return () => clearInterval(id)
   }, [playing, empty, nextMove, moveInterval])
+
+  // Переход в новый ярус времени — сразу новая фраза, не дожидаясь смены
+  // движения. Сравниваем с показанным ярусом, а не с флагом первого рендера:
+  // в StrictMode эффекты прогоняются дважды.
+  const tier = tierIndex(sessionSeconds)
+  const shownTier = useRef(tier)
+  useEffect(() => {
+    if (shownTier.current === tier) return
+    shownTier.current = tier
+    showPhrase()
+  }, [tier, showPhrase])
 
   /**
    * Ролик и постер каждому из двух элементов: на виду — текущее движение,
@@ -1694,10 +1738,19 @@ export default function Player() {
 
       {/* ——— Центр ——— */}
       <main className="player__stage">
-        {/* Ряд потоков вместо мотивационных фраз (макет Димы 14.10.2026):
+        {/* Ряд потоков (макет Димы 14.10.2026):
             активный — тот, что играет, остальные серые «скоро». Тот же ряд у
             вошедшего, у гостя по /play/ и в мини-апе Telegram. Высота блока
             жёсткая (Player.css, --switch-h) — от неё считается круг. */}
+        {/* Мотивационная фраза — над рядом потоков (Дима 28.10.2026). Высота
+            блока жёсткая, две строки (Player.css, --motto-h): фразы разной
+            длины меняются, и круг не должен прыгать. Фразы выключены в
+            настройках — блок остаётся на месте пустым. */}
+        <div className="stage__motto">
+          <h1 className={`stage__headline${motivationOn ? phraseClass(motivation) : ''}`}>
+            {motivationOn ? motivation : ' '}
+          </h1>
+        </div>
         <header className="stage__top">
           <StreamSwitcher current={stream.id} onOpen={openStream} />
         </header>
