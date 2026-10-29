@@ -303,14 +303,16 @@ export function challengeMoves(): number {
  * Подсказка о пробном периоде для блока разблокировки, экрана паузы и
  * «Моего прогресса». Нет пробного, он кончился или доступ оплачен — null, и
  * там всё как было.
- *   • trial3d: «Пробный доступ: ещё 2 дня, открыты все движения»;
+ *   • trial3d: «Пробный доступ: ещё 2 дня без привязки карты, открыты все движения»;
  *   • trial20: «Челлендж: 10 движений бесплатно. Все 40 — в полном доступе».
  */
 export function trialHint(trial: Trial | null | undefined, access: Access | null): string | null {
   if (!trial?.funnel || trial.state !== 'active' || hasAccess(access) || trialExpired(trial)) return null
   if (trial.funnel === 'trial3d') {
     const days = `Пробный доступ: ещё ${plural(daysLeft(trial), 'день', 'дня', 'дней')}`
-    return trialOpensAll(trial, access) ? `${days}, открыты все движения` : days
+    return trialOpensAll(trial, access)
+      ? `${days} без привязки карты, открыты все движения`
+      : `${days} без привязки карты`
   }
   const free = plural(challengeMoves(), 'движение', 'движения', 'движений')
   return `Челлендж: ${free} бесплатно. Все ${CATALOG_MOVES_TEXT} — в полном доступе`

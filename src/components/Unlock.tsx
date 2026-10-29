@@ -204,7 +204,7 @@ export function GuestUnlock({ onCta }: { onCta(): void }) {
         <button className="unlock-guest__cta" type="button" onClick={onCta}>
           Попробовать 3 дня бесплатно →
         </button>
-        <span className="unlock-guest__fine">Без карты · Без автосписаний</span>
+        <span className="unlock-guest__fine">Без привязки карты · Без автосписаний</span>
       </div>
     </div>
   )

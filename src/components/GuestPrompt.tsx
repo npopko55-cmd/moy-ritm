@@ -123,7 +123,7 @@ export default function GuestPrompt({ kind, onClose, onCta }: Props) {
               </h2>
               <p className="gp__lead">
                 Открой полный доступ к «Моему ритму» на{' '}
-                <span className="gp__pill">3 дня бесплатно</span> после регистрации!
+                <span className="gp__pill">3 дня бесплатно</span> без привязки карты после регистрации!
               </p>
               <ul className="gp__perks">
                 {PERKS.map((p) => (
