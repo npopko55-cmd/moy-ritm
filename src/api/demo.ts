@@ -26,7 +26,9 @@ import type {
   ChannelPost,
   CohortRow,
   Dashboard,
+  BuyDays,
   DashboardPerson,
+  DashboardStreams,
   DayPartKey,
   FunnelSummary,
   FunnelUser,
@@ -37,6 +39,7 @@ import type {
   PostChannelKey,
   PostInput,
   Share,
+  StreamCompare,
   SurveyData,
   SurveyRow,
   UsersQuery,
@@ -1467,6 +1470,174 @@ function demoPerson(p: FunnelUser): DashboardPerson {
 const demoByActivity = (a: DashboardPerson, b: DashboardPerson) =>
   b.active_days - a.active_days || (b.last_active_at ?? '').localeCompare(a.last_active_at ?? '')
 
+/* Потоки в демо: «Спина» запущена 16 дней назад — у обоих окон «до / после»
+   уже есть готовые люди, и экран показывает таблицу, а не «мало данных». */
+const DEMO_LAUNCH_DAYS_AGO = 16
+
+function demoStreamStats(period: Period, minutes: number): DashboardStreams {
+  const rnd = seeded(20261029)
+  const todayMs = dayStart(localDate(Date.now()))
+  const launchMs = todayMs - DEMO_LAUNCH_DAYS_AGO * DAY_MS
+  const launch = localDate(launchMs)
+  const total = Math.max(600, minutes * 60)
+  const back = Math.round(total * 0.14)
+  const cardio = total - back
+  const fromMs = Math.max(launchMs, period.from ? dayStart(period.from) : launchMs)
+  const toMs = Math.min(todayMs, period.to ? dayStart(period.to) : todayMs)
+  const live = fromMs <= toMs
+  const days = live
+    ? Array.from({ length: Math.min(30, Math.round((toMs - fromMs) / DAY_MS) + 1) }, (_, i) => {
+        const ms = Math.max(fromMs, toMs - 29 * DAY_MS) + i * DAY_MS
+        const grow = Math.min(1, (ms - launchMs) / (7 * DAY_MS))
+        const newPeople = Math.round((4 + 10 * grow) * (0.7 + rnd() * 0.6))
+        const mainPeople = Math.round(24 + rnd() * 10)
+        return {
+          day: localDate(ms),
+          new_seconds: newPeople * Math.round(240 + rnd() * 180),
+          main_seconds: mainPeople * Math.round(600 + rnd() * 300),
+          new_people: newPeople,
+          main_people: mainPeople,
+        }
+      })
+    : []
+  const metrics = (k: number, extra: number) => ({
+    active_days: Math.round(1.8 * k * 10) / 10,
+    minutes: Math.round(31 * k * 10) / 10,
+    main_minutes: Math.round((31 * k - extra) * 10) / 10,
+    new_minutes: extra,
+    minutes_per_active_day: Math.round((31 / 1.8) * 10) / 10,
+    steps: Math.round(2900 * k * (extra ? 0.92 : 1)),
+    steps_per_active_day: Math.round((2900 / 1.8) * (extra ? 0.92 : 1)),
+  })
+  const compare = (n: number, ready: number, control: number): StreamCompare => {
+    const k = n / 7
+    return {
+      days: n,
+      enough: ready >= 10 && control >= 10,
+      tried: {
+        ready,
+        waiting: 6,
+        next_ready: localDate(Date.now() + DAY_MS),
+        no_history: 9,
+        inactive_before: 3,
+        before: metrics(k, 0),
+        after: { ...metrics(k * 1.18, Math.round(9 * k * 10) / 10) },
+      },
+      control: {
+        ready: control,
+        waiting: 0,
+        next_ready: null,
+        no_history: null,
+        inactive_before: null,
+        before: metrics(k * 0.9, 0),
+        after: metrics(k * 0.84, 0),
+      },
+    }
+  }
+  return {
+    new_code: 'back',
+    new_title: 'Здоровая спина',
+    main_code: 'cardio',
+    main_title: 'Кардио',
+    launch,
+    data_since: localDate(Date.now() - 89 * DAY_MS),
+    total_seconds: total,
+    total_people: 61,
+    total_workouts: 214,
+    items: [
+      {
+        code: 'cardio',
+        title: 'Кардио',
+        seconds: cardio,
+        people: 58,
+        person_days: 190,
+        workouts: 205,
+        workouts_alone: 168,
+        minutes_per_person: Math.round((cardio / 60 / 58) * 10) / 10,
+        time_share: demoRatio(cardio, total),
+      },
+      {
+        code: 'back',
+        title: 'Здоровая спина',
+        seconds: back,
+        people: 22,
+        person_days: 41,
+        workouts: 46,
+        workouts_alone: 9,
+        minutes_per_person: Math.round((back / 60 / 22) * 10) / 10,
+        time_share: demoRatio(back, total),
+      },
+    ],
+    adoption: live
+      ? {
+          date_from: localDate(fromMs),
+          date_to: localDate(toMs),
+          active: 47,
+          tried: demoShare(22, 47),
+          repeated: demoShare(9, 19),
+        }
+      : { date_from: null, date_to: null, active: 0, tried: demoShare(0, 0), repeated: demoShare(0, 0) },
+    min_people: 10,
+    compare: [compare(3, 13, 41), compare(7, 8, 38)],
+    days,
+  }
+}
+
+/* Когда покупают в демо: у пробного trial3d большинство платит в первые
+   три дня, у челленджа — ближе к предложению на 8–14-й день. */
+const DEMO_BUY_BUCKETS: [string, number, number | null][] = [
+  ['0', 0, 0],
+  ['1', 1, 1],
+  ['2', 2, 2],
+  ['3', 3, 3],
+  ['4–7', 4, 7],
+  ['8–14', 8, 14],
+  ['15–30', 15, 30],
+  ['31+', 31, null],
+]
+
+function demoBuyDays(funnel: string | null, people: number[], median: number | null, mean: number | null): BuyDays {
+  const buyers = people.reduce((n, v) => n + v, 0)
+  return {
+    funnel,
+    buyers,
+    buckets: DEMO_BUY_BUCKETS.map(([label, day_from, day_to], i) => ({
+      label,
+      day_from,
+      day_to,
+      people: people[i],
+      share: demoRatio(people[i], buyers),
+    })),
+    median_days: buyers ? median : null,
+    mean_days: buyers ? mean : null,
+  }
+}
+
+function demoPurchases(paid: number): Dashboard['purchases'] {
+  const k = Math.max(1, paid) / 20
+  const scale = (list: number[]) => list.map((v) => Math.round(v * k))
+  const trial3d = scale([4, 3, 2, 3, 2, 1, 0, 0])
+  const trial20 = scale([1, 0, 0, 0, 1, 3, 1, 0])
+  const none = scale([1, 0, 0, 0, 0, 1, 1, 1])
+  const all = trial3d.map((v, i) => v + trial20[i] + none[i])
+  return {
+    all: demoBuyDays(null, all, 2, 6.4),
+    funnels: [demoBuyDays('trial3d', trial3d, 1, 2.6), demoBuyDays('trial20', trial20, 9, 10.2), demoBuyDays('', none, 14, 19.5)],
+    trial3d: {
+      days: 3,
+      joined: 64,
+      running: 7,
+      running_bought: 1,
+      finished: 57,
+      bought_during: demoShare(11, 57),
+      bought_after: demoShare(5, 57),
+      after_median_days: 2.4,
+      not_bought: demoShare(41, 57),
+      manual: 1,
+    },
+  }
+}
+
 function demoDashboard(period: Period, people: FunnelUser[]): Dashboard {
   const overview = demoOverview(period)
   const rnd = seeded(20261023)
@@ -1521,6 +1692,10 @@ function demoDashboard(period: Period, people: FunnelUser[]): Dashboard {
         registered: d.registered,
         payments: dayPays.length,
         revenue: dayPays.reduce((n, p) => n + p.price, 0),
+        visits: d.visits,
+        active_users: d.active_users,
+        workouts: d.workouts_started,
+        minutes: d.minutes,
       }
     })
 
@@ -1572,6 +1747,7 @@ function demoDashboard(period: Period, people: FunnelUser[]): Dashboard {
       date_from: trendDays[0]?.day ?? localDate(Date.now()),
       date_to: trendDays[trendDays.length - 1]?.day ?? localDate(Date.now()),
       days: trendDays,
+      visits_since: overview.visits_since,
     },
     channels: DEMO_SOURCES.map((s) => {
       const reg = Math.round(registered * s.part)
@@ -1616,6 +1792,8 @@ function demoDashboard(period: Period, people: FunnelUser[]): Dashboard {
       }),
       sessions_since: localDate(Date.now() - 89 * DAY_MS),
     },
+    streams: demoStreamStats(period, t.minutes),
+    purchases: demoPurchases(paidCount),
     money: {
       tariffs: [...byTariff.entries()]
         .map(([tariff, v]) => ({ tariff, ...v }))

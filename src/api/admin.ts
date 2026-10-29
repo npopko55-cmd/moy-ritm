@@ -216,10 +216,30 @@ export type DashboardHeadline = {
   active_week: ActiveWeek
 }
 
-export type TrendDay = { day: string; registered: number; payments: number; revenue: number }
+export type TrendDay = {
+  day: string
+  /** Регистрации и оплаты — по дню Москвы. */
+  registered: number
+  payments: number
+  revenue: number
+  /** Заходы на сайт — уникальные браузеры за сутки по Москве. */
+  visits: number
+  /** Занимались — разные люди с движением в этот день (по их поясу). */
+  active_users: number
+  /** Тренировки, начатые в этот день. */
+  workouts: number
+  /** Минуты движения всех людей за день. */
+  minutes: number
+}
 
 /** Последние 30 дней периода, от старых к новым. */
-export type DashboardTrend = { date_from: string; date_to: string; days: TrendDay[] }
+export type DashboardTrend = {
+  date_from: string
+  date_to: string
+  days: TrendDay[]
+  /** С какого дня записываются заходы на сайт; null — заходов ещё нет. */
+  visits_since: string | null
+}
 
 /** Метка ссылки (meta.src); '' — без метки. Выручка — по метке регистрации плательщика. */
 export type DashboardChannel = {
@@ -297,6 +317,140 @@ export type DashboardMoney = {
   }
 }
 
+/* ——— Потоки (docs/STATS.md бэкенда, раздел 12.8) ———
+   С 29.10.2026: как изменилось поведение с запуском «Спины». Всё — из
+   сырых кусков движения, они живут 90 дней. */
+
+/** Поток за период. */
+export type StreamRow = {
+  code: string
+  /** Название из справочника; null — потока там нет. */
+  title: string | null
+  seconds: number
+  people: number
+  /** Пары «человек, день» с движением в потоке. */
+  person_days: number
+  /** Тренировки с хоть одним куском потока и из них — только этот поток. */
+  workouts: number
+  workouts_alone: number
+  minutes_per_person: number | null
+  /** Доля во всём времени движения за период. */
+  time_share: number | null
+}
+
+/** Средние на человека за окно «до» или «после»; null — людей нет. */
+export type WindowMetrics = {
+  active_days: number | null
+  minutes: number | null
+  main_minutes: number | null
+  new_minutes: number | null
+  minutes_per_active_day: number | null
+  steps: number | null
+  steps_per_active_day: number | null
+}
+
+export type CompareGroup = {
+  /** Окно «после» прошло — эти люди в before / after. */
+  ready: number
+  /** Окно «после» ещё идёт; next_ready — когда пройдёт у первого. */
+  waiting: number
+  next_ready: string | null
+  /** Только у попробовавших: без полного окна «до» и без движения в нём. */
+  no_history: number | null
+  inactive_before: number | null
+  before: WindowMetrics
+  after: WindowMetrics
+}
+
+export type StreamCompare = {
+  days: number
+  /** В обеих группах готово от min_people человек — можно сравнивать. */
+  enough: boolean
+  tried: CompareGroup
+  control: CompareGroup
+}
+
+export type StreamDay = {
+  day: string
+  new_seconds: number
+  main_seconds: number
+  new_people: number
+  main_people: number
+}
+
+export type DashboardStreams = {
+  new_code: string
+  new_title: string | null
+  main_code: string
+  main_title: string | null
+  /** День запуска нового потока. */
+  launch: string
+  /** Самый ранний сохранённый кусок движения; null — кусков нет. */
+  data_since: string | null
+  total_seconds: number
+  total_people: number
+  total_workouts: number
+  /** Больше времени — выше. */
+  items: StreamRow[]
+  /** Дни периода с запуска по сегодня; date_from null — период до запуска. */
+  adoption: {
+    date_from: string | null
+    date_to: string | null
+    active: number
+    tried: Share
+    /** Двигались в новом потоке в 2+ разных днях; база — у кого был следующий день. */
+    repeated: Share
+  }
+  min_people: number
+  /** Окна 3 и 7 дней, от периода не зависят. */
+  compare: StreamCompare[]
+  /** С запуска в пределах периода, последние 30, от старых к новым. */
+  days: StreamDay[]
+}
+
+/* ——— Когда покупают (docs/STATS.md бэкенда, раздел 12.9), с 29.10.2026 ——— */
+
+export type BuyDayBucket = {
+  /** «0», «1», «2», «3», «4–7», «8–14», «15–30», «31+». */
+  label: string
+  day_from: number
+  day_to: number | null
+  people: number
+  share: number | null
+}
+
+/** День первой оплаты от дня регистрации (по Москве) у купивших впервые за период. */
+export type BuyDays = {
+  /** 'trial3d', 'trial20', '' — без воронки; null — все вместе. */
+  funnel: string | null
+  buyers: number
+  buckets: BuyDayBucket[]
+  median_days: number | null
+  mean_days: number | null
+}
+
+/** Вошедшие в trial3d за период; доли — от тех, у кого пробный уже кончился. */
+export type Trial3dOutcome = {
+  days: number
+  joined: number
+  running: number
+  running_bought: number
+  finished: number
+  bought_during: Share
+  bought_after: Share
+  /** Медиана суток от конца пробного до оплаты у купивших после. */
+  after_median_days: number | null
+  not_bought: Share
+  /** Из не купивших — с ручной выдачей доступа. */
+  manual: number
+}
+
+export type DashboardPurchases = {
+  all: BuyDays
+  funnels: BuyDays[]
+  trial3d: Trial3dOutcome
+}
+
 /** Самые активные и найденные поиском — всё за всё время. */
 export type DashboardPerson = {
   user_id: string
@@ -320,6 +474,8 @@ export type Dashboard = {
   channels: DashboardChannel[]
   cohorts: DashboardCohorts
   habit: DashboardHabit
+  streams: DashboardStreams
+  purchases: DashboardPurchases
   money: DashboardMoney
   /** Топ-20 по дням с движением за всё время. */
   top: DashboardPerson[]

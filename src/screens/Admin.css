@@ -737,8 +737,113 @@ tr:not(.analytics__cohort-sum) + .analytics__cohort-sum td { border-top: 2px sol
   align-items: baseline;
 }
 
+/* Кнопка «i» у цифры (с 29.10.2026): по нажатию под подписью раскрывается,
+   как считается цифра. Кружок 16 px, буква по центру; раскрытая — розовая. */
+.analytics__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  padding: 0;
+  border: 1px solid var(--gray-300);
+  border-radius: 50%;
+  background: var(--white);
+  font: 600 10.5px/1 Georgia, serif;
+  font-style: italic;
+  color: var(--gray-500);
+  vertical-align: 1px;
+  cursor: pointer;
+}
+
+.analytics__info.is-open { border-color: var(--pink-400); color: var(--pink-600); background: var(--pink-50); }
+.analytics__info:focus-visible { outline: 2px solid var(--pink-200); outline-offset: 1px; }
+
+.analytics__tip {
+  display: block;
+  max-width: 280px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--gray-500);
+  white-space: normal;
+  text-align: left;
+}
+
+.admin__table th .analytics__tip { min-width: 200px; margin-left: auto; font-weight: 500; }
+.admin__table th.is-num .analytics__tip { text-align: right; }
+
+/* Сколько занимаются по дням: один столбик на день — пошире, чем у пары
+   «регистрации / оплаты». */
+.analytics__trend-bar.is-wide { width: 70%; max-width: 14px; }
+
+.analytics__days-wrap { margin-top: 16px; }
+.admin__table.analytics__days { min-width: 640px; }
+
+.analytics__more {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pink-600);
+  cursor: pointer;
+}
+
+/* Потоки. */
+.admin__table.analytics__streams { min-width: 720px; }
+.analytics__streams .admin__cell-pct { display: block; }
+
+/* Полоса дня «Спина + кардио»: две части подряд от общего максимума. */
+.analytics__bar--split { display: flex; }
+.analytics__bar--split > span { border-radius: 0; min-width: 0; }
+.analytics__bar--split > span.is-new { background: var(--pink-500); }
+.analytics__bar--split > span.is-main { background: var(--violet-500); }
+
+.analytics__facts dt.analytics__sub { padding-left: 14px; color: var(--gray-500); }
+
+.analytics__compare { margin-top: 22px; }
+.analytics__compare .chips,
+.analytics__block > .chips { gap: 8px; margin-top: 8px; }
+
+/* Переключатели внутри карточки — мельче, чем выбор периода. */
+.analytics__compare .chip,
+.analytics__block > .chips .chip {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.analytics__compare .chip.is-on,
+.analytics__block > .chips .chip.is-on { box-shadow: none; }
+
+.admin__table.analytics__compare-table { min-width: 680px; margin-top: 10px; }
+.analytics__compare-table th[colspan] { text-align: center; }
+.analytics__compare-table th[colspan] .admin__cell-pct { display: block; font-weight: 500; }
+.analytics__compare-table td:first-child { white-space: normal; min-width: 180px; }
+.analytics__sub-row td:first-child { padding-left: 24px; color: var(--gray-600); }
+.analytics__change { color: var(--gray-500); font-weight: 600; }
+
+/* «Мало данных» и «рано»: заметно, но не тревожно. */
+.analytics__note {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--bg-panel);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-800);
+}
+
 @media (hover: hover) {
   .analytics__person-btn:hover { text-decoration: underline; }
+  .analytics__info:hover { border-color: var(--pink-400); color: var(--pink-600); }
+  .analytics__more:hover { text-decoration: underline; }
 }
 
 /* Телефон: воронки одна под другой. */

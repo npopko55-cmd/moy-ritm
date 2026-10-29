@@ -8,11 +8,14 @@
  * главных цифр стартапа на стадии «есть ли у продукта спрос и держит ли он
  * людей», примерно на 2–3 экрана ноутбука.
  *
- * Сверху вниз: период → шесть главных цифр и тренд за 30 дней → каналы →
+ * Сверху вниз: период → шесть главных цифр и тренд за 30 дней → сколько
+ * занимаются по дням (заходы, люди, тренировки, минуты; с 29.10) → каналы →
  * держит ли продукт (когорты по неделям, купили / не купили) → привычка →
- * деньги и продления → самые активные для интервью с поиском по почте и
- * карточкой человека, которая раскрывается прямо в таблице (всплывающих
- * окон в продукте нет).
+ * потоки (как изменилось поведение с «Спиной», с 29.10) → когда покупают
+ * (день первой оплаты и пробный trial3d, с 29.10) → деньги и
+ * продления → самые активные для интервью с поиском по почте и карточкой
+ * человека, которая раскрывается прямо в таблице (всплывающих окон в
+ * продукте нет). Кнопка «i» у цифры раскрывает, как она считается.
  *
  * Данные — один запрос на окно (/admin/dashboard), поиск по почте
  * (/admin/dashboard/people) и карточка человека по нажатию. Правила
@@ -30,7 +33,9 @@ import {
   type DashboardPerson,
   type DayPartKey,
   type Share,
+  type StreamCompare,
   type UserActivity,
+  type WindowMetrics,
 } from '../api/admin'
 import { rub } from '../data/tariffs'
 import { PeriodChoice, usePeriod } from './AdminPeriod'
@@ -171,9 +176,12 @@ export default function AdminAnalytics({ token, fail }: { token: string; fail: F
       </Card>
 
       <Headline data={data} />
+      <Days data={data} />
       <Channels data={data} />
       <Retention data={data} />
       <Habit data={data} />
+      <Streams data={data} />
+      <Purchases data={data} />
       <MoneyCard data={data} />
       <People data={data} token={token} fail={fail} />
     </>
@@ -289,6 +297,527 @@ function TrendChart({ data }: { data: Dashboard }) {
         </div>
       )}
     </div>
+  )
+}
+
+/* ——— Подсказка (i) ——— */
+
+/**
+ * Кнопка «i» рядом с подписью: по нажатию под ней раскрывается, как
+ * считается цифра (на телефоне наведения нет), на ноутбуке — ещё и
+ * подсказка при наведении. Всплывающих окон в продукте нет.
+ */
+function Info({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type="button"
+        className={`analytics__info ${open ? 'is-open' : ''}`}
+        aria-expanded={open}
+        aria-label="Как считается"
+        title={text}
+        onClick={() => setOpen((v) => !v)}
+      >
+        i
+      </button>
+      {open && <span className="analytics__tip">{text}</span>}
+    </>
+  )
+}
+
+/* ——— По дням: сколько заходило заниматься ——— */
+
+const DAY_HINTS = {
+  visits:
+    'Уникальные браузеры, открывшие сайт за сутки по Москве: один браузер — один заход в день, сколько бы раз его ни открывали. Админку не считаем.',
+  people:
+    'Разные люди, у которых в этот день было движение (хоть кусок тренировки), — по дню в их часовом поясе. Администратор и удалённые не считаются.',
+  workouts:
+    'Тренировки, начатые в этот день. Тренировка — движение без перерыва больше 30 минут; ушёл на час и вернулся — вторая.',
+  minutes: 'Минуты движения всех людей за день, без пауз.',
+}
+
+/** Сколько последних дней в таблице, пока не нажали «все дни». */
+const DAYS_SHOWN = 14
+
+function Days({ data }: { data: Dashboard | null }) {
+  const [all, setAll] = useState(false)
+  if (!data) {
+    return (
+      <Card title="Сколько занимаются по дням">
+        <Loading />
+      </Card>
+    )
+  }
+  const trend = data.trend
+  const top = Math.max(1, ...trend.days.map((d) => d.active_users))
+  const newest = [...trend.days].reverse()
+  const rows = all ? newest : newest.slice(0, DAYS_SHOWN)
+  const middle = trend.days[Math.floor(trend.days.length / 2)]
+  // До первого записанного захода — прочерк, а не ноль: тогда заходы не считались.
+  const visitsKnown = (day: string) => !!trend.visits_since && day >= trend.visits_since
+  return (
+    <Card
+      title="Сколько занимаются по дням"
+      text="Каждый день: сколько браузеров открыли сайт, сколько человек позанимались, сколько тренировок и минут."
+    >
+      <div className="analytics__trend-wrap">
+        <div className="analytics__trend-head">
+          <h3 className="admin__letters-title">
+            Занимались{' '}
+            <span className="analytics__muted">
+              {shortDay(trend.date_from)}–{shortDay(trend.date_to)}
+            </span>
+          </h3>
+          <span className="analytics__legend">
+            <span className="analytics__dot is-reg" aria-hidden="true" /> человек в день
+            <span className="analytics__muted"> · до {num(top)}</span>
+          </span>
+        </div>
+        <div className="analytics__trend" role="img" aria-label="Сколько человек занимались по дням">
+          {trend.days.map((d) => (
+            <span
+              key={d.day}
+              className="analytics__trend-day"
+              title={`${dayText(d.day)}: занимались ${num(d.active_users)}, тренировок ${num(d.workouts)}, минут ${num(d.minutes)}${visitsKnown(d.day) ? `, заходов ${num(d.visits)}` : ''}`}
+            >
+              <span className="analytics__trend-bar is-reg is-wide" style={{ height: `${(d.active_users / top) * 100}%` }} />
+            </span>
+          ))}
+        </div>
+        {trend.days.length > 1 && (
+          <div className="analytics__trend-axis" aria-hidden="true">
+            <span>{shortDay(trend.days[0].day)}</span>
+            {trend.days.length > 6 && <span>{shortDay(middle.day)}</span>}
+            <span>{shortDay(trend.days[trend.days.length - 1].day)}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="admin__scroll analytics__days-wrap">
+        <table className="admin__table analytics__days">
+          <thead>
+            <tr>
+              <th>День</th>
+              <th className="is-num">
+                Заходы на сайт <Info text={DAY_HINTS.visits} />
+              </th>
+              <th className="is-num">
+                Занимались <Info text={DAY_HINTS.people} />
+              </th>
+              <th className="is-num">
+                Тренировок <Info text={DAY_HINTS.workouts} />
+              </th>
+              <th className="is-num">
+                Минут <Info text={DAY_HINTS.minutes} />
+              </th>
+              <th className="is-num">Регистрации</th>
+              <th className="is-num">Оплаты</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((d) => (
+              <tr key={d.day}>
+                <td>
+                  {dayText(d.day)} <span className="overview__weekday">{weekday(d.day)}</span>
+                </td>
+                <td className="is-num">{visitsKnown(d.day) ? num(d.visits) : '—'}</td>
+                <td className="is-num">{num(d.active_users)}</td>
+                <td className="is-num">{num(d.workouts)}</td>
+                <td className="is-num">{num(d.minutes)}</td>
+                <td className="is-num">{num(d.registered)}</td>
+                <td className="is-num">{d.payments ? `${num(d.payments)} · ${money(d.revenue)}` : '0'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {newest.length > DAYS_SHOWN && (
+        <button type="button" className="analytics__more" onClick={() => setAll((v) => !v)}>
+          {all ? `Только последние ${DAYS_SHOWN} дней` : `Все ${num(newest.length)} дней`}
+        </button>
+      )}
+      <p className="admin__period-note">
+        Последние 30 дней периода, новые сверху. Заходы и регистрации — по Москве; движение и
+        тренировки — по дню человека.
+        {trend.visits_since ? ` Заходы на сайт считаются с ${dayText(trend.visits_since)}.` : ' Заходов пока нет.'}
+      </p>
+    </Card>
+  )
+}
+
+/* ——— Потоки: как изменилось поведение с новым потоком ——— */
+
+const streamName = (code: string, title: string | null) => title ?? code
+
+/** Минуты из секунд, вниз. */
+const minutesOf = (seconds: number) => Math.floor(seconds / 60)
+
+/** Изменение «после» к «до»: «+12%», «−5%»; до — ноль или нет данных — «—». */
+function change(before: number | null, after: number | null): string {
+  if (before === null || after === null || before === 0) return '—'
+  const value = Math.round((after / before - 1) * 100)
+  return value > 0 ? `+${value}%` : value < 0 ? `−${Math.abs(value)}%` : '0%'
+}
+
+type CompareRow = {
+  key: keyof WindowMetrics
+  label: string
+  hint: string
+  steps?: boolean
+  sub?: boolean
+}
+
+function compareRows(newName: string, mainName: string): CompareRow[] {
+  return [
+    {
+      key: 'active_days',
+      label: 'Дней с движением',
+      hint: 'Сколько дней из окна человек двигался хотя бы раз, в среднем на человека.',
+    },
+    {
+      key: 'minutes',
+      label: 'Минут за окно',
+      hint: 'Время в движении во всех потоках вместе за всё окно, в среднем на человека.',
+    },
+    { key: 'main_minutes', label: `из них ${mainName}`, hint: `Минуты потока «${mainName}» на человека.`, sub: true },
+    { key: 'new_minutes', label: `из них ${newName}`, hint: `Минуты потока «${newName}» на человека.`, sub: true },
+    {
+      key: 'minutes_per_active_day',
+      label: 'Минут в день занятий',
+      hint: 'Все минуты группы, делённые на все её дни с движением: сколько длится обычный день занятий.',
+    },
+    {
+      key: 'steps',
+      label: 'Шагов за окно',
+      hint: 'Шаги считает только кардио — у движений спины шагов нет. В среднем на человека за окно.',
+      steps: true,
+    },
+    {
+      key: 'steps_per_active_day',
+      label: 'Шагов в день занятий',
+      hint: 'Все шаги группы, делённые на все её дни с движением.',
+      steps: true,
+    },
+  ]
+}
+
+function metricText(value: number | null, steps?: boolean): string {
+  if (value === null) return '—'
+  return steps ? num(Math.round(value)) : decimal(value)
+}
+
+function Streams({ data }: { data: Dashboard | null }) {
+  const [windowDays, setWindowDays] = useState(7)
+  const s = data?.streams
+  if (!s) {
+    return (
+      <Card title="Потоки">
+        <Loading />
+      </Card>
+    )
+  }
+  const newName = streamName(s.new_code, s.new_title)
+  const mainName = streamName(s.main_code, s.main_title)
+  const newRow = s.items.find((i) => i.code === s.new_code)
+  const a = s.adoption
+  const compare = s.compare.find((c) => c.days === windowDays) ?? s.compare[0]
+  const dayMax = Math.max(1, ...s.days.map((d) => d.new_seconds + d.main_seconds))
+  const launchText = dayText(s.launch)
+
+  return (
+    <Card
+      title="Потоки"
+      text={`Как изменилось поведение с запуском потока «${newName}» ${launchText}: сколько времени там проводят, возвращаются ли и стали ли попробовавшие заниматься больше.`}
+    >
+      {/* Потоки за период */}
+      <div className="admin__scroll">
+        <table className="admin__table analytics__streams">
+          <thead>
+            <tr>
+              <th>Поток</th>
+              <th className="is-num">
+                Минут <Info text="Время в движении в потоке за период, без пауз, все люди вместе." />
+              </th>
+              <th className="is-num">
+                Доля времени <Info text="Минуты потока от всех минут движения за период." />
+              </th>
+              <th className="is-num">
+                Людей <Info text="Разные люди, у которых за период был хоть кусок движения в потоке." />
+              </th>
+              <th className="is-num">
+                Минут на человека <Info text="Минуты потока, делённые на людей потока." />
+              </th>
+              <th className="is-num">
+                Дней занятий <Info text="Пары «человек, день» с движением в потоке: один человек три дня — три." />
+              </th>
+              <th className="is-num">
+                Тренировок{' '}
+                <Info text="Тренировки, в которых был хоть кусок этого потока. Перешёл из кардио в спину без перерыва — тренировка есть у обоих. Мелко — сколько из них только в этом потоке." />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {s.items.map((i) => (
+              <tr key={i.code}>
+                <td>{streamName(i.code, i.title)}</td>
+                <td className="is-num">{num(minutesOf(i.seconds))}</td>
+                <td className="is-num">{pct(i.time_share)}</td>
+                <td className="is-num">{num(i.people)}</td>
+                <td className="is-num">{decimal(i.minutes_per_person)}</td>
+                <td className="is-num">{num(i.person_days)}</td>
+                <td className="is-num">
+                  {num(i.workouts)}
+                  <span className="admin__cell-pct">только этот — {num(i.workouts_alone)}</span>
+                </td>
+              </tr>
+            ))}
+            {s.items.length > 0 && (
+              <tr className="analytics__cohort-sum">
+                <td>Все потоки</td>
+                <td className="is-num">{num(minutesOf(s.total_seconds))}</td>
+                <td className="is-num">100%</td>
+                <td className="is-num">{num(s.total_people)}</td>
+                <td className="is-num">
+                  {s.total_people ? decimal(Math.round((s.total_seconds / 60 / s.total_people) * 10) / 10) : '—'}
+                </td>
+                <td className="is-num" />
+                <td className="is-num">{num(s.total_workouts)}</td>
+              </tr>
+            )}
+            {s.items.length === 0 && (
+              <tr>
+                <td className="admin__empty" colSpan={7}>
+                  За эти даты никто не двигался
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <p className="admin__period-note">
+        По дню человека. Потоки видны по сырым кускам движения, а они хранятся 90 дней
+        {s.data_since ? ` — данные с ${dayText(s.data_since)}` : ''}.
+      </p>
+
+      <div className="analytics__grid">
+        {/* Внедрение */}
+        <div className="analytics__block">
+          <h3 className="admin__letters-title">
+            Попробовали поток «{newName}»{' '}
+            {a.date_from && a.date_to && (
+              <span className="analytics__muted">
+                {shortDay(a.date_from)}–{shortDay(a.date_to)}
+              </span>
+            )}
+          </h3>
+          {a.date_from === null ? (
+            <p className="analytics__muted">Период целиком до запуска {launchText}.</p>
+          ) : (
+            <dl className="analytics__facts">
+              <dt>
+                Занимались с запуска{' '}
+                <Info text="Разные люди с движением в любом потоке в дни периода начиная с дня запуска." />
+              </dt>
+              <dd>{num(a.active)}</dd>
+              <dt>
+                Из них попробовали{' '}
+                <Info text={`Хоть раз двигались в потоке «${newName}» в эти дни.`} />
+              </dt>
+              <dd>
+                {pct(a.tried.share)} <span className="analytics__muted">{ofText(a.tried)}</span>
+              </dd>
+              <dt>
+                Вернулись в другой день{' '}
+                <Info text={`Из попробовавших — занимались в потоке «${newName}» в двух и больше разных днях. Считаем только тех, кто попробовал раньше последнего дня окна: попробовал сегодня — вернуться ещё не мог.`} />
+              </dt>
+              <dd>
+                {pct(a.repeated.share)} <span className="analytics__muted">{ofText(a.repeated)}</span>
+              </dd>
+              {newRow && (
+                <>
+                  <dt>
+                    Тренировок с потоком «{newName}»{' '}
+                    <Info text={`Тренировки периода, где был хоть кусок потока «${newName}». «Вместе с другим» — человек переключился из другого потока или в другой без перерыва: «${newName}» как добавка, а не замена.`} />
+                  </dt>
+                  <dd>{num(newRow.workouts)}</dd>
+                  <dt className="analytics__sub">только «{newName}»</dt>
+                  <dd>{num(newRow.workouts_alone)}</dd>
+                  <dt className="analytics__sub">вместе с другим потоком</dt>
+                  <dd>{num(newRow.workouts - newRow.workouts_alone)}</dd>
+                </>
+              )}
+            </dl>
+          )}
+        </div>
+
+        {/* По дням с запуска */}
+        <div className="analytics__block">
+          <h3 className="admin__letters-title">
+            По дням <span className="analytics__muted">с {launchText}</span>
+          </h3>
+          {s.days.length === 0 ? (
+            <p className="analytics__muted">В периоде нет дней после запуска.</p>
+          ) : (
+            <>
+              <span className="analytics__legend">
+                <span className="analytics__dot is-reg" aria-hidden="true" /> {newName}
+                <span className="analytics__dot is-pay" aria-hidden="true" /> {mainName}
+              </span>
+              <ul className="analytics__rows">
+                {[...s.days].reverse().map((d) => (
+                  <li key={d.day} className="analytics__row">
+                    <span className="analytics__row-label">
+                      {shortDay(d.day)} <span className="overview__weekday">{weekday(d.day)}</span>
+                    </span>
+                    <span className="analytics__bar analytics__bar--split" aria-hidden="true">
+                      <span className="is-new" style={{ width: `${(d.new_seconds / dayMax) * 100}%` }} />
+                      <span className="is-main" style={{ width: `${(d.main_seconds / dayMax) * 100}%` }} />
+                    </span>
+                    <span className="analytics__row-value">
+                      {num(minutesOf(d.new_seconds))} / {num(minutesOf(d.main_seconds))} мин
+                      <span className="analytics__row-pct">
+                        {' '}
+                        {num(d.new_people)} / {num(d.main_people)} чел.
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="analytics__muted">
+                Минуты и люди: «{newName}» / «{mainName}». Человек может быть в обоих.
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* До / после */}
+      <div className="analytics__compare">
+        <div className="analytics__trend-head">
+          <h3 className="admin__letters-title">
+            Стали ли заниматься больше{' '}
+            <Info
+              text={`Попробовавшие: окно до первого дня в потоке «${newName}» и такое же окно после; сам день первой пробы не входит никуда. Не пробовавшие — те же окна вокруг дня запуска (${launchText}): так видно, что дал поток, а что — общий тренд. В сравнение идут только те, кто был на сайте всё окно «до» и двигался в нём, и только когда окно «после» уже прошло. От выбранного периода не зависит.`}
+            />
+          </h3>
+          <div className="chips">
+            {s.compare.map((c) => (
+              <button
+                key={c.days}
+                type="button"
+                className={`chip ${c.days === compare?.days ? 'is-on' : ''}`}
+                aria-pressed={c.days === compare?.days}
+                onClick={() => setWindowDays(c.days)}
+              >
+                {c.days} {plural(c.days, 'день', 'дня', 'дней')}
+              </button>
+            ))}
+          </div>
+        </div>
+        {compare && <CompareTable c={compare} min={s.min_people} newName={newName} mainName={mainName} />}
+      </div>
+    </Card>
+  )
+}
+
+function CompareStatus({ c }: { c: StreamCompare }) {
+  const t = c.tried
+  const parts: string[] = [`Попробовали поток, окно прошло — ${num(t.ready)}`]
+  if (t.waiting) {
+    parts.push(
+      `ещё ждут окна ${num(t.waiting)}${t.next_ready ? ` (первые — ${dayText(t.next_ready)})` : ''}`,
+    )
+  }
+  if (t.no_history) parts.push(`новички, до первой пробы не было ${c.days}-дневного окна — ${num(t.no_history)}`)
+  if (t.inactive_before) parts.push(`не двигались ${c.days} дн. до первой пробы — ${num(t.inactive_before)}`)
+  const control = `Не пробовали, но занимались до запуска: окно прошло — ${num(c.control.ready)}${c.control.waiting ? `, ждут ${num(c.control.waiting)}${c.control.next_ready ? ` (до ${dayText(c.control.next_ready)})` : ''}` : ''}.`
+  return (
+    <p className="analytics__muted">
+      {parts.join(' · ')}. {control}
+    </p>
+  )
+}
+
+function CompareTable({
+  c,
+  min,
+  newName,
+  mainName,
+}: {
+  c: StreamCompare
+  min: number
+  newName: string
+  mainName: string
+}) {
+  if (c.tried.ready === 0 && c.control.ready === 0) {
+    return (
+      <>
+        <p className="analytics__note">
+          Рано: окно «после» ({c.days} {plural(c.days, 'день', 'дня', 'дней')}) ещё не прошло ни у кого.
+        </p>
+        <CompareStatus c={c} />
+      </>
+    )
+  }
+  const rows = compareRows(newName, mainName)
+  return (
+    <>
+      {!c.enough && (
+        <p className="analytics__note">
+          Мало данных — выводов не делаем: нужно хотя бы {num(min)} человек с прошедшим окном в каждой
+          группе. Цифры ниже — для ориентира, изменение не показываем.
+        </p>
+      )}
+      <div className="admin__scroll">
+        <table className="admin__table analytics__compare-table">
+          <thead>
+            <tr>
+              <th rowSpan={2}>На человека за {c.days} {plural(c.days, 'день', 'дня', 'дней')}</th>
+              <th colSpan={3} className="is-num">
+                Попробовали поток <span className="admin__cell-pct">{num(c.tried.ready)} чел.</span>
+              </th>
+              <th colSpan={3} className="is-num">
+                Не пробовали <span className="admin__cell-pct">{num(c.control.ready)} чел.</span>
+              </th>
+            </tr>
+            <tr>
+              <th className="is-num">до</th>
+              <th className="is-num">после</th>
+              <th className="is-num">изм.</th>
+              <th className="is-num">до</th>
+              <th className="is-num">после</th>
+              <th className="is-num">изм.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key} className={r.sub ? 'analytics__sub-row' : undefined}>
+                <td>
+                  {r.label} <Info text={r.hint} />
+                </td>
+                {[c.tried, c.control].map((g, i) => (
+                  <Fragment key={i}>
+                    <td className="is-num">{metricText(g.before[r.key], r.steps)}</td>
+                    <td className="is-num">{metricText(g.after[r.key], r.steps)}</td>
+                    <td className="is-num analytics__change">
+                      {c.enough ? change(g.before[r.key], g.after[r.key]) : '—'}
+                    </td>
+                  </Fragment>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <CompareStatus c={c} />
+      <p className="analytics__muted">
+        Это не эксперимент: попробовавшие по определению были активны в день пробы, а среди не
+        пробовавших есть и те, кто просто перестал заходить. Смотрите на разницу двух столбцов
+        «изм.», а не на одно число.
+      </p>
+    </>
   )
 }
 
@@ -558,6 +1087,148 @@ function Habit({ data }: { data: Dashboard | null }) {
               ? ` Данные о тренировках — с ${dayText(h.sessions_since)}.`
               : ' Данных о тренировках пока нет.'}
           </p>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+/* ——— Когда покупают ——— */
+
+const FUNNEL_TITLES: Record<string, string> = {
+  trial3d: 'Пробные 3 дня',
+  trial20: 'Челлендж',
+  '': 'Без воронки',
+}
+
+const funnelTitle = (funnel: string | null) => (funnel === null ? 'Все' : (FUNNEL_TITLES[funnel] ?? funnel))
+
+/** «день 0» → «в день регистрации», «4–7» → «4–7-й день». */
+function buyDayLabel(label: string): string {
+  if (label === '0') return 'В день регистрации'
+  if (label.endsWith('+')) return `${label.slice(0, -1)}-й день и позже`
+  return `${label}-й день`
+}
+
+/** «2 дня», «6,4 дня» (дробное — всегда «дня»), «5 дней». */
+const daysText = (value: number | null) => {
+  if (value === null) return '—'
+  const rounded = Math.round(value * 10) / 10
+  const word = Number.isInteger(rounded) ? plural(rounded, 'день', 'дня', 'дней') : 'дня'
+  return `${decimal(rounded)} ${word}`
+}
+
+function Purchases({ data }: { data: Dashboard | null }) {
+  const [funnel, setFunnel] = useState<string | null>(null)
+  const p = data?.purchases
+  if (!p) {
+    return (
+      <Card title="Когда покупают">
+        <Loading />
+      </Card>
+    )
+  }
+  const options = [p.all, ...p.funnels]
+  const shown = options.find((o) => o.funnel === funnel) ?? p.all
+  const max = Math.max(1, ...shown.buckets.map((b) => b.people))
+  const t = p.trial3d
+  return (
+    <Card
+      title="Когда покупают"
+      text="На какой день после регистрации человек впервые заплатил и сколько купили после пробных дней."
+    >
+      <div className="analytics__grid">
+        <div className="analytics__block">
+          <h3 className="admin__letters-title">
+            День первой оплаты{' '}
+            <Info text="Люди, чья первая оплата деньгами пришлась на выбранный период (по дате оплаты, как «Оплаты» сверху). День — от дня регистрации, оба по Москве: 0 — заплатил в день регистрации. Оплата раньше регистрации (ручная привязка старого покупателя) — день 0. Воронка — та, в которой человек сейчас." />
+          </h3>
+          <div className="chips">
+            {options.map((o) => (
+              <button
+                key={o.funnel ?? 'all'}
+                type="button"
+                className={`chip ${o.funnel === shown.funnel ? 'is-on' : ''}`}
+                aria-pressed={o.funnel === shown.funnel}
+                onClick={() => setFunnel(o.funnel)}
+              >
+                {funnelTitle(o.funnel)} · {num(o.buyers)}
+              </button>
+            ))}
+          </div>
+          {shown.buyers === 0 ? (
+            <p className="analytics__muted">Впервые за период никто не заплатил.</p>
+          ) : (
+            <>
+              <ul className="analytics__rows">
+                {shown.buckets.map((b) => (
+                  <BarRow key={b.label} label={buyDayLabel(b.label)} value={b.people} share={b.share} max={max} />
+                ))}
+              </ul>
+              <dl className="analytics__facts analytics__facts--sum">
+                <dt>
+                  Медиана <Info text="Половина купивших заплатила не позже этого дня после регистрации." />
+                </dt>
+                <dd>{daysText(shown.median_days)}</dd>
+                <dt>
+                  В среднем <Info text="Среднее число дней от регистрации до первой оплаты: поздние покупки тянут его вверх сильнее медианы." />
+                </dt>
+                <dd>{daysText(shown.mean_days)}</dd>
+              </dl>
+            </>
+          )}
+        </div>
+
+        <div className="analytics__block">
+          <h3 className="admin__letters-title">
+            После пробных {num(t.days)} {plural(t.days, 'дня', 'дней', 'дней')}{' '}
+            <Info
+              text={`Вошедшие в «Пробные ${t.days} дня» за выбранный период (по моменту входа в пробный). Конец пробного — через ${t.days} суток после входа, как у бота и писем. Доли — только от тех, у кого пробный уже кончился: идущий занижал бы «купили после». Купил — первая оплата деньгами; ручная выдача — не покупка.`}
+            />
+          </h3>
+          <dl className="analytics__facts">
+            <dt>Вошли в пробный</dt>
+            <dd>{num(t.joined)}</dd>
+            <dt>Пробный ещё идёт</dt>
+            <dd>
+              {num(t.running)}{' '}
+              {t.running_bought > 0 && <span className="analytics__muted">уже купили {num(t.running_bought)}</span>}
+            </dd>
+            <dt>Пробный кончился</dt>
+            <dd>{num(t.finished)}</dd>
+          </dl>
+          {t.finished === 0 ? (
+            <p className="analytics__muted">Ни у кого из вошедших за период пробный ещё не кончился.</p>
+          ) : (
+            <>
+              <ul className="analytics__rows">
+                <BarRow
+                  label="Купили во время пробного"
+                  value={t.bought_during.count}
+                  share={t.bought_during.share}
+                  max={t.finished}
+                />
+                <BarRow
+                  label="Купили после пробного"
+                  value={t.bought_after.count}
+                  share={t.bought_after.share}
+                  max={t.finished}
+                />
+                <BarRow label="Не купили" value={t.not_bought.count} share={t.not_bought.share} max={t.finished} />
+              </ul>
+              <dl className="analytics__facts analytics__facts--sum">
+                <dt>
+                  Купившие после — через{' '}
+                  <Info text="Медиана: сколько суток прошло от конца пробного до первой оплаты у тех, кто купил после него." />
+                </dt>
+                <dd>{daysText(t.after_median_days)}</dd>
+              </dl>
+              <p className="analytics__muted">
+                Доли — от {num(t.finished)} закончивших пробный. «Во время» — в том числе заплатившие ещё до входа.
+                {t.manual > 0 ? ` Среди не купивших ${num(t.manual)} с доступом, выданным вручную.` : ''}
+              </p>
+            </>
+          )}
         </div>
       </div>
     </Card>
