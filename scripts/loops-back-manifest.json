@@ -209,41 +209,6 @@
       "loop_check_p90": 0.54
     }
   },
-  "hf_20261027_143733_01aa341c-2a80-4dd9-9f9c-3ce81a5be14e.mp4": {
-    "n": 11,
-    "source": "hf_20261027_143733_01aa341c-2a80-4dd9-9f9c-3ce81a5be14e.mp4",
-    "id": "back-elbow-squeeze",
-    "title": "Сведение локтей за головой",
-    "size": [
-      940,
-      940
-    ],
-    "i": 36,
-    "j": 122,
-    "frames": 86,
-    "seconds": 3.583,
-    "seam_score": 1.24,
-    "seam": "чисто",
-    "figure_step": 0.08,
-    "mse_ratio": 1.61,
-    "total_frames": 124,
-    "motion_span": 0.93,
-    "best_found": {
-      "i": 36,
-      "j": 122,
-      "seam_score": 1.24
-    },
-    "square_side": 940,
-    "mp4_kb": 172.3,
-    "webp_kb": 5.3,
-    "check": {
-      "frames_x2": 172,
-      "seam_mad": 3.13,
-      "adjacent_mad_median": 1.03,
-      "loop_check": 3.04,
-      "loop_check_p90": 1.09
-    }
-  },
   "hf_20261027_143910_b59e935a-85c4-4908-b09d-e12c28363d9a.mp4": {
     "n": 12,
     "source": "hf_20261027_143910_b59e935a-85c4-4908-b09d-e12c28363d9a.mp4",
@@ -557,6 +522,41 @@
       "adjacent_mad_median": 1.32,
       "loop_check": 3.31,
       "loop_check_p90": 2.78
+    }
+  },
+  "hf_20261028_205050_462adf33-5e07-4e6e-8638-c42c53d3487b.mp4": {
+    "n": 1,
+    "source": "hf_20261028_205050_462adf33-5e07-4e6e-8638-c42c53d3487b.mp4",
+    "id": "back-elbow-squeeze",
+    "title": "Сведение локтей за головой",
+    "size": [
+      940,
+      940
+    ],
+    "i": 35,
+    "j": 123,
+    "frames": 88,
+    "seconds": 3.667,
+    "seam_score": 0.79,
+    "seam": "чисто",
+    "figure_step": 0.14,
+    "mse_ratio": 1.53,
+    "total_frames": 125,
+    "motion_span": 1.0,
+    "best_found": {
+      "i": 35,
+      "j": 123,
+      "seam_score": 0.79
+    },
+    "square_side": 940,
+    "mp4_kb": 200.2,
+    "webp_kb": 5.1,
+    "check": {
+      "frames_x2": 176,
+      "seam_mad": 3.77,
+      "adjacent_mad_median": 1.39,
+      "loop_check": 2.72,
+      "loop_check_p90": 0.92
     }
   }
 }
