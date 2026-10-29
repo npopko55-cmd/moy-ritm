@@ -139,8 +139,7 @@ export default function GuestPrompt({ kind, onClose, onCta }: Props) {
               <p className="gp__plate">
                 <Shield size={18} />
                 <span>
-                  <span className="gp__phrase">Без привязки карты ·</span>{' '}
-                  <span className="gp__phrase">Без автосписаний</span>
+                  <span className="gp__phrase">Без привязки карты</span>
                 </span>
               </p>
             </>
@@ -154,8 +153,7 @@ export default function GuestPrompt({ kind, onClose, onCta }: Props) {
                 <Shield size={18} />
                 <span>
                   <span className="gp__phrase">3 дня бесплатно ·</span>{' '}
-                  <span className="gp__phrase">Без привязки карты ·</span>{' '}
-                  <span className="gp__phrase">Без автосписаний</span>
+                  <span className="gp__phrase">Без привязки карты</span>
                 </span>
               </p>
             </>

@@ -196,7 +196,7 @@ function FreePlan({ onTry }: { onTry(): void }) {
       <p className="plan__price">{rub(0)}</p>
       <p className="plan__per">3 дня</p>
       <span className="plan__rule" aria-hidden="true" />
-      <p className="plan__note">Без привязки карты и автосписаний</p>
+      <p className="plan__note">Без привязки карты</p>
       <ul className="plan__points">
         {FREE_POINTS.map((p) => (
           <li key={p}>{p}</li>
