@@ -16,6 +16,9 @@ import { days, durationTight, toMinutes, weekdayShort } from '../lib/date'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import {
+  Check,
+  ChevronRight,
+  Clock,
   FloatNote,
   Info,
   MusicNote,
@@ -25,6 +28,7 @@ import {
   Sparkle,
   SpeakerOff,
   SpeakerOn,
+  Steps,
 } from '../components/Icons'
 import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
@@ -66,7 +70,14 @@ import {
   usePhoneScreen,
 } from '../lib/fullscreen'
 import { recentMoves, rememberMove } from '../lib/moveHistory'
-import { loadMoveInterval } from '../lib/settings'
+import {
+  bumpSettingsRevision,
+  currentSettingsRevision,
+  loadMoveInterval,
+  MOVE_INTERVALS,
+  saveMoveInterval,
+} from '../lib/settings'
+import { addDayMove, loadDayMoves } from '../lib/dayMoves'
 import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
@@ -175,7 +186,7 @@ export default function Player() {
   // переключатель потоков (тогда в нём и перенос захода, StreamCarry).
   const { state: routeState } = useLocation()
   const stream = getStream(streamId)
-  const { access, me, reload } = useSession()
+  const { access, me, reload, setMe } = useSession()
 
   /**
    * Гость — ссылка /play/<токен> без входа (src/lib/guest.ts). Плеер тот же,
@@ -799,6 +810,32 @@ export default function Player() {
   }, [summary?.local_today])
 
   /**
+   * Движения за сегодня — в карточке «Мой ритм сегодня» (src/lib/dayMoves.ts).
+   * Сервер их не считает, поэтому счёт этого устройства: тем же правилом,
+   * что «Движений сделано» захода, но через все заходы и потоки за день.
+   * Хранится вместе с датой: наступил новый день — на экране ноль, а
+   * следующее движение начнёт новый счёт.
+   */
+  const movesOwner = userId ?? 'guest'
+  const [dayMoves, setDayMoves] = useState(() => {
+    const day = userToday()
+    return { day, moves: loadDayMoves(movesOwner, day) }
+  })
+  // Гость вошёл прямо в плеере — счёт уже его аккаунта.
+  useEffect(() => {
+    const day = userToday()
+    setDayMoves({ day, moves: loadDayMoves(movesOwner, day) })
+  }, [movesOwner, userToday])
+  // Зовёт секундный тик через nextMove, который не пересоздаётся: через ref.
+  const countDayMove = useRef(() => undefined as void)
+  countDayMove.current = () => {
+    const day = userToday()
+    const known = dayMoves.day === day ? dayMoves.moves : 0
+    setDayMoves({ day, moves: addDayMove(movesOwner, day, known) })
+  }
+  const todayMoves = dayMoves.day === userToday() ? dayMoves.moves : 0
+
+  /**
    * Наступили новые сутки при открытом плеере.
    *
    * Вкладку могут не перезагружать сутками: человек нажимает паузу вечером,
@@ -912,6 +949,7 @@ export default function Player() {
     // пройдено целиком.
     movesRef.current += 1
     setSessionMoves(movesRef.current)
+    countDayMove.current()
     // Сигнал «смена упражнения» (src/media/chime.ts) — поверх музыки, тем же
     // путём (<audio>). Только при смене по интервалу: звучит на каждой смене,
     // начиная с первой на вторую, а на самом старте тренировки его нет.
@@ -1644,8 +1682,10 @@ export default function Player() {
 
   // Пока стоит экран паузы, плеер спрятан, и фокус с его кнопки пропадал бы
   // в никуда. Экран паузы забирает фокус себе, а закрываясь, возвращает его
-  // на кнопку паузы.
+  // на кнопку паузы. Кнопок две — у круга (телефон, планшет) и в карточке
+  // «Управление» (десктоп), видна одна: фокус уходит на видимую.
   const pauseButton = useRef<HTMLButtonElement>(null)
+  const cardPauseButton = useRef<HTMLButtonElement>(null)
   const pauseWasShown = useRef(false)
   useEffect(() => {
     if (showPause) {
@@ -1654,7 +1694,8 @@ export default function Player() {
     }
     if (!pauseWasShown.current) return
     pauseWasShown.current = false
-    pauseButton.current?.focus({ preventScroll: true })
+    const shown = [cardPauseButton.current, pauseButton.current].find((b) => b && b.offsetParent !== null)
+    shown?.focus({ preventScroll: true })
   }, [showPause])
 
   // Пробел — та же пауза, что и кнопка. Когда в фокусе кнопка или поле,
@@ -1675,9 +1716,13 @@ export default function Player() {
 
   /* ─────────────  Цифры для правой колонки  ───────────── */
 
-  /** Пояснение к «Время в движении сегодня»: раскрывается прямо в карточке. */
-  const [timeNote, setTimeNote] = useState(false)
-  const timeNoteId = useId()
+  /*
+   * Пояснение к смене движения раскрывается знаком (i) прямо в карточке —
+   * окон поверх экрана в продукте нет. Пояснений о подсчёте цифр на экране
+   * нет вовсе (владелец 29.10.2026: «это убрать»).
+   */
+  const [intervalNote, setIntervalNote] = useState(false)
+  const intervalNoteId = useId()
 
   const todaySeconds = (summary?.today_seconds ?? 0) + pendingSeconds + openSeconds
   const week = summary?.week ?? emptyWeek()
@@ -1700,6 +1745,53 @@ export default function Player() {
   // разблокировки не обещает в нём шагов. Карточка и пауза показывают и
   // движения, и шаги во всех потоках.
   const countsMoves = stream.loops.every((l) => l.stepsPerMinute === 0)
+
+  /* ─────────────  Смена движения  ───────────── */
+
+  /**
+   * Интервал смены движения прямо из плеера (карточка «Управление», на
+   * телефоне — под статистикой). Это та же настройка, что «Тренировка» в
+   * «Настройках» (settings.move_interval_seconds), и меняется так же: на
+   * экране и в кэше браузера сразу, на сервер — PATCH; не сохранилось —
+   * возвращаем прежнюю и пишем строкой под кнопками. Номер правки — как в
+   * «Настройках» (src/lib/settings.ts): поздний ответ не откатит свежую.
+   *
+   * Плеер берёт интервал из bootstrap, а без него — из профиля, поэтому
+   * новое значение кладём в оба. Секундный тик пересоздаётся по
+   * moveInterval: кольцо пойдёт в новом темпе со следующей секунды, а
+   * движение, которое уже дольше нового интервала, сменится сразу.
+   *
+   * Гостю переключателя нет: настройки требуют входа, а его окно
+   * регистрации рассчитано на круг 3 × 30 с.
+   */
+  const [intervalFailed, setIntervalFailed] = useState(false)
+  const meRef = useRef(me)
+  meRef.current = me
+  const changeInterval = useCallback(
+    async (seconds: number) => {
+      if (!meRef.current || guestRef.current || seconds === moveInterval) return
+      const before = moveInterval
+      const apply = (value: number) => {
+        setBoot((b) => (b ? { ...b, move_interval_seconds: value } : b))
+        const now = meRef.current
+        if (now) setMe({ ...now, settings: { ...now.settings, move_interval_seconds: value } })
+        saveMoveInterval(value)
+      }
+      const revision = bumpSettingsRevision()
+      setIntervalFailed(false)
+      apply(seconds)
+      try {
+        const next = await api.patchSettings({ move_interval_seconds: seconds })
+        if (currentSettingsRevision() !== revision) return
+        apply(next.move_interval_seconds)
+      } catch {
+        if (currentSettingsRevision() !== revision) return
+        apply(before)
+        setIntervalFailed(true)
+      }
+    },
+    [moveInterval, setMe],
+  )
 
   return (
     <>
@@ -1895,6 +1987,9 @@ export default function Player() {
               <strong>{track.title}</strong>
               <span>{soundPlaying ? track.artist : 'нажмите, чтобы включить звук'}</span>
             </span>
+            {/* Уголок — как в макете владельца (29.10.2026): карточка
+                нажимается и листает трек. */}
+            <ChevronRight size={18} className="track__chevron" />
           </button>
         </div>
 
@@ -1907,94 +2002,169 @@ export default function Player() {
           </div>
         )}
 
-        {/* Время за сегодня и неделя одной карточкой: раньше это были два
-            блока с одной и той же цифрой в разном виде. */}
-        <section className={`stat stat--accent stat--chart ${timeNote ? 'has-note' : ''}`}>
+        {/*
+          «Мой ритм сегодня» — три цифры дня в ряд (макет владельца
+          29.10.2026): время в движении, шаги и движения. Время и шаги — те
+          же, что были в карточках под кругом: сервер плюс то, что он ещё не
+          видел. Движения — за сегодня, счёт этого устройства
+          (src/lib/dayMoves.ts); подпись — «движений», как просил владелец.
+          Заголовок — обычный заголовок карточки, без яркого цвета
+          («заголовок статистики точно делать не надо такой яркой»).
+          Раскрывающегося «Подробнее» с заходом и пояснениями о подсчёте нет:
+          владелец его убрал (29.10.2026).
+        */}
+        <section className="stat stat--today">
           <header className="stat__head">
-            <span>Время в движении сегодня</span>
-            {/* Знак (i) раньше был картинкой и на касание не отвечал. Теперь
-                это кнопка: раскрывает и прячет пояснение строкой прямо в
-                карточке — окон поверх экрана в продукте нет. */}
-            <button
-              type="button"
-              className="stat__info"
-              aria-expanded={timeNote}
-              aria-controls={timeNoteId}
-              aria-label={timeNote ? 'Скрыть пояснение' : 'Что считается во времени в движении'}
-              onClick={() => setTimeNote((open) => !open)}
-            >
-              <Info size={15} />
-            </button>
+            <span>Мой ритм сегодня</span>
           </header>
-          <p id={timeNoteId} className="stat__note" hidden={!timeNote}>
-            Считаются минуты, когда вы двигаетесь в плеере. Пауза и другие вкладки не считаются.
-            День — по вашему часовому поясу.
-          </p>
-          <strong className="stat__big">{mmss(todaySeconds)}</strong>
+          <ul className="daystat">
+            <li className="daystat__item">
+              <span className="daystat__icon daystat__icon--pink">
+                <Clock size={18} />
+              </span>
+              <strong className="daystat__value">{mmss(todaySeconds)}</strong>
+              <span className="daystat__label">в движении</span>
+            </li>
+            <li className="daystat__item">
+              <span className="daystat__icon daystat__icon--orange">
+                <Steps size={18} />
+              </span>
+              {/* «~» у шагов здесь и везде: их мы оцениваем по темпу движения. */}
+              <strong className="daystat__value">~{todaySteps}</strong>
+              <span className="daystat__label">шагов</span>
+            </li>
+            <li className="daystat__item">
+              <span className="daystat__icon daystat__icon--green">
+                <Check size={18} />
+              </span>
+              <strong className="daystat__value">{todayMoves}</strong>
+              <span className="daystat__label">движений</span>
+            </li>
+          </ul>
+        </section>
+
+        {/* «Мой ритм на неделе» — тот же график дней, что был в карточке
+            времени: столбик — минуты дня, галочка — день, когда вы
+            двигались, «Сегодня» — под текущим днём. */}
+        <section className="stat stat--week">
+          <header className="stat__head">
+            <span>Мой ритм на неделе</span>
+          </header>
           <div className="week">
             {week.map((d, i) => {
               const today = isToday(d.local_date)
               const time = weekSeconds[i] > 0 ? durationTight(weekSeconds[i]) : null
+              // Столбик — доля от лучшего дня недели; день с движением не
+              // короче пятой части дорожки, чтобы его было видно.
+              const fill = time ? Math.max(20, Math.round((weekMinutes[i] / weekTop) * 100)) : 0
               return (
-                <div key={d.local_date} className="week__col">
+                <div key={d.local_date} className={`week__col ${today ? 'is-today' : ''} ${time ? 'is-done' : ''}`}>
+                  <span className="week__check">{time && <Check size={13} />}</span>
                   <div className="week__track">
-                    <div
-                      className={`week__bar ${today ? 'is-today' : ''}`}
-                      style={{ height: `${Math.round((weekMinutes[i] / weekTop) * 100)}%` }}
-                    />
+                    <div className="week__bar" style={{ height: `${fill}%` }} />
                   </div>
-                  <span className={today ? 'is-today' : ''}>{weekdayShort(d.local_date)}</span>
+                  <span className="week__day">{weekdayShort(d.local_date)}</span>
                   {/* Минуты этого дня. День без движения — прочерк: ноль в
                       столбце цифр читается как результат, а его не было. Заход
-                      короче минуты — «<1 мин»: секунды в такую колонку не
-                      влезают, но и нулём этот день называть нельзя.
-                      Единица стоит у каждого дня: голые цифры под столбиками
-                      непонятно что значат. В узкой колонке она уходит строкой
-                      ниже — это решает CSS, разметка одна. */}
-                  <span className={`week__min ${today ? 'is-today' : ''}`}>
-                    {time ? (
-                      <>
-                        {time.value} <span className="week__unit">{time.unit}</span>
-                      </>
-                    ) : (
-                      '—'
-                    )}
-                  </span>
+                      короче минуты — «<1 мин». */}
+                  <span className="week__min">{time ? `${time.value} ${time.unit}` : '—'}</span>
+                  {/* Строка «Сегодня» есть у всех дней, у прочих пустая: иначе
+                      дорожка текущего дня была бы короче соседних. */}
+                  <span className="week__today">{today ? 'Сегодня' : ''}</span>
                 </div>
               )
             })}
           </div>
         </section>
 
-        {/* Карточка из двух половин (Дима 28.10.2026: «количество движений
-            считаем всегда, а вторую часть заполняем шагами») — во всех
-            потоках, как и на экране паузы. Движения — этого захода,
-            пройденные до конца: точный счёт, поэтому без «~». Шаги — за
-            сегодня целиком; в потоке без шагов (спина) это шаги из других
-            потоков или ~0, строку не прячем. «Сегодня» стоит в подписи,
-            поэтому под цифрой его нет. Половины — друг под другом
-            (Player.css, .stat--split). */}
-        <section className="stat stat--split">
-          <div className="stat__part">
-            <header className="stat__head">
-              <span>Движений сделано</span>
+        {/*
+          «Управление» (макет владельца 29.10.2026): пауза и звук, под ними —
+          смена движения. «Назад» и «Вперёд» из макета владелец убрал. Кнопки
+          здесь — только в трёх колонках десктопа; на телефоне и планшете они
+          у круга, а от карточки остаётся смена движения под статистикой
+          (Player.css).
+        */}
+        {!(guest && empty) && (
+          <section className={`stat stat--ctl ${guest ? 'is-guest' : ''}`}>
+            <header className="stat__head ctl__head">
+              <span>Управление</span>
             </header>
-            <div className="stat__row">
-              <strong className="stat__mid">{sessionMoves}</strong>
-            </div>
-          </div>
-          <div className="stat__part">
-            <header className="stat__head">
-              <span>Шагов набрано сегодня</span>
-            </header>
-            <div className="stat__row">
-              <span className="stat__steps">
-                {/* «~» у шагов здесь и везде: их мы оцениваем по темпу движения. */}
-                <strong className="stat__mid">~{todaySteps}</strong>
-              </span>
-            </div>
-          </div>
-        </section>
+            {!empty && (
+              <div className="ctl__buttons">
+                <div className="ctl__btn">
+                  <button
+                    ref={cardPauseButton}
+                    type="button"
+                    className="ctrl ctrl--main"
+                    onClick={toggle}
+                    aria-label={playing ? 'Пауза' : 'Играть'}
+                  >
+                    {playing ? <Pause size={26} /> : <Play size={26} />}
+                  </button>
+                  <span>{playing ? 'Пауза' : 'Играть'}</span>
+                </div>
+                <div className="ctl__btn">
+                  <button
+                    type="button"
+                    className={`ctrl ctrl--sound ${soundPlaying ? 'is-on' : ''} ${soundOn && soundBlocked ? 'is-blocked' : ''}`}
+                    onClick={pressSound}
+                    aria-pressed={soundPlaying}
+                    aria-label={soundPlaying ? 'Выключить звук' : 'Включить звук'}
+                  >
+                    {soundPlaying ? <SpeakerOn size={24} /> : <SpeakerOff size={24} />}
+                  </button>
+                  <span>{soundPlaying ? 'Звук' : 'Включить звук'}</span>
+                </div>
+              </div>
+            )}
+            {!guest && (
+              <div className="ctl__interval">
+                <header className="stat__head">
+                  <span>Смена движения</span>
+                  <button
+                    type="button"
+                    className="stat__info"
+                    aria-expanded={intervalNote}
+                    aria-controls={intervalNoteId}
+                    aria-label={intervalNote ? 'Скрыть пояснение' : 'Что такое смена движения'}
+                    onClick={() => setIntervalNote((open) => !open)}
+                  >
+                    <Info size={15} />
+                  </button>
+                </header>
+                <p id={intervalNoteId} className="stat__note" hidden={!intervalNote}>
+                  Через сколько плеер сменит движение в круге. Это та же настройка, что в «Настройках».
+                </p>
+                <div className="seg" role="radiogroup" aria-label="Менять движение каждые">
+                  {MOVE_INTERVALS.map((i) => {
+                    // «15 сек», «1 мин»: число крупно, единица под ним.
+                    const [value, unit] = i.label.split(' ')
+                    const on = i.seconds === moveInterval
+                    return (
+                      <button
+                        key={i.seconds}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        aria-label={i.label}
+                        className={`seg__item ${on ? 'is-on' : ''}`}
+                        onClick={() => void changeInterval(i.seconds)}
+                      >
+                        <strong>{value}</strong>
+                        <span>{unit}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {intervalFailed && (
+                  <p className="ctl__error" role="alert">
+                    Не сохранилось — проверьте интернет и нажмите ещё раз.
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Пробный период trial3d (открыто всё) остаётся после статистики.
             Регистрация гостя находится выше, сразу после карточки музыки. */}

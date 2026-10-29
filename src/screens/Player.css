@@ -11,8 +11,9 @@
   min-height: 620px;
   display: grid;
   /* Левая колонка сузилась под меню: карточек потоков в ней больше нет,
-     и всё, что они занимали, ушло центру. */
-  grid-template-columns: clamp(186px, 12vw, 226px) minmax(0, 1fr) clamp(262px, 16vw, 330px);
+     и всё, что они занимали, ушло центру. Правая — шире прежней: в ней
+     три цифры дня в ряд и карточка управления (макет владельца 29.10.2026). */
+  grid-template-columns: clamp(186px, 12vw, 226px) minmax(0, 1fr) clamp(280px, 20vw, 380px);
   gap: clamp(20px, 1.6vw, 34px);
   /* env(...) на десктопе равен нулю — отступы те же, что были. */
   padding:
@@ -233,6 +234,9 @@
 
 .track__text strong { font-size: clamp(13px, 1.3vh, 16px); font-weight: 700; }
 .track__text span { font-size: clamp(12px, 1.2vh, 14.5px); color: var(--pink-500); }
+
+/* Уголок справа — карточка нажимается (следующий трек). */
+.track__chevron { flex: none; margin-left: auto; color: var(--gray-400); }
 
 /* ——— Персонаж в кольце ——— */
 /*
@@ -498,7 +502,22 @@
 }
 
 /* ═══════ Правая колонка ═══════ */
-.player__stats { display: flex; flex-direction: column; gap: clamp(12px, 1.3vh, 20px); min-height: 0; }
+/*
+ * Правая колонка по макету владельца (29.10.2026): карточка трека, «Мой
+ * ритм сегодня», «Мой ритм на неделе», «Управление». Колонка по высоте окна;
+ * если карточкам с плашками и раскрытыми пояснениями не хватает места (низкий
+ * ноутбук), она листается сама, а не уходит за край экрана.
+ */
+.player__stats {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.3vh, 18px);
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.player__stats::-webkit-scrollbar { display: none; }
 
 .stat {
   flex: 0 0 auto;
@@ -507,17 +526,21 @@
   background: var(--white);
   border: 1px solid var(--gray-200);
   border-radius: var(--r-lg);
-  padding: clamp(14px, 1.6vh, 22px) clamp(16px, 1.2vw, 22px);
+  padding: clamp(12px, 1.5vh, 20px) clamp(14px, 1.1vw, 20px);
   box-shadow: var(--shadow-card);
 }
 
-.stat--accent { border-color: var(--pink-100); }
-
+/*
+ * Заголовок карточки — прежний, спокойный: мелко, заглавными, серым.
+ * Владелец: «заголовок статистики точно делать не надо такой яркой просто
+ * вот как обычно сейчас есть».
+ */
 .stat__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-height: 20px;
   font-size: clamp(10.5px, 1.05vh, 13px);
   font-weight: 700;
   letter-spacing: 0.075em;
@@ -525,10 +548,13 @@
   color: var(--gray-400);
 }
 
+/* (i) — сразу за заголовком, как в макете. */
+.ctl__interval .stat__head { justify-content: flex-start; gap: 4px; }
+
 /*
- * (i) у «Время в движении сегодня» — кнопка, а не картинка: касание
- * раскрывает и прячет пояснение строкой прямо в карточке. Поле касания
- * 32 px, но отрицательные поля не дают ему раздуть строку заголовка.
+ * (i) — кнопка, а не картинка: касание раскрывает и прячет пояснение
+ * строкой прямо в карточке. Поле касания 32 px, но отрицательные поля не
+ * дают ему раздуть строку заголовка.
  */
 .stat__info {
   flex: none;
@@ -536,7 +562,7 @@
   place-items: center;
   width: 32px;
   height: 32px;
-  margin: -9px -9px -9px 0;
+  margin: -9px 0;
   border-radius: 50%;
   color: var(--gray-400);
   transition: color .15s ease, background-color .15s ease;
@@ -558,142 +584,192 @@
 
 .stat__note[hidden] { display: none; }
 
-/*
- * Невысокий экран с тремя колонками: колонка статистики там по высоте окна
- * и расти ей некуда. Пока пояснение открыто, оно встаёт вместо недельного
- * графика — иначе нижняя карточка ушла бы за край.
- */
-@media (min-width: 1024px) and (max-height: 759.98px) {
-  .stat--chart.has-note .week { display: none; }
+/* ——— «Мой ритм сегодня»: три цифры в ряд ——— */
+.daystat {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: clamp(8px, 1.1vh, 14px);
 }
 
-.stat__big {
-  display: block;
-  font-family: var(--font-head);
-  font-size: clamp(40px, 5vh, 68px);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  margin: clamp(6px, .8vh, 12px) 0 clamp(10px, 1.2vh, 16px);
-  font-variant-numeric: tabular-nums;
+.daystat__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 0 4px;
+  text-align: center;
 }
 
-.stat__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.daystat__item + .daystat__item { border-left: 1px solid var(--gray-100); }
 
-.stat__mid {
+/* Знаки — те же спокойные кружки, что на экране паузы (.sum__icon). */
+.daystat__icon {
+  display: grid;
+  place-items: center;
+  width: clamp(32px, 4.8vh, 50px);
+  height: clamp(32px, 4.8vh, 50px);
+  margin-bottom: clamp(4px, .8vh, 10px);
+  border-radius: 50%;
+}
+
+.daystat__icon--pink   { background: var(--pink-50);    color: var(--pink-500); }
+.daystat__icon--orange { background: var(--orange-100); color: var(--orange-500); }
+.daystat__icon--green  { background: #e4f7ed;           color: var(--green-600); }
+
+.daystat__value {
+  max-width: 100%;
   font-family: var(--font-head);
-  font-size: clamp(30px, 3.6vh, 50px);
+  font-size: clamp(20px, 3.1vh, 36px);
   font-weight: 800;
+  line-height: 1.1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-/* «Шагов набрано»: цифра и подпись столбиком. */
-.stat__steps { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
-.stat__steps > span { font-size: clamp(11.5px, 1.15vh, 14.5px); color: var(--gray-500); }
+.daystat__label { margin-top: 2px; font-size: clamp(11px, 1.2vh, 13px); color: var(--gray-500); }
 
-/* ——— Недельный график ——— */
-/* График живёт в той же карточке, что и время за сегодня: колонка её не
-   растягивает, высоту задаёт содержимое. */
-.stat--chart { flex: 0 0 auto; }
-
-/*
- * «Движений сделано» и «Шагов набрано сегодня» в одной карточке (Дима
- * 28.10.2026). Друг под другом: и в колонке справа на десктопе, и в узкой
- * карточке телефона рядом с недельным графиком, который и так выше неё
- * (при 375×812 карточка не выросла). Рядом половины встают, только если на
- * каждую есть 128 px. Высота половины — подпись и число, как была у
- * карточки целиком.
- */
-.stat--split {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: clamp(8px, 1vh, 12px) 16px;
-}
-.stat__part { min-width: 0; }
-.stat__part + .stat__part {
-  border-top: 1px solid var(--gray-100);
-  padding-top: clamp(8px, 1vh, 12px);
-}
-/* Половины рядом: вместо черты сверху — черта слева. */
-@supports (container-type: inline-size) {
-  .stat--split { container-type: inline-size; }
-  @container (min-width: 272px) {
-    .stat__part + .stat__part {
-      border-top: 0;
-      padding-top: 0;
-      border-left: 1px solid var(--gray-100);
-      padding-left: 16px;
-    }
-  }
-}
-
+/* ——— «Мой ритм на неделе» ——— */
 .week {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  height: clamp(86px, 10.4vh, 132px);
-  margin-top: clamp(8px, 1vh, 14px);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  height: clamp(104px, 15vh, 190px);
+  margin-top: clamp(6px, .9vh, 12px);
 }
 
 /* min-width: 0 — колонки дней всегда равные: подпись шире колонки не
    раздвигает сетку и карточку, а свешивается поровну в зазоры по бокам. */
-.week__col { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; min-width: 0; min-height: 0; }
+.week__col { display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; min-width: 0; min-height: 0; }
+
+/* Галочка над днём с движением; строка есть у всех дней — дорожки равные. */
+.week__check { display: grid; place-items: center; height: 14px; color: var(--green-600); }
 
 /*
- * Столбику отдана вся высота, которая осталась от подписей, и проценты
- * считаются от неё. Без этой обёртки высота столбика бралась бы от колонки
- * целиком, вместе с двумя строками подписей, и шкала перестала бы быть
- * линейной: низкие столбики рисовались бы честно, а высокие сжимались.
+ * Дорожка — серая «таблетка» во всю высоту, столбик дня растёт в ней снизу.
+ * Высота столбика — в процентах от дорожки: обёртка отдаёт ему всю высоту,
+ * что осталась от подписей, и шкала остаётся линейной.
  */
-.week__track { flex: 1 1 auto; display: flex; align-items: flex-end; justify-content: center; width: 100%; min-height: 0; }
-
-.week__bar {
-  width: clamp(8px, .8vh, 11px);
-  min-height: 7px;
+.week__track {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-end;
+  width: clamp(10px, 1.3vh, 14px);
+  min-height: 0;
   border-radius: var(--r-pill);
-  background: var(--gray-200);
+  background: var(--gray-100);
+  overflow: hidden;
 }
 
-.week__bar.is-today { background: var(--grad-pink); }
+.week__bar { width: 100%; border-radius: var(--r-pill); background: var(--green-500); }
 
-.week__col span { font-size: clamp(9.5px, 1vh, 12.5px); color: var(--gray-400); text-transform: uppercase; line-height: 1.1; }
-.week__col span.is-today { color: var(--pink-500); font-weight: 700; }
+.week__day,
+.week__min,
+.week__today { line-height: 1.15; white-space: nowrap; }
 
-/*
- * Минуты этого дня — мельче подписи дня и без верхнего регистра: это цифра,
- * а не сокращение.
- *
- * «мин» стоит под числом, отдельной строкой. «13 мин» в одну строку шире
- * колонки дня: в правой колонке десктопа день получает 26–35 px, а строка
- * занимает 31–42 px (Inter, кегль 9,5–12,5 px); на телефоне колонка 16–17 px.
- * Число и «мин» по отдельности в неё встают. В одну строку — только на
- * планшете, где колонка шире 60 px (правило ниже).
- *
- * Высота подписи жёсткая, на две строки у всех дней, у прочерка тоже: иначе
- * дорожка столбика с цифрой была бы короче, чем с прочерком, и шкала поехала
- * бы. 1,95em — это строка числа (1,1) и строка единицы (0,85 × 1).
- * Обычный пробел между ними в конце строки схлопывается и не сдвигает число
- * с середины, а nowrap не даёт разорвать пару там, где она в одну строку.
- */
-.week__min {
-  height: 1.95em;
-  font-size: clamp(9px, .95vh, 11.5px);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
+.week__day { font-size: clamp(9.5px, 1vh, 12px); font-weight: 600; color: var(--gray-500); text-transform: uppercase; }
+.week__min { font-size: clamp(9px, .95vh, 11px); color: var(--gray-400); font-variant-numeric: tabular-nums; }
+
+.week__col.is-today .week__day { color: var(--green-600); font-weight: 700; }
+
+/* «Сегодня» — маленькой зелёной плашкой под днём; у прочих дней строка пустая. */
+.week__today { min-height: 15px; font-size: 9.5px; font-weight: 600; }
+.week__col.is-today .week__today {
+  padding: 1px 5px;
+  border-radius: var(--r-pill);
+  background: #e4f7ed;
+  color: var(--green-600);
+}
+
+/* ——— «Управление» ——— */
+.ctl__buttons {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: clamp(20px, 2.2vw, 36px);
+  margin-top: clamp(8px, 1.1vh, 14px);
+}
+
+.ctl__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 64px;
+  font-size: clamp(11.5px, 1.2vh, 13px);
+  color: var(--gray-500);
   white-space: nowrap;
 }
 
-/* Мельче и чуть светлее числа, того же цвета — у сегодняшнего дня розовая.
-   Два класса в селекторе, потому что .week__col span выше иначе сделал бы
-   её заглавной и серой. */
-.week__col .week__unit {
-  display: block;
-  font-size: .85em;
-  line-height: 1;
-  text-transform: none;
-  color: inherit;
-  opacity: .8;
+/* Пауза — большая розовая, в цвет кольца; звук — спокойный серый кружок. */
+.stat--ctl .ctrl--main {
+  width: clamp(56px, 6.6vh, 68px);
+  height: clamp(56px, 6.6vh, 68px);
+  background: linear-gradient(140deg, #ff2d8e 0%, #ff5ca8 60%, #ff8a5c 100%);
+  box-shadow: var(--shadow-pink);
 }
+
+.stat--ctl .ctrl--sound {
+  width: clamp(48px, 5.6vh, 56px);
+  height: clamp(48px, 5.6vh, 56px);
+  /* Ряд по центру кнопок: звук ниже паузы, подписи на одной линии. */
+  margin-top: calc((clamp(56px, 6.6vh, 68px) - clamp(48px, 5.6vh, 56px)) / 2);
+  margin-bottom: calc((clamp(56px, 6.6vh, 68px) - clamp(48px, 5.6vh, 56px)) / 2);
+}
+
+.stat--ctl .ctrl--sound.is-on {
+  background: var(--gray-100);
+  color: var(--ink-800);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.ctl__interval {
+  margin-top: clamp(10px, 1.3vh, 16px);
+  padding-top: clamp(10px, 1.3vh, 16px);
+  border-top: 1px solid var(--gray-100);
+}
+
+/* Смена движения: четыре сегмента, выбранный — розовый. */
+.seg {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: clamp(8px, 1vh, 12px);
+}
+
+.seg__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: clamp(44px, 5.4vh, 54px);
+  padding: 4px 2px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-md);
+  background: var(--white);
+  color: var(--ink-800);
+  line-height: 1.1;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease;
+}
+
+.seg__item strong { font-size: clamp(14px, 1.6vh, 17px); font-weight: 700; font-variant-numeric: tabular-nums; }
+.seg__item span { font-size: clamp(10.5px, 1.1vh, 12px); color: var(--gray-400); }
+
+.seg__item.is-on {
+  border: 1.5px solid var(--pink-400);
+  background: var(--pink-50);
+  color: var(--pink-600);
+}
+
+.seg__item.is-on span { color: var(--pink-500); }
+
+@media (hover: hover) {
+  .seg__item:not(.is-on):hover { border-color: var(--gray-300); }
+}
+
+.ctl__error { margin-top: 8px; font-size: 12.5px; line-height: 1.35; color: var(--orange-600); }
 
 /* ——— Плашка тарифов или регистрации под карточкой музыки ——— */
 /* Правка заказчика 26.09.2026: «наверх прям … чтобы прям в глаза
@@ -729,9 +805,7 @@
   .player .tabbar__item { padding: 6px; font-size: 13px; gap: 9px; }
 
   .stat { padding: 12px 14px; }
-  .stat__big { font-size: clamp(34px, 4.6vh, 46px); }
-  .stat__mid { font-size: clamp(26px, 3.4vh, 38px); }
-  .week { height: 78px; margin-top: 8px; }
+  .week { height: 96px; margin-top: 8px; }
 
   .stats__unlock .unlock { gap: 6px; padding: 10px 12px; }
   .stats__unlock .unlock__cta { padding: 5px 14px; }
@@ -764,14 +838,13 @@
   .player__banner .unlock-banner__cta { padding: 6px 14px; }
 
   .stat { padding: 10px 14px; }
-  .stat__big { font-size: clamp(30px, 6.4vh, 44px); margin: 4px 0 8px; }
-  .stat__mid { font-size: clamp(24px, 5vh, 36px); }
   .player .tabbar__item { padding: 4px 6px; }
 }
 
-/* График недели на низком экране: 70 px хватает на столбики и две подписи. */
+/* График недели на низком экране: 92 px хватает на галочку, дорожку и три
+   строки подписей. */
 @media (max-height: 759.98px) {
-  .week { height: 70px; margin-top: 8px; }
+  .week { height: 92px; margin-top: 6px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -791,16 +864,16 @@
        по вертикали страница свободно растёт. */
     overflow-x: clip;
     overflow-y: visible;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
-    /* Карточек статистики теперь две: время с графиком занимает две трети
-       ряда, шаги — оставшуюся треть. Ряда с лентой потоков больше нет —
-       его высота ушла кругу. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+    /* Под кругом «Мой ритм сегодня» и неделя рядом, под ними — смена
+       движения во всю ширину (макет владельца 29.10.2026). */
     grid-template-areas:
-      "top   top   top"
-      "stage stage stage"
-      "s1    s1    s2"
-      "menu  menu  menu";
+      "top   top"
+      "stage stage"
+      "s1    s2"
+      "s3    s3"
+      "menu  menu";
     gap: clamp(8px, 1.2vh, 14px) 12px;
     padding:
       calc(10px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
@@ -855,9 +928,21 @@
   .stage__pause,
   .stage__sound { gap: 10px; font-size: 12px; }
 
-  /* ——— Статистика строкой ——— */
-  .player__stats > .stat:nth-of-type(1) { grid-area: s1; }
-  .player__stats > .stat:nth-of-type(2) { grid-area: s2; }
+  /* ——— Статистика под кругом ——— */
+  .stat--today { grid-area: s1; }
+  .stat--week { grid-area: s2; }
+  .stat--ctl { grid-area: s3; }
+
+  /* Пауза и звук здесь — у круга, от «Управления» остаётся смена движения:
+     её заголовок и становится заголовком карточки. У гостя смены нет —
+     нет и карточки. */
+  .ctl__head,
+  .ctl__buttons { display: none; }
+  .ctl__interval { margin-top: 0; padding-top: 0; border-top: 0; }
+  .stat--ctl.is-guest { display: none; }
+
+  /* Колонка распущена в сетку и больше не листается сама. */
+  .player__stats { overflow: visible; }
 
   /* Блок trial3d — последним в ленте статистики, во всю ширину. Ряд под него
      заводится только вместе с ним: без доступа и с доступом сетка разная,
@@ -865,13 +950,14 @@
   .stats__unlock { grid-area: unlock; }
 
   .player--locked {
-    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
-      "top    top    top"
-      "stage  stage  stage"
-      "s1     s1     s2"
-      "unlock unlock unlock"
-      "menu   menu   menu";
+      "top    top"
+      "stage  stage"
+      "s1     s2"
+      "s3     s3"
+      "unlock unlock"
+      "menu   menu";
   }
 
   .stats__unlock .unlock { flex-direction: row; align-items: center; gap: 10px; padding: 9px 12px; }
@@ -894,13 +980,14 @@
   .player__banner { grid-area: banner; }
 
   .player--banner {
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
-      "top    top    top"
-      "banner banner banner"
-      "stage  stage  stage"
-      "s1     s1     s2"
-      "menu   menu   menu";
+      "top    top"
+      "banner banner"
+      "stage  stage"
+      "s1     s2"
+      "s3     s3"
+      "menu   menu";
   }
 
   .player__banner .unlock-banner { padding: 12px 14px; }
@@ -911,19 +998,18 @@
 
   .stat { padding: 10px 12px; border-radius: var(--r-md); }
   .stat__head { font-size: 10px; letter-spacing: 0.05em; }
-  .stat__big { font-size: clamp(26px, 5.2vw, 40px); margin: 4px 0 8px; }
-  .stat__mid { font-size: clamp(22px, 4.4vw, 34px); }
-  .stat__row { margin-top: 4px; }
-  .week { height: 66px; margin-top: 6px; }
-  .week__bar { width: 7px; }
-  .week__col span { font-size: 9.5px; }
-  .week__min { font-size: 9px; }
-
-  /* Карточка с графиком здесь на две трети ширины, и дню достаётся от 60 px:
-     «13 мин» и даже «120 мин» встают в одну строку, столбики не ужимаются.
-     На телефоне (правило ниже) единица снова уходит под число. */
-  .week__min { height: auto; }
-  .week__col .week__unit { display: inline; }
+  .daystat { margin-top: 8px; }
+  .daystat__icon { width: 32px; height: 32px; margin-bottom: 4px; }
+  .daystat__value { font-size: clamp(19px, 5.2vw, 26px); }
+  .daystat__label { font-size: 11.5px; }
+  .week { height: 100px; margin-top: 6px; }
+  .week__track { width: 10px; }
+  .week__day { font-size: 10px; }
+  .week__min { font-size: 9.5px; }
+  .seg { margin-top: 8px; }
+  .seg__item { min-height: 46px; }
+  .seg__item strong { font-size: 15px; }
+  .seg__item span { font-size: 11px; }
 
   /* ——— Меню строкой (вид строки — TabBar.css) ——— */
   .player .side__menu { grid-area: menu; }
@@ -933,13 +1019,14 @@
      С .player--locked она не встречается: плашка висит на «доступ вот-вот
      кончится», а разблокировка — на «доступа нет». */
   .player--notice {
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
-      "top   top   top"
-      "note  note  note"
-      "stage stage stage"
-      "s1    s1    s2"
-      "menu  menu  menu";
+      "top   top"
+      "note  note"
+      "stage stage"
+      "s1    s2"
+      "s3    s3"
+      "menu  menu";
   }
 
   .access-note { grid-area: note; }
@@ -952,10 +1039,16 @@
 @media (max-width: 767.98px) {
   .player {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+    /* Статистика друг под другом: «Мой ритм сегодня», неделя, ниже — смена
+       движения (владелец 29.10.2026: «смену движения вниз по свайпу убираем
+       под статистикой»). До неё листают. */
     grid-template-areas:
       "top   top"
       "stage stage"
-      "s1    s2";
+      "s1    s1"
+      "s2    s2"
+      "s3    s3";
     gap: 10px;
     padding:
       calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
@@ -997,17 +1090,7 @@
   .stage__pause,
   .stage__sound { font-size: 12.5px; }
 
-  .stat__big { font-size: clamp(28px, 8vw, 38px); }
-  .stat__mid { font-size: clamp(24px, 7vw, 32px); }
-
-  /* Карточка с графиком занимает половину ширины экрана: зазоры между
-     столбиками ужимаем, иначе трёхзначным минутам не хватает колонки. */
-  .week { gap: 4px; }
-
-  /* Дню здесь 16–17 px, «13 мин» строкой шире 30 px — единица под числом,
-     высота подписи снова на две строки. */
-  .week__min { height: 1.95em; }
-  .week__col .week__unit { display: block; }
+  .daystat__value { font-size: clamp(20px, 6.2vw, 26px); }
 
   /* Нижняя панель вкладок — тот же ul.side__menu: на телефоне он прижат к
      низу экрана правилами TabBar.css, одинаковыми на всех пяти вкладках.
@@ -1015,32 +1098,41 @@
 
   /* Те же дополнительные ряды, но сетка здесь в две колонки. */
   .player--notice {
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
       "top   top"
       "note  note"
       "stage stage"
-      "s1    s2";
+      "s1    s1"
+      "s2    s2"
+      "s3    s3";
   }
 
+  /* Пробный trial3d — после недели, над сменой движения: его кнопка важнее
+     настройки, до которой листают. */
   .player--locked {
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
-      "top   top"
-      "stage stage"
-      "s1    s2"
-      "unlock unlock";
+      "top    top"
+      "stage  stage"
+      "s1     s1"
+      "s2     s2"
+      "unlock unlock"
+      "s3     s3";
   }
 
   /* Плашка «Открой все 40» — под карточкой музыки, над рядом потоков и кругом.
      Заголовок в две строки, кнопка справа; на самых узких (до ~355 px)
      кнопка уходит под заголовок — это решает сама плашка (Unlock.css). */
   .player--banner {
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
       "top    top"
       "banner banner"
       "stage  stage"
-      "s1     s2";
+      "s1     s1"
+      "s2     s2"
+      "s3     s3";
   }
 
   .player__banner .unlock-banner { gap: 8px; padding: 11px 12px; }
@@ -1092,7 +1184,7 @@
       "stage menu"
       "stage top"
       "stage s1"
-      "stage s2";
+      "stage s3";
     gap: 6px 10px;
   }
 
@@ -1103,7 +1195,7 @@
       "stage menu"
       "stage top"
       "stage s1"
-      "stage s2"
+      "stage s3"
       "stage unlock";
     padding:
       calc(4px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
@@ -1142,7 +1234,7 @@
       "stage top"
       "stage banner"
       "stage s1"
-      "stage s2";
+      "stage s3";
     padding:
       calc(4px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
       calc(4px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
@@ -1189,11 +1281,20 @@
   .track__icon { width: 26px; height: 26px; }
 
   .stat { padding: 7px 10px; }
-  .stat__big { font-size: 26px; margin: 2px 0 6px; }
-  .stat__mid { font-size: 22px; }
-  /* Недельный график в ландшафте не помещается — сама цифра за сегодня
-     важнее. Карточку не прячем: время в движении теперь живёт в ней. */
-  .week { display: none; }
+  /* Недельный график в ландшафте не помещается — цифры за сегодня важнее.
+     Они — без знаков и мельче: столбец узкий. */
+  .stat--week { display: none; }
+  .stat--today,
+  .stat--ctl { padding-top: 5px; padding-bottom: 5px; }
+  .daystat { margin-top: 2px; }
+  .daystat__icon { display: none; }
+  .daystat__value { font-size: 17px; }
+  .daystat__label { font-size: 10px; }
+  .daystat__item { padding: 0 2px; }
+  .seg { gap: 4px; margin-top: 4px; }
+  .seg__item { min-height: 36px; border-radius: var(--r-sm); }
+  .seg__item strong { font-size: 13px; }
+  .seg__item span { font-size: 10px; }
 
   /* Меню — маленькими иконками в правом верхнем углу: не панель внизу, а
      ячейка сетки. Вид знаков — TabBar.css. */
@@ -1283,11 +1384,13 @@
    * от них и считается «во всю ширину».
    */
   .player.player--immersive {
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
       "top   top"
       "stage stage"
-      "s1    s2";
+      "s1    s1"
+      "s2    s2"
+      "s3    s3";
     padding:
       calc(8px + max(env(safe-area-inset-top), var(--tg-inset-top)))
       calc(12px + max(env(safe-area-inset-right), var(--tg-inset-right)))
@@ -1298,30 +1401,36 @@
   /* Плашки не пропадают, а уходят под счётчики — круг они не отодвигают.
      Друг с другом они не встречаются (см. сетку одной колонки выше). */
   .player.player--immersive.player--notice {
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
       "top   top"
       "stage stage"
-      "s1    s2"
+      "s1    s1"
+      "s2    s2"
+      "s3    s3"
       "note  note";
   }
 
   .player.player--immersive.player--banner {
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
       "top    top"
       "stage  stage"
-      "s1     s2"
+      "s1     s1"
+      "s2     s2"
+      "s3     s3"
       "banner banner";
   }
 
   .player.player--immersive.player--locked {
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
       "top    top"
       "stage  stage"
-      "s1     s2"
-      "unlock unlock";
+      "s1     s1"
+      "s2     s2"
+      "unlock unlock"
+      "s3     s3";
   }
 
   /* Логотипа нет — карточка трека от левого края; справа место под «Свернуть». */
@@ -1352,9 +1461,39 @@
   }
 }
 
-/* На телефоне в портрете отдельная строка кнопок уменьшала круг. Кнопки
-   помещаются в его нижних углах; высоту круга ограничивает нижнее меню. */
+/*
+ * Телефон в портрете: звук и пауза — одним рядом ПОД кругом (владелец
+ * 29.10.2026: «слева звук, посередине пауза»; круг и кольцо они не
+ * перекрывают — «такого чтоб не было»). Ряд — отступ снизу у обёртки круга:
+ * 4 px от квадрата круга (от самого кольца — 12–13 px: оно тоньше квадрата)
+ * и кнопка паузы 54 px. Пауза строго по центру, звук
+ * у левого края, их центры на одной линии. Высоту круга ограничивает нижнее
+ * меню.
+ */
 @media (orientation: portrait) and (max-width: 767.98px) {
+  .player__stage { --phone-ctrl-row: 58px; }
+  .stage__area { padding-bottom: var(--phone-ctrl-row); }
+
+  .player .stage__pause {
+    position: absolute;
+    left: 50%;
+    right: auto;
+    bottom: 0;
+    width: auto;
+    height: auto;
+    transform: translateX(-50%);
+  }
+
+  /* (54 − 46) / 2 = 4 px — центр звука на одной линии с центром паузы. */
+  .player .stage__sound { height: auto; bottom: 4px; }
+  .player .stage__pause > span,
+  .player .stage__sound > span { display: none; }
+  .player .ctrl--main { width: 54px; height: 54px; }
+  .player .ctrl--sound { width: 46px; height: 46px; }
+
+  /* На весь экран из высоты круга вычитается тот же ряд кнопок. */
+  .player.player--immersive .player__stage { --pause-row: var(--phone-ctrl-row); }
+
   /* Запасы выросли на 4 px вместе с рядом потоков: он 46 px против
      прежней фразы в две строки (40–48 px на ширине 360–430). */
   .player:not(.player--immersive) .player__stage { --pause-row: 0px; --phone-circle-reserve: calc(304px + var(--motto-h)); }
@@ -1362,15 +1501,11 @@
   .player--guest-banner:not(.player--immersive) .player__stage { --phone-circle-reserve: calc(414px + var(--motto-h)); }
 
   .player:not(.player--immersive) .stage__figure {
-    width: min(92vw, max(200px, calc(100 * var(--vh) - var(--phone-circle-reserve) + 16vw)), 100%);
+    /* Ряд кнопок под кругом тоже вычитается: на невысоком телефоне круг
+       уменьшится, а пауза останется над нижним меню. */
+    width: min(92vw, max(200px, calc(100 * var(--vh) - var(--phone-circle-reserve) - var(--phone-ctrl-row) + 16vw)), 100%);
   }
 
-  .player:not(.player--immersive) .stage__pause { position: absolute; right: 0; bottom: 0; width: auto; height: auto; }
-  .player:not(.player--immersive) .stage__sound { height: auto; }
-  .player:not(.player--immersive) .stage__pause > span,
-  .player:not(.player--immersive) .stage__sound > span { display: none; }
-  .player:not(.player--immersive) .ctrl--main { width: 54px; height: 54px; }
-  .player:not(.player--immersive) .ctrl--sound { width: 46px; height: 46px; }
 }
 
 /* Между 431 и 767 px плашка занимает больше высоты, поэтому перед нижним
@@ -1404,33 +1539,6 @@
     min-height: 0;
     overflow: hidden;
     grid-template-columns: minmax(0, 1fr) clamp(240px, 25vw, 270px);
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      "stage brand"
-      "stage menu"
-      "stage top"
-      "stage ."
-      "stage s1"
-      "stage s2";
-    gap: 8px 12px;
-    padding:
-      calc(12px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
-      calc(12px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
-  }
-
-  .player--banner {
-    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      "stage brand"
-      "stage menu"
-      "stage top"
-      "stage banner"
-      "stage ."
-      "stage s1"
-      "stage s2";
-  }
-
-  .player--locked {
     grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
       "stage brand"
@@ -1439,11 +1547,41 @@
       "stage ."
       "stage s1"
       "stage s2"
+      "stage s3";
+    gap: 8px 12px;
+    padding:
+      calc(12px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+      calc(12px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  }
+
+  .player--banner {
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "stage brand"
+      "stage menu"
+      "stage top"
+      "stage banner"
+      "stage ."
+      "stage s1"
+      "stage s2"
+      "stage s3";
+  }
+
+  .player--locked {
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto auto;
+    grid-template-areas:
+      "stage brand"
+      "stage menu"
+      "stage top"
+      "stage ."
+      "stage s1"
+      "stage s2"
+      "stage s3"
       "stage unlock";
   }
 
   .player--notice {
-    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas:
       "stage brand"
       "stage menu"
@@ -1451,7 +1589,8 @@
       "stage note"
       "stage ."
       "stage s1"
-      "stage s2";
+      "stage s2"
+      "stage s3";
   }
 
   .player .logo { grid-area: brand; align-self: center; justify-self: start; }
@@ -1538,9 +1677,28 @@
   .player__banner .unlock-banner__title { font-size: 11.5px; }
   .player__banner .unlock-banner__cta { padding: 5px 10px; font-size: 11px; }
   .stat { padding: 7px 10px; }
-  .stat__big { font-size: 26px; margin: 2px 0 6px; }
-  .stat__mid { font-size: 22px; }
-  .week { display: none; }
+  /* Неделе места нет — цифры за сегодня и управление важнее. */
+  .stat--week { display: none; }
+  .daystat { margin-top: 4px; }
+  .daystat__icon { width: 26px; height: 26px; margin-bottom: 2px; }
+  .daystat__icon svg { width: 15px; height: 15px; }
+  .daystat__value { font-size: 18px; }
+  .ctl__buttons { margin-top: 4px; }
+  .ctl__interval { margin-top: 6px; padding-top: 6px; }
+  .seg { margin-top: 6px; }
+  .seg__item { min-height: 38px; }
+}
+
+/*
+ * Три колонки (десктоп и планшет боком от 1024 px): пауза и звук — в
+ * карточке «Управление» справа, у круга их нет (макет владельца 29.10.2026).
+ * Логотип с подписью — крупнее, как в макете.
+ */
+@media (min-width: 1180px), (min-width: 1024px) and (orientation: landscape) {
+  .stage__sound,
+  .stage__pause { display: none; }
+
+  .player .logo--sm .logo__word { font-size: clamp(18px, 2.4vh, 26px); }
 }
 
 /* ——— Ландшафт ——— */
