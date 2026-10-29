@@ -4,6 +4,7 @@ import Landing from './screens/Landing'
 import GoFunnel from './screens/GoFunnel'
 import PlayGuest from './screens/PlayGuest'
 import TelegramBridge from './components/TelegramBridge'
+import PageMeta from './components/PageMeta'
 import { SessionProvider } from './auth/SessionProvider'
 import { RequireAuth, RequireTrial } from './auth/guards'
 import { FlowProvider } from './flow/FlowSession'
@@ -77,6 +78,8 @@ export default function App() {
         <FlowProvider>
         {/* Кнопка «Назад» Telegram Mini App. Вне Telegram ничего не делает. */}
         <TelegramBridge />
+        {/* Заголовок, описание и канонический адрес по маршруту (для поиска). */}
+        <PageMeta />
         {/* Пока скачивается код экрана — пустой фон страницы, без спиннеров:
             обычно это доли секунды, и мигание было бы заметнее ожидания. */}
         <Suspense fallback={null}>

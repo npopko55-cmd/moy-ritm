@@ -1,6 +1,7 @@
 # Мой ритм. В поиске нужны только открытые страницы: главная, тарифы, помощь
 # и документы (оферта, политика конфиденциальности, согласие на обработку данных).
-# Служебные адреса (вход, письма, оплата, тренировка, кабинет) индексировать незачем.
+# Служебные адреса (вход, письма, оплата, тренировка, кабинет, гостевые ссылки)
+# индексировать незачем. Карта открытых страниц лежит в sitemap.xml (строка в конце).
 User-agent: *
 Allow: /$
 Allow: /tariffs
@@ -19,6 +20,7 @@ Disallow: /payment/
 Disallow: /pay/
 Disallow: /start/
 Disallow: /player/
+Disallow: /play/
 Disallow: /settings
 Disallow: /profile
 Disallow: /progress
@@ -27,3 +29,5 @@ Disallow: /trial-ended
 Disallow: /offer
 Disallow: /admin
 Disallow: /api/
+
+Sitemap: https://ritmritm.ru/sitemap.xml

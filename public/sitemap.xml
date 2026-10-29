@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Открытые страницы «Моего ритма» — те же, что разрешены в robots.txt.
+  Новая открытая страница — строкой сюда и в Allow robots.txt; lastmod
+  меняем, когда заметно поменялся текст страницы.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://ritmritm.ru/</loc>
+    <lastmod>2026-10-29</lastmod>
+  </url>
+  <url>
+    <loc>https://ritmritm.ru/tariffs</loc>
+    <lastmod>2026-10-29</lastmod>
+  </url>
+  <url>
+    <loc>https://ritmritm.ru/help</loc>
+    <lastmod>2026-10-29</lastmod>
+  </url>
+  <url>
+    <loc>https://ritmritm.ru/oferta</loc>
+    <lastmod>2026-10-29</lastmod>
+  </url>
+  <url>
+    <loc>https://ritmritm.ru/privacy</loc>
+    <lastmod>2026-10-29</lastmod>
+  </url>
+  <url>
+    <loc>https://ritmritm.ru/consent</loc>
+    <lastmod>2026-10-29</lastmod>
+  </url>
+</urlset>

@@ -6,7 +6,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Мой ритм — поток движений под музыку</title>
     <meta name="description" content="Короткие тренировки под музыку: включайте поток и двигайтесь в ритме. В любое время, в любом месте." />
+    <!-- Значок сайта. favicon.ico (16, 32, 48 px) — для браузеров без SVG и
+         для поисковиков: Яндекс и Google сами запрашивают /favicon.ico.
+         PNG 120×120 — размер, который Яндекс советует для выдачи. Всё
+         нарисовано из favicon.svg на прозрачном фоне. -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="120x120" href="/icons/icon-120.png" />
+    <!-- Подтверждение прав в Яндекс Вебмастере и Google Search Console: код
+         из кабинета вставить в content и раскомментировать.
+    <meta name="yandex-verification" content="КОД_ЯНДЕКСА" />
+    <meta name="google-site-verification" content="КОД_GOOGLE" />
+    -->
+    <!-- Кто мы для поисковиков: название сайта в выдаче (WebSite) и
+         логотип (Organization). <link rel="canonical"> здесь нет намеренно:
+         index.html один на все адреса, ставит его src/components/PageMeta.tsx. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://ritmritm.ru/#website",
+            "name": "Мой ритм",
+            "alternateName": ["Мой Ритм", "ritmritm"],
+            "url": "https://ritmritm.ru/",
+            "inLanguage": "ru",
+            "publisher": { "@id": "https://ritmritm.ru/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://ritmritm.ru/#organization",
+            "name": "Мой ритм",
+            "url": "https://ritmritm.ru/",
+            "logo": "https://ritmritm.ru/icons/icon-512.png"
+          }
+        ]
+      }
+    </script>
     <!-- Превью ссылки в мессенджерах. Адреса абсолютные: их читают не браузеры, а сборщики превью. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Мой ритм" />
@@ -44,9 +81,46 @@
          подгрузился ролик (3,5 КБ). Ролик — LANDING_LOOP в src/data/loops.ts: сменили
          там — смените и здесь. -->
     <link rel="preload" as="image" fetchpriority="high" href="/loops/side-step-reach.webp" />
+    <!-- Оформление текста о сервисе в #root (см. ниже). Свои правила здесь,
+         а не в global.css: текст виден до того, как пришёл код сайта. -->
+    <style>
+      .static-intro {
+        box-sizing: border-box;
+        max-width: 760px;
+        padding: 48px 24px;
+        padding: calc(48px + env(safe-area-inset-top)) 24px 48px;
+        color: #101114;
+        font: 400 17px/1.55 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      }
+      .static-intro h1 {
+        margin: 0 0 20px;
+        font: 800 34px/1.1 'Montserrat', 'Inter', system-ui, -apple-system, Arial, sans-serif;
+        letter-spacing: -0.02em;
+      }
+      .static-intro p { margin: 0 0 14px; color: #575c67; }
+      .static-intro nav { margin-top: 24px; }
+      .static-intro a { color: #ec1e86; font-weight: 600; text-decoration: none; margin-right: 24px; }
+      @media (min-width: 768px) {
+        .static-intro { padding-left: 56px; padding-right: 56px; }
+        .static-intro h1 { font-size: 48px; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <!--
+      Текст в #root — для поисковиков и для тех, у кого код сайта не
+      выполнился. index.html один на все адреса, поэтому текст общий, о
+      сервисе. Приложение при первой отрисовке заменяет его целиком
+      (createRoot в main.tsx). Не прячем его стилями: скрытый текст
+      поисковики считают обманом. Сторож запуска ниже его не считает
+      «приложением» (id="static-intro"): смотрит на флаг __moyRitmBooted.
+    -->
+    <div id="root"><div class="static-intro" id="static-intro">
+      <h1>Мой ритм — поток движений под музыку</h1>
+      <p>Бесконечный фитнес-эфир с простыми движениями под музыку. Включайтесь в любой момент, повторяйте за тренером и набирайте больше активности за день.</p>
+      <p>Заходите на сайт из дома или офиса и подвигайтесь под музыку без переодеваний и подготовки. Потом возвращайтесь к своим делам с новыми силами и энергией, а снова приходите, когда появится свободная минутка.</p>
+      <nav><a href="/tariffs">Тарифы</a><a href="/help">Помощь</a></nav>
+    </div></div>
     <!--
       Код сайта собран под браузеры с 2020 года (?. и прочее из ES2020). Старый
       браузер падает на нём молча и оставляет белый экран — вместо него
@@ -68,7 +142,8 @@
           note.style.cssText =
             'margin:0;padding:48px 24px;text-align:center;color:#101114;' +
             'font:600 18px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif';
-          root.appendChild(note);
+          // Первой строкой, над текстом о сервисе (#static-intro).
+          root.insertBefore(note, root.firstChild);
         }
       })();
     </script>
@@ -81,7 +156,8 @@
       сам лечит его и сообщает серверу, что видел (POST /client/boot-fail,
       строка boot_fail в журнале бэкенда).
 
-      Сбой — #root пуст и main.tsx не поставил window.__moyRitmBooted, и при
+      Сбой — в #root только текст о сервисе (#static-intro, он там с
+      самого начала) и main.tsx не поставил window.__moyRitmBooted, и при
       этом: не скачался наш скрипт или стиль из /assets/ (проверяем через
       секунду после DOMContentLoaded — к нему главный модуль уже выполнился
       или упал) либо прошло 15 с после полной загрузки страницы. Пока
@@ -113,9 +189,15 @@
         function booted() {
           if (window.__moyRitmBooted === true) return true;
           var root = document.getElementById('root');
-          // Нет #root или в нём уже что-то есть (приложение или надпись
-          // о старом браузере) — не наше дело.
-          return !root || root.children.length > 0;
+          // Нет #root или в нём есть что-то кроме текста о сервисе
+          // (#static-intro лежит там с самого начала) — приложение или
+          // надпись о старом браузере: не наше дело.
+          if (!root) return true;
+          var kids = root.children;
+          for (var i = 0; i < kids.length; i++) {
+            if (kids[i].id !== 'static-intro') return true;
+          }
+          return false;
         }
 
         function stores() {
@@ -264,6 +346,9 @@
           box.appendChild(title);
           box.appendChild(hint);
           box.appendChild(button);
+          // Надпись встаёт вместо текста о сервисе: человеку сейчас нужна она.
+          var intro = document.getElementById('static-intro');
+          if (intro && intro.parentNode === root) root.removeChild(intro);
           root.appendChild(box);
         }
 
