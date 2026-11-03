@@ -77,6 +77,12 @@ export type Loop = {
    * чтобы при возвращении ничего не забыть.
    */
   family: string
+  /**
+   * Версия файла ролика, если его заменили под тем же именем. Попадает в
+   * адрес (?v=…): nginx отдаёт роликам и постерам недельный кэш, и без новой
+   * версии в адресе телефон ещё неделю показывал бы старый файл.
+   */
+  rev?: number
 }
 
 export const LOOPS: Record<string, Loop> = {
@@ -152,13 +158,13 @@ export const LOOPS: Record<string, Loop> = {
    * обычного шага между кадрами (1,18), то есть рывка не видно; владелец
    * включил его в поток.
    */
-  'back-shoulder-rotations': { id: 'back-shoulder-rotations', title: 'Вращения в плечах', duration: 4.125, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back-shoulder-rotations': { id: 'back-shoulder-rotations', title: 'Вращения в плечах', duration: 4.125, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 2 },
   'back-w-raise': { id: 'back-w-raise', title: 'Подъём рук из W', duration: 3.583, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back-pull-downs': { id: 'back-pull-downs', title: 'Руки вверх, локти вниз', duration: 5, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back-hip-hinge': { id: 'back-hip-hinge', title: 'Наклоны, руки на пояснице', duration: 4.125, stepsPerMinute: 0, kind: 'torso', family: 'back-hip-hinge' },
   'back-chin-tuck': { id: 'back-chin-tuck', title: 'Втягивание подбородка', duration: 2.667, stepsPerMinute: 0, kind: 'neck', family: 'back-chin-tuck' },
   'back-forward-reach': { id: 'back-forward-reach', title: 'Вытяжение рук вперёд', duration: 2.833, stepsPerMinute: 0, kind: 'arms', family: 'back-forward-reach' },
-  'back-elbow-squeeze': { id: 'back-elbow-squeeze', title: 'Сведение локтей за головой', duration: 3.667, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze' },
+  'back-elbow-squeeze': { id: 'back-elbow-squeeze', title: 'Сведение локтей за головой', duration: 3.667, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze', rev: 2 },
   'back-neck-turns': { id: 'back-neck-turns', title: 'Повороты головы', duration: 2.583, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns' },
   'back-open-twist': { id: 'back-open-twist', title: 'Раскрытие с поворотом', duration: 3.5, stepsPerMinute: 0, kind: 'torso', family: 'opener' },
   'back-chest-opener': { id: 'back-chest-opener', title: 'Раскрытие рук в стороны', duration: 2.667, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
@@ -166,10 +172,16 @@ export const LOOPS: Record<string, Loop> = {
    * Перегенерированы 27.10.2026 вместо рваных: стык чистый (seam 1,14 / 1,02 /
    * 0,80). loop_check у первых двух 3,42 и 2,51 — кадры на стыке сверены
    * глазами, позы совпадают, рывка нет.
+   *
+   * rev: 2 у пяти роликов (эти три, «Вращения в плечах» и «Сведение локтей
+   * за головой»): они сгенерировались сплющенными по высоте, парень в них
+   * ниже и шире остальных. 03.11.2026 пропорции возвращены
+   * scripts/unsquash-back-loops.py; у «Сведения локтей» новый адрес заодно
+   * уводит и от старой тёмной версии, которую телефоны держали в кэше.
    */
-  'back-palm-turns': { id: 'back-palm-turns', title: 'Повороты рук в стороны', duration: 3.458, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
-  'back-pelvic-tilt': { id: 'back-pelvic-tilt', title: 'Наклоны таза', duration: 3.583, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt' },
-  'back-arm-raises': { id: 'back-arm-raises', title: 'Подъёмы рук вверх', duration: 3.833, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back-palm-turns': { id: 'back-palm-turns', title: 'Повороты рук в стороны', duration: 3.458, stepsPerMinute: 0, kind: 'arms', family: 'opener', rev: 2 },
+  'back-pelvic-tilt': { id: 'back-pelvic-tilt', title: 'Наклоны таза', duration: 3.583, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt', rev: 2 },
+  'back-arm-raises': { id: 'back-arm-raises', title: 'Подъёмы рук вверх', duration: 3.833, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 2 },
 
   /*
    * Ещё три ролика «Спины» лежат в public/loops/, но в поток не входят —
@@ -212,13 +224,19 @@ export function stepRate(moveId: string): number {
 /** Сколько секунд крутится одно движение, прежде чем сменится следующим. */
 export const SECONDS_PER_MOVE = 30
 
+/** «?v=2» для заменённого ролика (Loop.rev), пусто для остальных. */
+function revQuery(id: string): string {
+  const rev = LOOPS[id]?.rev
+  return rev ? `?v=${rev}` : ''
+}
+
 export function loopSrc(id: string): string {
-  return asset(`loops/${id}.mp4`)
+  return asset(`loops/${id}.mp4`) + revQuery(id)
 }
 
 /** Первый кадр ролика: показывается, пока видео ещё не готово играть. */
 export function loopPoster(id: string): string {
-  return asset(`loops/${id}.webp`)
+  return asset(`loops/${id}.webp`) + revQuery(id)
 }
 
 /**
