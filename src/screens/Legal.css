@@ -131,3 +131,6 @@
   .legal__table,
   .legal__req { font-size: 14.5px; }
 }
+
+/* Подвал с документами, продавцом и ценами под карточкой «Другие документы». */
+.legal__foot { margin-top: clamp(18px, 3vh, 28px); }

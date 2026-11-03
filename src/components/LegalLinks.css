@@ -1,4 +1,21 @@
-/* Подвал со ссылками на документы: главная, помощь, тарифы. */
+/* Подвал со ссылками на документы: главная, помощь, тарифы, документы. */
+.legal-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Продавец и тарифы — тем же тихим серым, что и ссылки, по центру. */
+.legal-foot__line {
+  margin: 0;
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--gray-400);
+}
+
 .legal-links {
   display: flex;
   flex-wrap: wrap;

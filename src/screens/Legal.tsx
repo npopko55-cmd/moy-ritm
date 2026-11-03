@@ -20,6 +20,7 @@
 import { useLayoutEffect, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LEGAL_DOCS, LEGAL_EDITION, OPERATOR, type LegalBlock } from '../data/legal'
+import LegalLinks from '../components/LegalLinks'
 import PageShell, { Card } from './Page'
 import './Legal.css'
 
@@ -207,6 +208,9 @@ export default function Legal() {
           ))}
         </p>
       </Card>
+
+      {/* Подвал с продавцом и ценами — и здесь: Продамус проверяет оферту. */}
+      <LegalLinks className="legal__foot" />
     </PageShell>
   )
 }
