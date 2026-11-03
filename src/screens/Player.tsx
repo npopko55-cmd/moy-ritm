@@ -161,6 +161,14 @@ function carryOf(state: unknown): StreamCarry | null {
 }
 
 /**
+ * Плеер уходит, потому что человек переключил поток над кругом (openStream),
+ * а не ушёл в меню: уходящий плеер не останавливает музыку. Ставит
+ * openStream прямо перед переходом, снимает уходящий плеер при
+ * размонтировании.
+ */
+let switchingStream = false
+
+/**
  * Кегль фразы по её длине. Считаем по код-поинтам, иначе эмодзи в конце
  * тянет на два знака.
  *
@@ -289,9 +297,19 @@ export default function Player() {
    * Отсчёт мог закончиться и в спрятанной вкладке, а ОС — поднять выгруженную
    * вкладку в фоне. Тогда тренировка тоже не должна пойти сама: ждём «Играть».
    * То же — в свёрнутом мини-апе: для visibilityState он бывает «на виду».
+   *
+   * Переключение потока над кругом (carryOf) этих проверок не ждёт: это
+   * касание, человек здесь. А telegramActive() бывает ложным и у
+   * развёрнутого мини-апа: Telegram прислал deactivated, а activated после
+   * возвращения — нет (см. continueFlow ниже). Тогда новый плеер открывался на
+   * паузе, его эффект гасил музыку, которую касание пилюли только что
+   * запустило, а пуск по «Играть» шёл бы уже из другого касания.
    */
   const [playing, setPlaying] = useState(
-    () => isStart(routeState) && document.visibilityState !== 'hidden' && telegramActive(),
+    () =>
+      isStart(routeState) &&
+      (carryOf(routeState) !== null ||
+        (document.visibilityState !== 'hidden' && telegramActive())),
   )
   // Старт одноразовый: «Назад» в эту же запись истории и перезагрузка
   // откроют плеер уже на паузе. Гасим после монтирования, а не при чтении:
@@ -1168,7 +1186,13 @@ export default function Player() {
    */
   useEffect(
     () => () => {
-      setMusicPlaying(false)
+      // Переключение потока (openStream) — не уход: музыка нового потока уже
+      // играет, её запустило касание пилюли. Гасить её здесь и полагаться на
+      // то, что новый плеер в том же проходе включит снова, нельзя: включение
+      // не из касания iPhone и вьюха Telegram могут не пустить.
+      const switching = switchingStream
+      switchingStream = false
+      if (!switching) setMusicPlaying(false)
       resetSoundForEntry()
     },
     [setMusicPlaying, resetSoundForEntry],
@@ -1638,8 +1662,9 @@ export default function Player() {
         // разницы.
         resetSoundForEntry()
         // Новый трек встаёт и разгорается в касании. Общий проигрыватель
-        // играет и через смену плеера: уходящий его гасит, а новый тем же
-        // проходом эффектов включает, и трек не запинается.
+        // играет и через смену плеера: уходящий его не гасит
+        // (switchingStream), а новый открывается с идущей тренировкой
+        // и оставляет музыку играть — трек не запинается.
         selectMusic(id)
         resumeMusic()
         const next = getStream(id)
@@ -1650,6 +1675,9 @@ export default function Player() {
           sessionSteps: Math.round(stepsRef.current),
           summary,
         }
+        // Пилюля текущего потока сюда не зовёт (StreamSwitcher), но без смены
+        // потока плеер не размонтируется и знак остался бы висеть.
+        switchingStream = next.id !== stream.id
         navigate(`/player/${next.id}`, { state: { ...startState(), carry: carried } })
       }
     },
@@ -1664,6 +1692,7 @@ export default function Player() {
       resumeMusic,
       resetSoundForEntry,
       summary,
+      stream.id,
     ],
   )
 
