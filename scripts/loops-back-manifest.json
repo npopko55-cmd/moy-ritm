@@ -32,8 +32,7 @@
       "adjacent_mad_median": 2.58,
       "loop_check": 0.73,
       "loop_check_p90": 0.64
-    },
-    "unsquash": 1.35
+    }
   },
   "hf_20261027_140043_baa1501b-38dc-4190-9c5c-9ce8157dfcc7.mp4": {
     "n": 2,
@@ -348,8 +347,7 @@
       "adjacent_mad_median": 0.35,
       "loop_check": 3.42,
       "loop_check_p90": 0.97
-    },
-    "unsquash": 1.35
+    }
   },
   "hf_20261027_200806_aeb336b8-a0d4-42db-bd57-9f4197a9c518.mp4": {
     "n": 2,
@@ -454,8 +452,7 @@
       "adjacent_mad_median": 0.39,
       "loop_check": 2.51,
       "loop_check_p90": 1.2
-    },
-    "unsquash": 1.35
+    }
   },
   "hf_20261027_202731_730ca332-899d-427b-9165-450ea26390c7.mp4": {
     "n": 5,
@@ -490,8 +487,7 @@
       "adjacent_mad_median": 0.76,
       "loop_check": 1.35,
       "loop_check_p90": 0.58
-    },
-    "unsquash": 1.35
+    }
   },
   "hf_20261027_214634_8ff8c185-1553-48cd-8a93-6ac621510963.mp4": {
     "n": 6,
@@ -561,7 +557,6 @@
       "adjacent_mad_median": 1.39,
       "loop_check": 2.72,
       "loop_check_p90": 0.92
-    },
-    "unsquash": 1.35
+    }
   }
 }
