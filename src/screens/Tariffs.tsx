@@ -17,6 +17,7 @@ import {
 import { hasAccess } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { formatDate } from '../lib/date'
+import { RENEW_TITLE_ACCENT, RENEW_TITLE_LEAD } from '../lib/tariffs'
 import { EXTRA_MOVES_LABEL } from '../lib/trial'
 import '../components/Logo.css'
 import './Tariffs.css'
@@ -96,11 +97,23 @@ export default function Tariffs() {
           <div className="tariffs__intro">
             <Logo />
 
-            <h1 className="tariffs__title">
-              Откройте больше
-              <br />
-              <span className="tariffs__title-accent">движений!</span>
-            </h1>
+            {/* Доступ есть, кончается или идёт grace — это продление: сюда
+                ведёт и «Продлить» из плеера. Заголовок — правка тестировщицы
+                (04.11.2026), RENEW_TITLE. Кто ещё не покупал (и у кого доступ
+                уже совсем истёк — status expired), видит прежний. */}
+            {paid ? (
+              <h1 className="tariffs__title">
+                {RENEW_TITLE_LEAD}
+                <br />
+                <span className="tariffs__title-accent">{RENEW_TITLE_ACCENT}</span>
+              </h1>
+            ) : (
+              <h1 className="tariffs__title">
+                Откройте больше
+                <br />
+                <span className="tariffs__title-accent">движений!</span>
+              </h1>
+            )}
 
             <p className="tariffs__lead">Все движения и всё новое — сразу ваши.</p>
           </div>

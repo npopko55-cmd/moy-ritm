@@ -38,33 +38,6 @@
 .player__side { display: flex; flex-direction: column; gap: clamp(12px, 1.4vh, 18px); min-height: 0; overflow: hidden; }
 
 /*
- * Плашка «доступ заканчивается». Обычная строка в колонке, а не всплывающее
- * окно: окон на сайте нет. Появляется только при статусах expiring и grace,
- * поэтому раскладку без неё ничем не двигает.
- */
-.access-note {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex: none;
-  min-height: 44px;
-  padding: 8px 12px;
-  border-radius: var(--r-md);
-  background: var(--orange-100);
-  color: var(--orange-600);
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.access-note__cta { flex: none; text-decoration: underline; }
-
-@media (hover: hover) {
-  .access-note:hover { background: #ffdcbe; }
-}
-
-/*
  * Меню стоит сразу под логотипом: в колонке кроме них ничего не осталось.
  * Это панель вкладок (ul.tabbar.side__menu) — её вид во всех раскладках
  * живёт в src/components/TabBar.css, здесь только её место в сетке плеера.
@@ -777,7 +750,11 @@
    там встаёт под заголовком — плашка решает это сама (Unlock.css). */
 .player__banner { flex: 0 0 auto; }
 
-/* ——— Блок trial3d под карточками ——— */
+/* ——— Блок trial3d под карточками ———
+   Здесь же, тем же видом, — «Продлить» при expiring и grace (RenewUnlock,
+   правка тестировщицы 04.11.2026): их никогда не бывает вместе, поэтому
+   обёртка, её ряд «unlock» в сетках ниже и все ужатия под высоту у них общие.
+   Раньше конец доступа был оранжевой строкой .access-note в левой колонке. */
 .stats__unlock { flex: 0 0 auto; }
 
 /* Ховеры — только при мыши: на тач-экране они залипают после тапа. */
@@ -921,6 +898,9 @@
   /* У вошедшего с пробным доступом под статистикой есть ещё одна строка. */
   .player--locked .stage__figure { --stage-chrome: calc(480px + var(--motto-h) + var(--pause-row)); }
 
+  /* «Продлить» — тот же блок строкой, только сразу под кругом. */
+  .player--notice .stage__figure { --stage-chrome: calc(480px + var(--motto-h) + var(--pause-row)); }
+
   /* На iPad плашка над кругом занимает отдельный ряд. Отдаём ей место из
      диаметра круга, чтобы статистика и меню оставались на первом экране. */
   .player--banner .stage__figure { --stage-chrome: calc(510px + var(--motto-h) + var(--pause-row)); }
@@ -1014,22 +994,22 @@
   /* ——— Меню строкой (вид строки — TabBar.css) ——— */
   .player .side__menu { grid-area: menu; }
 
-  /* Колонки распущены в сетку, поэтому плашке нужен свой ряд. Он заводится
-     только вместе с ней: без неё сетка та же, что была.
-     С .player--locked она не встречается: плашка висит на «доступ вот-вот
-     кончится», а разблокировка — на «доступа нет». */
+  /* «Продлить» (expiring и grace) — тот же ряд unlock, что у блока trial3d,
+     но сразу под кругом, над статистикой: на телефоне так он виден без
+     прокрутки (правка тестировщицы 04.11.2026; раньше строка стояла над
+     кругом). Ряд заводится только вместе с плашкой. С .player--locked она не
+     встречается: плашка висит на «доступ вот-вот кончится», а разблокировка —
+     на «доступа нет». */
   .player--notice {
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
-      "top   top"
-      "note  note"
-      "stage stage"
-      "s1    s2"
-      "s3    s3"
-      "menu  menu";
+      "top    top"
+      "stage  stage"
+      "unlock unlock"
+      "s1     s2"
+      "s3     s3"
+      "menu   menu";
   }
-
-  .access-note { grid-area: note; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1096,16 +1076,17 @@
      низу экрана правилами TabBar.css, одинаковыми на всех пяти вкладках.
      Место под панель — в нижнем отступе плеера выше. */
 
-  /* Те же дополнительные ряды, но сетка здесь в две колонки. */
+  /* «Продлить» — сразу под строкой «Звук / Пауза», над статистикой: первый
+     экран телефона (375×812) кончается как раз на «Мой ритм сегодня». */
   .player--notice {
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
-      "top   top"
-      "note  note"
-      "stage stage"
-      "s1    s1"
-      "s2    s2"
-      "s3    s3";
+      "top    top"
+      "stage  stage"
+      "unlock unlock"
+      "s1     s1"
+      "s2     s2"
+      "s3     s3";
   }
 
   /* Пробный trial3d — после недели, над сменой движения: его кнопка важнее
@@ -1169,7 +1150,6 @@
     );
   }
 
-  .access-note { font-size: 12px; padding: 8px 10px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1311,7 +1291,7 @@
 
   /* В ландшафте на 390 px высоты плашке места нет: круг важнее. Про конец
      доступа человек уже узнал из письма, а на тарифах его встретит строка. */
-  .access-note { display: none; }
+  .player--notice .stats__unlock { display: none; }
 }
 
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 740px) {
@@ -1408,7 +1388,7 @@
       "s1    s1"
       "s2    s2"
       "s3    s3"
-      "note  note";
+      "unlock unlock";
   }
 
   .player.player--immersive.player--banner {
@@ -1580,17 +1560,18 @@
       "stage unlock";
   }
 
+  /* «Продлить» — как блок trial3d, под «Управлением». */
   .player--notice {
-    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas:
       "stage brand"
       "stage menu"
       "stage top"
-      "stage note"
       "stage ."
       "stage s1"
       "stage s2"
-      "stage s3";
+      "stage s3"
+      "stage unlock";
   }
 
   .player .logo { grid-area: brand; align-self: center; justify-self: start; }

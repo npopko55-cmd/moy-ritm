@@ -186,7 +186,11 @@ export default function Pay() {
       />
     )
   } else if (load.kind === 'ready') {
-    const { widget, prefill, page_url } = load.checkout
+    // Имя из профиля — в форму GetCourse вдобавок к почте с сервера.
+    const name = me?.user.name?.trim() ?? ''
+    const prefill = withName(load.checkout.prefill, name)
+    const page_url = pageWithName(load.checkout.page_url, name)
+    const { widget } = load.checkout
     payment = widget ? (
       <GetCourseWidget
         widget={widget}
@@ -239,6 +243,43 @@ export default function Pay() {
       </div>
     </AccountShell>
   )
+}
+
+/*
+ * Что форма GetCourse спрашивает и что мы подставляем (правка тестировщицы
+ * 04.11.2026: «не спрашивать данные, мы их уже знаем»). Своих полей у этой
+ * страницы нет: имя, почту и телефон спрашивает форма GetCourse в чужом
+ * iframe, и спрятать её поля отсюда нельзя — только заполнить. Почту и метки
+ * кладёт в prefill сервер (sv[email]); имя, если оно есть в профиле,
+ * добавляем здесь. Телефона в профиле нет — его форма спросит, пока поле не
+ * уберут или не сделают необязательным в настройках виджета.
+ *
+ * Поле имени у виджета и у страницы оффера называется по-разному (боевые
+ * формы прочитаны 05.11.2026): у всех четырёх виджетов —
+ * formParams[first_name], его заполняет sv[first_name]; у страницы оффера
+ * (запасной путь и мини-ап) — formParams[full_name], его заполняет
+ * sv[full_name]. Что прислал сервер, не перекрываем: начнёт он сам слать
+ * имя — останется его значение.
+ */
+const WIDGET_NAME_PARAM = 'sv[first_name]'
+const PAGE_NAME_PARAM = 'sv[full_name]'
+
+function withName(prefill: Record<string, string>, name: string): Record<string, string> {
+  return name ? { [WIDGET_NAME_PARAM]: name, ...prefill } : prefill
+}
+
+/** Адрес страницы оффера с именем — тем же видом, что sv[email] у сервера. */
+function pageWithName(url: string, name: string): string {
+  if (!name) return url
+  try {
+    const parsed = new URL(url)
+    if (parsed.searchParams.has(PAGE_NAME_PARAM)) return url
+    const param = `${PAGE_NAME_PARAM}=${encodeURIComponent(name)}`
+    parsed.search = parsed.search ? `${parsed.search}&${param}` : `?${param}`
+    return parsed.toString()
+  } catch {
+    return url
+  }
 }
 
 /**

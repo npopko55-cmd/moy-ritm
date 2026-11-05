@@ -41,7 +41,10 @@ type Stage = 'loading' | 'ready' | 'failed'
 
 type Props = {
   widget: CheckoutWidget
-  /** Почта и метки: виджет читает их из адреса страницы. */
+  /**
+   * Почта, метки и имя из профиля (sv[first_name], добавляет Pay.tsx):
+   * виджет читает их из адреса страницы.
+   */
   prefill: Record<string, string>
   /** Что показать, если форма не появилась: переход на страницу оплаты. */
   fallback: ReactNode

@@ -34,7 +34,7 @@ import type { BannerPlace } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { plural } from '../lib/date'
 import { reportBannerClick, reportBannerShown } from '../lib/funnel'
-import { loadTariffs } from '../lib/tariffs'
+import { loadTariffs, RENEW_TITLE } from '../lib/tariffs'
 import { openTariffsOnSite, useInTelegram } from '../lib/telegram'
 import { CATALOG_MOVES_TEXT, trialHint, trialOpensAll, useTrialState } from '../lib/trial'
 import { Lock } from './Icons'
@@ -171,6 +171,40 @@ function TrialUnlock({
           Открыть
         </Link>
       )}
+    </div>
+  )
+}
+
+/**
+ * Доступ кончается (expiring) или уже кончился и идёт grace — плашка
+ * «Продлить» (правка тестировщицы 04.11.2026). Раньше это была тихая
+ * оранжевая строка в левой колонке плеера; теперь она того же вида, что
+ * блок trial3d выше (TrialUnlock): заголовок, строка-пояснение и кнопка, и
+ * стоит на его месте — под «Управлением» в правой колонке, на телефоне —
+ * сразу под кругом (Player.css, .player--notice). С блоком trial3d они не
+ * встречаются: тот — при «доступа нет», эта — при оплаченном доступе.
+ *
+ * Заголовок — RENEW_TITLE (им же встречают продление на тарифах), строка —
+ * прежний текст плашки («Доступ заканчивается через 2 дня»), кнопка —
+ * прежняя «Продлить». Ведёт на тарифы, как и раньше, в том числе в мини-апе:
+ * там тарифы сами отправляют платить на сайт.
+ */
+export function RenewUnlock({ hint }: { hint: string }) {
+  const inTelegram = useInTelegram()
+
+  useEffect(() => {
+    if (!inTelegram) warmTariffs()
+  }, [inTelegram])
+
+  return (
+    <div className="unlock unlock--renew">
+      <span className="unlock__text">
+        <span className="unlock__title">{RENEW_TITLE}</span>
+        <span className="unlock__price">{hint}</span>
+      </span>
+      <Link className="unlock__cta" to="/tariffs">
+        Продлить
+      </Link>
     </div>
   )
 }

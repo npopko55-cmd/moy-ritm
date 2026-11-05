@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { describeVideoFault, reportPlayerFault, type FaultContext } from '../api/playerFault'
 import {
@@ -33,7 +33,7 @@ import {
 import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
 import StreamSwitcher from '../components/StreamSwitcher'
-import Unlock, { GuestUnlock } from '../components/Unlock'
+import Unlock, { GuestUnlock, RenewUnlock } from '../components/Unlock'
 import { DEFAULT_FREE_TIER, getStream, streamLocked, WARM_MOVES } from '../data/streams'
 import { loopPoster, loopSrc, SECONDS_PER_MOVE, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
@@ -230,7 +230,8 @@ export default function Player() {
   if (carryRef.current === undefined) carryRef.current = resume ? null : carryOf(routeState)
   const carry = carryRef.current
 
-  // Плашка о конце доступа: строкой в колонке, а не всплывающим окном.
+  // Плашка о конце доступа — не всплывающим окном, а блоком «Продлить» под
+  // «Управлением» (RenewUnlock); здесь — её строка-пояснение.
   const notice =
     access?.status === 'expiring'
       ? `Доступ заканчивается через ${days(access.days_left)}`
@@ -1841,15 +1842,6 @@ export default function Player() {
       <aside className="player__side">
         <Logo size="sm" />
 
-        {/* Плашка живёт внутри колонки: на телефоне .player__side
-            распускается в сетку, и ей выделен отдельный ряд «note». */}
-        {notice && (
-          <Link className="access-note" to="/tariffs">
-            <span>{notice}</span>
-            <span className="access-note__cta">Продлить</span>
-          </Link>
-        )}
-
         {/* Карточек потоков здесь больше нет: выбирать нечего, и всё, что
             они занимали, отдано кругу. В колонке остались логотип и меню —
             панель вкладок, общая с «Прогрессом», «Профилем», «Настройками»
@@ -2200,6 +2192,17 @@ export default function Player() {
         {sideUnlock && (
           <div className="stats__unlock">
             <Unlock place="player" noSteps={countsMoves} />
+          </div>
+        )}
+
+        {/* Доступ кончается или идёт grace — «Продлить» на том же месте и
+            того же вида, что блок trial3d (правка тестировщицы 04.11.2026):
+            под «Управлением»; на телефоне сетка ставит его сразу под кругом,
+            чтобы он был виден без прокрутки (Player.css, .player--notice). С
+            блоком trial3d они не встречаются: тот — без оплаченного доступа. */}
+        {notice && (
+          <div className="stats__unlock">
+            <RenewUnlock hint={notice} />
           </div>
         )}
       </aside>
