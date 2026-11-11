@@ -11,12 +11,12 @@
  * GetCourse (src/lib/payment.ts), и ждём, пока дата вырастет. Запоминает его
  * страница оплаты /pay, откуда бы человек на неё ни пришёл.
  *
- * Почта не подтверждена — опрашивать бессмысленно: оплату, пришедшую до
- * подтверждения (заплатил раньше, чем зарегистрировался), сервер выдаёт
- * только после него. Поэтому сразу просим подтвердить почту и даём
- * отправить письмо ещё раз. Профиль перечитывает SessionProvider при
- * возврате в приложение (src/lib/appReturn.ts) — подтвердили почту, и экран
- * сам переходит к обычной проверке оплаты.
+ * Почта не подтверждена — проверяем оплату как обычно (с 12.11.2026 платить
+ * можно и без подтверждения): оплату со страницы /pay сервер находит по
+ * номеру заказа или метке человека, а не по почте. Экран «Подтвердите почту»
+ * (stage 'verify') больше не открывается сам; он остался для оплаты,
+ * пришедшей с чужой почты, которую сервер выдаёт после подтверждения, — но
+ * такого человека сюда не приводит ни одна наша ссылка.
  *
  * Платят виджетом GetCourse, встроенным в /pay. Если после оплаты GetCourse
  * вернёт человека сюда внутри рамки виджета, а не во всё окно, экран сам
@@ -96,9 +96,7 @@ export default function PaymentSuccess() {
   const [before] = useState(readAccessBefore)
   const arrived = (a: Access | null | undefined) => paymentArrived(a, before)
 
-  const [stage, setStage] = useState<Stage>(() =>
-    arrived(sessionAccess) ? 'paid' : verified ? 'checking' : 'verify',
-  )
+  const [stage, setStage] = useState<Stage>(() => (arrived(sessionAccess) ? 'paid' : 'checking'))
   const [access, setAccess] = useState<Access | null>(sessionAccess)
   const [error, setError] = useState('')
 

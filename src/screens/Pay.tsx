@@ -10,8 +10,9 @@
  *   • виджет GetCourse, если он заведён у оффера; не появился за 10 секунд —
  *     кнопка на страницу оплаты GetCourse (src/components/GetCourseWidget.tsx);
  *   • виджета нет — сразу эта кнопка, как было до виджета;
- *   • почта не подтверждена — просьба подтвердить и повторное письмо: без
- *     подтверждения чек и доступ уехали бы на чужой адрес;
+ *   • почта не подтверждена — платить всё равно можно (с 12.11.2026: из 167
+ *     неподтвердивших не купил ни один). Просьба подтвердить осталась только
+ *     на случай старого сервера, который ещё отвечает 403 EMAIL_NOT_VERIFIED;
  *   • мини-ап Telegram — оплаты нет по его правилам, кнопка открывает эту же
  *     страницу на сайте.
  *
@@ -63,9 +64,6 @@ export default function Pay() {
   const { code = '' } = useParams()
   const { me, access, reload } = useSession()
   const inTelegram = useInTelegram()
-  // RequireAuth пускает сюда только вошедших, так что профиль есть.
-  const verified = me?.user.email_verified !== false
-
   const [tariffs, setTariffs] = useState(cachedTariffs)
   const [load, setLoad] = useState<Load>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
@@ -76,7 +74,7 @@ export default function Pay() {
   accessNow.current = access
 
   // Карточка тарифа — из витрины: она нужна и там, где checkout не зовём
-  // (мини-ап, неподтверждённая почта). Витрина не ответила — хватит checkout.
+  // (мини-ап). Витрина не ответила — хватит checkout.
   useEffect(() => {
     let alive = true
     loadTariffs().then(
@@ -91,14 +89,9 @@ export default function Pay() {
   }, [])
 
   useEffect(() => {
-    // В мини-апе платить нельзя, а без подтверждённой почты сервер ответит
-    // 403 — спрашивать незачем. Почту подтвердили (профиль перечитывается
-    // при возврате в приложение) — эффект сработает снова.
+    // В мини-апе платить нельзя. Неподтверждённая почта оплате не мешает
+    // (с 12.11.2026): checkout зовём всем вошедшим.
     if (inTelegram) return
-    if (!verified) {
-      setLoad({ kind: 'verify' })
-      return
-    }
 
     let alive = true
     setLoad({ kind: 'loading' })
@@ -114,7 +107,8 @@ export default function Pay() {
       (e: unknown) => {
         if (!alive) return
         if (e instanceof ApiError && e.code === 'EMAIL_NOT_VERIFIED') {
-          // Профиль в памяти устарел — перечитываем, заодно и для шапки.
+          // Так отвечает только сервер старше 12.11.2026 — до его обновления
+          // показываем прежнюю просьбу подтвердить почту.
           setLoad({ kind: 'verify' })
           void reload()
         } else if (e instanceof ApiError && (e.code === 'TARIFF_NOT_FOUND' || e.status === 422)) {
@@ -137,7 +131,7 @@ export default function Pay() {
     return () => {
       alive = false
     }
-  }, [code, inTelegram, verified, attempt, reload])
+  }, [code, inTelegram, attempt, reload])
 
   // Установленное приложение: вернулись со страницы GetCourse, профиль
   // перечитался (src/lib/sitePayment.ts), и оплата видна — на «Проверяем
@@ -393,9 +387,9 @@ function PayLink({
 }
 
 /**
- * Почта не подтверждена — оплатить нельзя: чек и доступ уехали бы на адрес,
- * которым человек, возможно, не владеет. Как только почта подтверждена,
- * страница сама покажет форму оплаты.
+ * Почта не подтверждена, а сервер (старше 12.11.2026) не пускает платить.
+ * Новый сервер так не отвечает — блок останется до выкладки бэкенда, потом
+ * его можно удалить вместе с kind: 'verify'.
  */
 function VerifyEmail({ email }: { email: string }) {
   const { reload } = useSession()
