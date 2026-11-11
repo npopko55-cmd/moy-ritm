@@ -24,6 +24,7 @@
 import { api } from '../api/client'
 import type { GuestAction, GuestBootstrap, GuestPromptKind } from '../api/types'
 import { DEFAULT_STREAM } from '../data/streams'
+import { track } from './analytics'
 import { adoptGuestChunks } from './chunks'
 import { anonId, readFunnelGuest, readFunnelToken } from './funnel'
 
@@ -205,6 +206,8 @@ export function reportGuestStart(token: string): void {
   if (read(STARTED_KEY)) return
   write(STARTED_KEY, '1')
   reportGuest(token, 'start')
+  // Та же отметка — и для счётчиков рекламы: цель guest_start одна на браузер.
+  track('guest_start')
 }
 
 /* ——— Ответ guest-bootstrap ——— */

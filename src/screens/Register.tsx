@@ -35,6 +35,7 @@ import { IS_DEMO } from '../api/client'
 import { ApiError } from '../api/types'
 import { safeNext } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
+import { trackRegister } from '../lib/analytics'
 import {
   AccountShell,
   Field,
@@ -143,6 +144,9 @@ export default function Register() {
       })
       draft = EMPTY_DRAFT
       if (res.status === 'registered') {
+        // Цель register для счётчиков рекламы: уходит только имя цели. id
+        // человека остаётся в браузере — по нему узнаем его first_workout.
+        trackRegister(res.user.id)
         // Человек уже вошёл. Шёл куда-то (гость с тарифов к оплате) — туда;
         // иначе главная встретит его своим и плашкой про подтверждение почты.
         navigate(safeNext(next) ?? '/', { replace: true })

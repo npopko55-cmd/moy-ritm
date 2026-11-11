@@ -1,5 +1,6 @@
-import { Suspense } from 'react'
-import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { Suspense, useEffect } from 'react'
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
+import { pageView } from './lib/analytics'
 import Landing from './screens/Landing'
 import GoFunnel from './screens/GoFunnel'
 import PlayGuest from './screens/PlayGuest'
@@ -69,6 +70,19 @@ function StreamPlayer() {
   return <Player key={streamId} />
 }
 
+/**
+ * Хит страницы в счётчики рекламы на каждую смену адреса (src/lib/analytics.ts):
+ * страница у сайта одна, и сами счётчики переходов внутри приложения не видят.
+ * Без id счётчиков в сборке ничего не делает.
+ */
+function PageViews() {
+  const { pathname, search } = useLocation()
+  useEffect(() => {
+    pageView()
+  }, [pathname, search])
+  return null
+}
+
 export default function App() {
   return (
     <SessionProvider>
@@ -80,6 +94,7 @@ export default function App() {
         <TelegramBridge />
         {/* Заголовок, описание и канонический адрес по маршруту (для поиска). */}
         <PageMeta />
+        <PageViews />
         {/* Пока скачивается код экрана — пустой фон страницы, без спиннеров:
             обычно это доли секунды, и мигание было бы заметнее ожидания. */}
         <Suspense fallback={null}>

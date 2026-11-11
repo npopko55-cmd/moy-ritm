@@ -8,6 +8,12 @@ interface ImportMetaEnv {
    * (src/api/demo.ts): так живёт сборка для GitHub Pages, где сервера нет.
    */
   readonly VITE_API_URL?: string
+  /** Номер счётчика Яндекс Метрики. Пусто — Метрика не грузится (src/lib/analytics.ts). */
+  readonly VITE_YM_COUNTER_ID?: string
+  /** id пикселя VK Ads (счётчик Top.Mail.ru). Пусто — пиксель не грузится. */
+  readonly VITE_VK_PIXEL_ID?: string
+  /** 1 — грузить счётчики без выбора в баннере cookies. Только после правки политики. */
+  readonly VITE_ANALYTICS_NO_CONSENT?: string
 }
 
 interface ImportMeta {

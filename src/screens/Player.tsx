@@ -78,6 +78,7 @@ import {
   saveMoveInterval,
 } from '../lib/settings'
 import { addDayMove, loadDayMoves } from '../lib/dayMoves'
+import { trackWorkoutStart } from '../lib/analytics'
 import { lastBootstrap, loadBootstrap, markTrialStale, trialOpensAll, useTrial } from '../lib/trial'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { createMotivationPicker, tierIndex } from '../lib/motivation'
@@ -1555,6 +1556,14 @@ export default function Player() {
   useEffect(() => {
     if (guest && playing && guestToken) reportGuestStart(guestToken)
   }, [guest, playing, guestToken])
+
+  // Первый пуск тренировки вошедшим — цель first_workout для счётчиков рекламы:
+  // один раз на человека, если он зарегистрировался в этом браузере или в
+  // сводке ещё нет тренировок (src/lib/analytics.ts). Сводки ещё нет — ждём её.
+  const totalWorkouts = summary ? summary.total_workouts : null
+  useEffect(() => {
+    if (!guest && playing && userId) trackWorkoutStart(userId, totalWorkouts)
+  }, [guest, playing, userId, totalWorkouts])
 
   const [prompt, setPrompt] = useState<GuestPromptKind | null>(null)
   const promptRef = useRef<GuestPromptKind | null>(null)
