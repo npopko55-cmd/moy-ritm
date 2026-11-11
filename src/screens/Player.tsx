@@ -30,6 +30,7 @@ import {
   SpeakerOn,
   Steps,
 } from '../components/Icons'
+import GuestNudge from '../components/GuestNudge'
 import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
 import StreamSwitcher from '../components/StreamSwitcher'
@@ -49,6 +50,7 @@ import { createChunkQueue, type ChunkQueue } from '../lib/chunks'
 import { saveFunnelToken } from '../lib/funnel'
 import {
   addGuestMoved,
+  GUEST_REGISTER_PATH,
   GUEST_TARIFFS_PATH,
   guestFullShown,
   guestMoved,
@@ -210,6 +212,7 @@ export default function Player() {
   const thresholds = useRef(guestThresholds()).current
   // Открыть окно — из секундного тика, который не пересоздаётся: через ref.
   const openPromptRef = useRef<(kind: GuestPromptKind, moved: number) => void>(() => undefined)
+  const openNudgeRef = useRef<(moved: number) => void>(() => undefined)
 
   /* ─────────────  Продолжение начатой тренировки  ───────────── */
 
@@ -1000,7 +1003,11 @@ export default function Player() {
       if (guestRef.current) {
         const moved = addGuestMoved(1)
         const due = guestPromptDue(moved, thresholds)
-        if (due && inMoveRef.current + 1 >= moveInterval) openPromptRef.current(due, moved)
+        // Первое окно — мягкое, без паузы (GuestNudge, с 12.11.2026); короткие — как были.
+        if (due && inMoveRef.current + 1 >= moveInterval) {
+          if (due === 'full') openNudgeRef.current(moved)
+          else openPromptRef.current(due, moved)
+        }
       }
       stepsRef.current += stepRate(moveRef.current)
       if (openRef.current) {
@@ -1568,6 +1575,9 @@ export default function Player() {
   const [prompt, setPrompt] = useState<GuestPromptKind | null>(null)
   const promptRef = useRef<GuestPromptKind | null>(null)
   promptRef.current = prompt
+  /** Мягкое окно гостя (GuestNudge) на экране — см. openNudge ниже. */
+  const [nudge, setNudge] = useState(false)
+  const nudgeRef = useRef(false)
 
   /**
    * Окно встаёт поверх тренировки и ставит её на паузу без экрана паузы:
@@ -1579,6 +1589,9 @@ export default function Player() {
       if (!guestToken || promptRef.current) return
       markGuestPromptShown(kind, moved, thresholds)
       promptRef.current = kind
+      // Большое окно встаёт вместо мягкого, если то ещё висит.
+      nudgeRef.current = false
+      setNudge(false)
       setShowPause(false)
       setPlaying(false)
       setPrompt(kind)
@@ -1587,6 +1600,46 @@ export default function Player() {
     [guestToken, thresholds],
   )
   openPromptRef.current = openPrompt
+
+  /*
+   * Мягкое окно (GuestNudge) — первое предложение гостю, на минуте движения
+   * (GUEST_FIRST_PROMPT_SECONDS). В отличие от окна выше тренировку не
+   * останавливает: playing, музыка и ролик не трогаются. Для счёта окон и
+   * для бэкенда это первое, полное окно: kind 'full' (другого вида
+   * POST /funnel/guest-event не примет), следующее — короткое через 1:30.
+   */
+  const openNudge = useCallback(
+    (moved: number) => {
+      if (!guestToken || promptRef.current || nudgeRef.current) return
+      markGuestPromptShown('full', moved, thresholds)
+      nudgeRef.current = true
+      setNudge(true)
+      reportGuest(guestToken, 'prompt_shown', 'full')
+    },
+    [guestToken, thresholds],
+  )
+  openNudgeRef.current = openNudge
+
+  /** Крестик мягкого окна: тренировка и так идёт — только убрать и отметить. */
+  const closeNudge = useCallback(() => {
+    if (!nudgeRef.current) return
+    nudgeRef.current = false
+    setNudge(false)
+    if (guestToken) reportGuest(guestToken, 'prompt_close', 'full')
+  }, [guestToken])
+
+  /**
+   * Кнопка мягкого окна — сразу на регистрацию, а не на тарифы, как у
+   * «Попробовать…» ниже: окно просит сохранить минуты, и сохраняет их именно
+   * регистрация. После неё — обратно в плеер (GUEST_NEXT); три дня trial3d
+   * даёт сама регистрация с токеном воронки, его запоминаем до ухода.
+   */
+  const nudgeCta = useCallback(() => {
+    if (!guestToken || !nudgeRef.current) return
+    reportGuest(guestToken, 'prompt_cta', 'full')
+    saveFunnelToken(guestToken, true)
+    navigate(GUEST_REGISTER_PATH)
+  }, [guestToken, navigate])
 
   /**
    * Крестик, Esc и «Продолжить без регистрации». Это касание: тренировка
@@ -2249,6 +2302,13 @@ export default function Player() {
         />
       )}
 
+      {guest && nudge && !prompt && !showPause && (
+        <GuestNudge
+          trial3d={lastGuestBootstrap(guestToken)?.guest.funnel === 'trial3d'}
+          onClose={closeNudge}
+          onCta={nudgeCta}
+        />
+      )}
       {guest && prompt && <GuestPrompt kind={prompt} onClose={closePrompt} onCta={promptCta} />}
     </>
   )

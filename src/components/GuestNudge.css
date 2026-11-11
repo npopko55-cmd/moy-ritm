@@ -1,0 +1,82 @@
+/*
+ * Мягкое окно гостя (GuestNudge.tsx). Не затемняет экран и не ловит касания
+ * вне себя: тренировка под ним идёт и управляется как обычно.
+ *
+ * Телефон — карточка во всю ширину над панелью вкладок (56 px + полоска
+ * айфона, TabBar.css); от 768 px панели внизу нет — карточка 420 px по
+ * центру у нижнего края. Цвета и шрифты — токены сайта (styles/tokens.css).
+ */
+
+.gn {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 900; /* ниже полного окна (.gp, 1000), выше панели вкладок (20) */
+  box-sizing: border-box;
+  width: min(420px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 18px 16px;
+  background: var(--white);
+  border-radius: var(--r-xl);
+  box-shadow: 0 12px 40px rgba(16, 17, 20, 0.2);
+  transform: translateX(-50%);
+  animation: gn-rise 0.3s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+@media (max-width: 767.98px) {
+  .gn { bottom: calc(56px + 10px + env(safe-area-inset-bottom)); }
+}
+
+/* Справа место под крестик. */
+.gn__text { padding-right: 28px; }
+
+.gn__title {
+  margin: 0 0 4px;
+  font: 800 18px/1.25 var(--font-head);
+  color: var(--ink-900);
+}
+
+.gn__lead {
+  margin: 0;
+  font: 500 14px/1.45 var(--font-body);
+  color: var(--gray-600);
+}
+
+/* Кнопка во всю ширину карточки и ниже обычной btn--pink-lg: окно не главное на экране. */
+.gn__cta {
+  width: 100%;
+  justify-content: center;
+  padding: 13px 20px;
+  font-size: 16px;
+}
+
+/* Крестик неяркий, как у полного окна (правка Димы 09.10.2026), но попадать
+   пальцем так же легко — 40×40. */
+.gn__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--gray-400);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gn__close:focus-visible { outline: 2px solid var(--pink-500); outline-offset: -2px; }
+
+@keyframes gn-rise {
+  from { transform: translate(-50%, 24px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gn { animation: none; }
+}
