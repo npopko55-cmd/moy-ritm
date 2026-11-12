@@ -117,10 +117,13 @@ const SPIN_MS = 3200
  * кто просил меньше движения: колесо просто встаёт на место.
  */
 export function OfferWheel({
+  saving,
   onSpin,
   onSkip,
   onTake,
 }: {
+  /** Сумма скидки приза в рублях (wheel_saving сервера) — для секторов. */
+  saving?: number | null
   onSpin(): Promise<PersonalOffer | null>
   onSkip(): void
   onTake(offer: PersonalOffer): void
@@ -160,7 +163,7 @@ export function OfferWheel({
             <div className="wheel__disc" style={{ transform: `rotate(${turn}deg)` }}>
               {Array.from({ length: SECTORS }, (_, i) => (
                 <span key={i} className="wheel__label" style={{ transform: `rotate(${(i + 0.5) * (360 / SECTORS)}deg)` }}>
-                  <span>{T.wheelSector}</span>
+                  <span>{T.wheelSector(saving)}</span>
                 </span>
               ))}
             </div>

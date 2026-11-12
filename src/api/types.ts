@@ -231,6 +231,8 @@ export type PersonalOffer = {
 export type OffersState = {
   offer: PersonalOffer | null
   wheel: boolean
+  /** Скидка приза колеса в рублях (1990 − 1490 = 500) — пока колесо доступно. */
+  wheel_saving?: number | null
   exit: boolean
   server_time: string
 }

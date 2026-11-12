@@ -82,10 +82,15 @@ export default function Tariffs() {
 
   // Колесо открыто, пока его не закрыли: после вращения сервер уже отвечает
   // wheel: false, а окно должно показать приз.
+  // Сумму скидки для секторов запоминаем при открытии: после вращения её в
+  // ответе уже нет.
   const [wheelOpen, setWheelOpen] = useState(false)
+  const [wheelSaving, setWheelSaving] = useState<number | null>(null)
   useEffect(() => {
-    if (offers.state?.wheel) setWheelOpen(true)
-  }, [offers.state?.wheel])
+    if (!offers.state?.wheel) return
+    setWheelOpen(true)
+    setWheelSaving(offers.state.wheel_saving ?? null)
+  }, [offers.state?.wheel, offers.state?.wheel_saving])
 
   // Владелец не хотел всплывающих окон, поэтому тарифы — страница, а не
   // модалка. Окна здесь — только колесо и предложение при уходе: их он
@@ -234,6 +239,7 @@ export default function Tariffs() {
 
       {wheelOpen && !exitState && (
         <OfferWheel
+          saving={wheelSaving}
           onSpin={spin}
           onSkip={() => {
             setWheelOpen(false)

@@ -164,7 +164,7 @@ export default function TariffPlans() {
                   <p className="plan__was">
                     {t.compare_price ? (
                       <s title={PAYWALL_TEXT.compareHint(t.compare_price)}>
-                        <span className="plan__sr">{PAYWALL_TEXT.compareHint(t.compare_price)}: </span>
+                        <span className="plan__sr">{PAYWALL_TEXT.compareLead} </span>
                         {rub(t.compare_price)}
                       </s>
                     ) : null}

@@ -470,9 +470,11 @@ export function createDemoApi(): Api {
     const offer = activeOffer(email)
     const paid = Boolean(accessOf(email))
     const welcomeFree = !rows.wheel && !rows.timer && !rows.exit
+    const wheel = !paid && !offer && welcomeFree
     return {
       offer,
-      wheel: !paid && !offer && welcomeFree,
+      wheel,
+      wheel_saving: wheel ? demoTariff('year').price - demoTariff('year_1490').price : null,
       exit: !paid && !rows.exit && (Boolean(offer) || welcomeFree),
       server_time: new Date().toISOString(),
     }
@@ -1010,7 +1012,7 @@ export function createDemoApi(): Api {
       if (DEMO_OFFER_TARIFFS.some((t) => t.code === tariffCode)) {
         const active = activeOffer(user.email)
         if (!active || active.tariff_code !== tariffCode) {
-          throw new ApiError(409, 'OFFER_EXPIRED', 'Это предложение закончилось — посмотрите обычные тарифы')
+          throw new ApiError(409, 'OFFER_EXPIRED', 'Срок предложения вышел. Можно выбрать обычный тариф')
         }
         offer = {
           kind: active.kind,
@@ -1065,7 +1067,7 @@ export function createDemoApi(): Api {
     async offersSpin() {
       const user = requireUser()
       const state = offersState(user.email)
-      if (!state.wheel) throw new ApiError(409, 'WHEEL_NOT_AVAILABLE', 'Колесо уже было')
+      if (!state.wheel) throw new ApiError(409, 'WHEEL_NOT_AVAILABLE', 'Вы уже крутили колесо')
       issueOffer(user.email, 'wheel')
       return offersState(user.email)
     },
