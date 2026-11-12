@@ -25,6 +25,7 @@ Disallow: /settings
 Disallow: /profile
 Disallow: /progress
 Disallow: /go/
+Disallow: /quiz
 Disallow: /trial-ended
 Disallow: /offer
 Disallow: /admin

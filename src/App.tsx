@@ -4,6 +4,7 @@ import { pageView } from './lib/analytics'
 import Landing from './screens/Landing'
 import GoFunnel from './screens/GoFunnel'
 import PlayGuest from './screens/PlayGuest'
+import Quiz from './screens/Quiz'
 import TelegramBridge from './components/TelegramBridge'
 import ConsentBanner from './components/ConsentBanner'
 import PageMeta from './components/PageMeta'
@@ -106,6 +107,10 @@ export default function App() {
 
           {/* Ссылка входа тестовой воронки из Telegram: /go/<токен>. */}
           <Route path="/go/:token" element={<GoFunnel />} />
+          {/* Квиз «План на 30 дней» перед пробным — вход с рекламы ВК и из
+              бота. Токен воронки — как у /go (src/screens/Quiz.tsx). */}
+          <Route path="/quiz" element={<Quiz />} />
+          <Route path="/quiz/:token" element={<Quiz />} />
           {/* Гостевой вход: главная → отсчёт → плеер без регистрации,
               регистрацию предложит окно посреди тренировки (src/lib/guest.ts,
               src/screens/PlayGuest.tsx). */}

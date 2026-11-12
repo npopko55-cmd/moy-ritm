@@ -1,0 +1,422 @@
+/* ═══════ Квиз «Ваш план на 30 дней» (/quiz) ═══════
+   Визуальный язык — как у страниц кабинета (Page.css) и тарифов: волны,
+   белые карточки с мягкой тенью, розовый градиент на главном действии.
+   Все селекторы начинаются с .quiz. */
+
+.quiz {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  /* Без overflow: со своим overflow страница стала бы контейнером прокрутки,
+     и кнопка плана перестала бы липнуть к низу окна. Волны и так обрезает
+     сам .wave-bg. */
+}
+
+.quiz > *:not(.wave-bg) { position: relative; z-index: 1; }
+
+.quiz__header {
+  width: min(560px, calc(100% - 32px));
+  margin: 0 auto;
+  padding-top: calc(22px + max(env(safe-area-inset-top), var(--tg-inset-top)));
+}
+
+.quiz__main {
+  width: min(560px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 22px 0 calc(40px + env(safe-area-inset-bottom));
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ——— Полоска прогресса ——— */
+.quiz__progress {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--pink-100);
+  overflow: hidden;
+}
+
+.quiz__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grad-pink);
+  transition: width .45s cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ——— Вопрос ——— */
+.quiz__step { margin-top: 18px; animation: quiz-in .28s ease both; }
+
+.quiz__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+}
+
+.quiz__count {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gray-500);
+}
+
+.quiz__back {
+  padding: 8px 10px 8px 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.quiz__back:focus-visible,
+.quiz__restart:focus-visible,
+.quiz__option:focus-visible {
+  outline: 2px solid var(--pink-600);
+  outline-offset: 3px;
+}
+
+.quiz__intro {
+  margin-top: 14px;
+  font-size: 15.5px;
+  line-height: 1.45;
+  color: var(--gray-600);
+}
+
+.quiz__title {
+  margin-top: 10px;
+  font-size: clamp(26px, 6.6vw, 34px);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink-900);
+  outline: none;
+}
+
+.quiz__options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.quiz__option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 72px;
+  padding: 16px 16px 16px 20px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--r-lg);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  transition: border-color .15s ease, background-color .15s ease, transform .12s ease;
+}
+
+.quiz__option:active {
+  transform: scale(.99);
+  border-color: var(--pink-400);
+  background: var(--pink-50);
+}
+
+@media (hover: hover) {
+  .quiz__option:hover { border-color: var(--pink-200); background: var(--pink-50); }
+  .quiz__back:hover, .quiz__restart:hover { color: var(--pink-600); }
+}
+
+.quiz__option-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.quiz__option-label {
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink-900);
+}
+
+.quiz__option-hint { font-size: 14px; line-height: 1.35; color: var(--gray-500); }
+
+.quiz__option-arrow {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  border-radius: var(--r-pill);
+  background: var(--pink-50);
+  color: var(--pink-500);
+}
+
+/* ——— Загрузка ——— */
+.quiz__wait {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 320px;
+  padding: 24px 8px;
+  text-align: center;
+  animation: quiz-in .2s ease both;
+}
+
+.quiz__ring { width: 88px; height: 88px; transform: rotate(-90deg); }
+
+.quiz__ring circle { fill: none; stroke-width: 6; }
+.quiz__ring-track { stroke: var(--pink-100); }
+
+.quiz__ring-arc {
+  stroke: url(#quiz-ring-grad);
+  stroke-linecap: round;
+  stroke-dasharray: 239;
+  stroke-dashoffset: 239;
+  animation: quiz-ring var(--quiz-wait, 1200ms) linear forwards;
+}
+
+.quiz__wait-text {
+  max-width: 420px;
+  font-family: var(--font-head);
+  font-size: clamp(19px, 5vw, 23px);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink-900);
+}
+
+.quiz__wait-sub { font-size: 15px; color: var(--gray-500); }
+
+/* ——— План ——— */
+.quiz__plan { margin-top: 6px; animation: quiz-in .3s ease both; }
+
+.quiz__title--plan { margin-top: 0; }
+
+.quiz__lead {
+  margin-top: 8px;
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--gray-500);
+}
+
+.quiz__card {
+  margin-top: 18px;
+  padding: 20px 18px;
+  border-radius: var(--r-xl);
+  background: var(--white);
+  box-shadow: var(--shadow-soft);
+}
+
+.quiz__row { display: flex; gap: 14px; }
+.quiz__row + .quiz__row { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-100); }
+
+.quiz__row-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+}
+
+.quiz__row-icon--pink { background: var(--pink-50); color: var(--pink-500); }
+.quiz__row-icon--orange { background: var(--orange-100); color: var(--orange-500); }
+.quiz__row-icon--blue { background: #e6f3fe; color: var(--blue-500); }
+
+.quiz__row-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+
+.quiz__row-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+
+.quiz__row-title {
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink-900);
+}
+
+.quiz__row-text { font-size: 14.5px; line-height: 1.45; color: var(--gray-500); }
+.quiz__row-text--note { font-size: 13.5px; color: var(--gray-400); }
+
+.quiz__streams { display: flex; flex-direction: column; gap: 12px; margin-top: 2px; }
+
+.quiz__stream { display: flex; gap: 10px; }
+
+.quiz__stream-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  border-radius: var(--r-pill);
+  background: var(--grad-cardio);
+}
+
+.quiz__stream--back .quiz__stream-dot { background: var(--grad-back); }
+
+.quiz__stream-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.quiz__stream-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.quiz__badge {
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: #e6f3fe;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue-600);
+}
+
+/* ——— Шкала по неделям ——— */
+.quiz__scale-title { font-size: 17px; font-weight: 800; }
+
+.quiz__bars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quiz__bar { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+
+.quiz__bar-value {
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink-800);
+}
+
+.quiz__bar-track {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 64px;
+  height: 120px;
+  border-radius: var(--r-md);
+  background: var(--pink-50);
+  overflow: hidden;
+}
+
+.quiz__bar-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, var(--pink-200) 0%, var(--pink-400) 100%);
+  transform-origin: bottom;
+  animation: quiz-bar .6s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.quiz__bar--last .quiz__bar-fill { background: var(--grad-number); }
+
+.quiz__bar-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--gray-500);
+  overflow-wrap: anywhere;
+}
+
+.quiz__scale-note { margin-top: 14px; font-size: 14.5px; line-height: 1.45; color: var(--gray-600); }
+
+.quiz__scale-total {
+  margin-top: 6px;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--pink-600);
+}
+
+/* ——— Кнопка: липнет к низу экрана, пока не дойдёт до своего места ——— */
+.quiz__cta {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 22px -16px 0;
+  padding: 16px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .94) 26%, #fff 100%);
+  text-align: center;
+}
+
+.quiz__cta-btn {
+  width: 100%;
+  min-height: 56px;
+  padding: 15px 12px 15px 24px;
+  font-size: 17.5px;
+  white-space: normal;
+}
+
+.quiz__cta-arrow {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .22);
+}
+
+.quiz__cta-note { margin-top: 8px; font-size: 13px; line-height: 1.4; color: var(--gray-500); }
+
+.quiz__restart {
+  display: block;
+  margin: 10px auto 0;
+  padding: 10px;
+  min-height: 44px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ——— Десктоп: колонка по центру, чуть больше воздуха ——— */
+@media (min-width: 768px) {
+  .quiz__header { padding-top: calc(32px + env(safe-area-inset-top)); }
+  .quiz__main { padding-top: 34px; }
+  .quiz__card { padding: 24px 26px; }
+  .quiz__bar-track { height: 140px; }
+  .quiz__cta { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+}
+
+/* Въезд — только сдвигом, без прозрачности: если анимация не пойдёт (фоновая
+   вкладка, экономный режим вьюхи), текст всё равно виден целиком. */
+@keyframes quiz-in {
+  from { transform: translateY(10px); }
+  to { transform: none; }
+}
+
+@keyframes quiz-ring { to { stroke-dashoffset: 0; } }
+
+@keyframes quiz-bar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* Меньше движения: без въездов, роста столбиков и плавной полоски.
+   Кольцо загрузки сразу полное — само ожидание остаётся. */
+@media (prefers-reduced-motion: reduce) {
+  .quiz__step, .quiz__wait, .quiz__plan, .quiz__bar-fill { animation: none; }
+  .quiz__progress-fill, .quiz__option { transition: none; }
+  .quiz__ring-arc { animation: none; stroke-dashoffset: 0; }
+}

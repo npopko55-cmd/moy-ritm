@@ -36,7 +36,26 @@
  */
 
 /** Цели. Такие же id нужно завести в кабинетах Метрики и VK Ads. */
-export type Goal = 'guest_start' | 'register' | 'first_workout' | 'open_tariffs' | 'pay_click' | 'purchase'
+export type Goal =
+  | 'guest_start'
+  | 'register'
+  | 'first_workout'
+  | 'open_tariffs'
+  | 'pay_click'
+  | 'purchase'
+  // Квиз «План на 30 дней» (/quiz, src/screens/Quiz.tsx): открыли первый
+  // вопрос, ответили (параметр question — номер вопроса), увидели план,
+  // нажали кнопку пробного.
+  | 'quiz_start'
+  | 'quiz_answer'
+  | 'quiz_done'
+  | 'quiz_cta'
+
+/**
+ * Параметры цели для Метрики (VK Ads их не принимает). Только числа и
+ * короткие коды — никаких личных данных.
+ */
+export type GoalParams = Record<string, string | number>
 
 type YmFn = ((...args: unknown[]) => void) & { a?: unknown[][]; l?: number }
 
@@ -298,12 +317,13 @@ export function pageView(): void {
  * Возвращает, ушла ли цель: не ушла (нет id, согласия или в адресе личные
  * данные) — зовущий может попробовать позже.
  */
-export function track(goal: Goal, value?: number): boolean {
+export function track(goal: Goal, value?: number, params?: GoalParams): boolean {
   if (!ready()) return false
   // Цель до первого хита: Метрика пишет её в визит, которого ещё нет.
   if (lastUrl === null) pageView()
   const sum = typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined
-  if (sum !== undefined) ym('reachGoal', goal, { order_price: sum, currency: 'RUB' })
+  const ymParams = { ...params, ...(sum !== undefined ? { order_price: sum, currency: 'RUB' } : {}) }
+  if (Object.keys(ymParams).length > 0) ym('reachGoal', goal, ymParams)
   else ym('reachGoal', goal)
   tmr({ type: 'reachGoal', goal, ...(sum !== undefined ? { value: sum } : {}) })
   return true
