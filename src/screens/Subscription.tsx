@@ -241,9 +241,15 @@ function Offer({
   const offer = state.offer!
   const trialOffer = offer.trial
   // Новая воронка: пробный без выбора. Иначе пробный выбран, если положен.
-  const [trial, setTrial] = useState(Boolean(trialOffer))
+  const [trial, setTrialState] = useState(Boolean(trialOffer))
   // Согласие на автосписание — по умолчанию НЕ отмечено (69-ФЗ).
   const [consent, setConsent] = useState(false)
+  // Сменили вариант — текст согласия другой (суммы и сроки), значит и
+  // согласие нужно заново: галочка снимается.
+  const setTrial = (value: boolean) => {
+    if (value !== trial) setConsent(false)
+    setTrialState(value)
+  }
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const price = rub(offer.tariff.price)
