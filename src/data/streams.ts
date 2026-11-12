@@ -152,19 +152,17 @@ export const WARM_MOVES = 6
  * scripts/build-sw.mjs берёт только ALL_MOVES.
  */
 export const BACK_MOVES: Loop[] = pick(
-  'back-shoulder-rotations',
+  'back3-01',
   'back-w-raise',
   'back-pull-downs',
   'back-hip-hinge',
   'back-chin-tuck',
   'back-forward-reach',
-  'back-elbow-squeeze',
   'back-neck-turns',
   'back-open-twist',
   'back-chest-opener',
-  'back-palm-turns',
-  'back-pelvic-tilt',
-  'back-arm-raises',
+  'back3-02',
+  'back3-03',
   'back2-01',
   'back2-06',
   'back2-05',

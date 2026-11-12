@@ -190,6 +190,16 @@ export const LOOPS: Record<string, Loop> = {
    * все стыки чистые (S 0,09–0,95). Три из шести были вертикальными —
    * дополнены до квадрата растяжкой краёв студии (fillborders smear), без рамки.
    */
+  /*
+   * 12.11.2026: пять «приплюснутых» роликов (rev: 3 выше) владелец снял.
+   * Три заменены переделками Матвея от 06.11 с нормальной фигурой (back3,
+   * scripts/loops-back3-manifest.json, стыки чистые, кадры стыка сверены
+   * глазами); «Сведение локтей за головой» и «Подъёмы рук вверх» убраны из
+   * потока без замены — их движения есть в back2-01 и back2-03.
+   */
+  'back3-01': { id: 'back3-01', title: 'Вращения в плечах', duration: 5.125, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back3-02': { id: 'back3-02', title: 'Повороты рук в стороны', duration: 3.417, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
+  'back3-03': { id: 'back3-03', title: 'Наклоны таза', duration: 3.583, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt' },
   'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze' },
   // На переделку по решению владельца 12.11, в поток не входит:
   // 'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
