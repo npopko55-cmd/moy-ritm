@@ -10,6 +10,7 @@
  * регистрация отдаёт его бэкенду. Квиз своей метки не придумывает.
  */
 
+import { api } from '../api/client'
 import { parseAnswers, type QuizAnswers } from '../data/quiz'
 import { readFunnelToken, saveFunnelToken } from './funnel'
 import { GUEST_NEXT } from './guest'
@@ -67,15 +68,34 @@ function markCta(): void {
 export const QUIZ_FROM = 'quiz'
 
 /**
- * Куда ведёт кнопка плана, пока оплаты пробного за 1 ₽ нет: туда же, куда
- * сейчас ведёт старт пробного у гостя trial3d («3 дня бесплатно» на тарифах,
- * src/components/TariffPlans.tsx) — регистрация с токеном воронки, после
- * неё обычный плеер (GUEST_NEXT).
- *
- * Когда появится оплата пробного — поменять только эту константу (и при
- * необходимости ветку вошедшего в quizCtaPath ниже).
+ * Куда ведёт кнопка плана гостя, пока пробный за 1 ₽ на сервере выключен:
+ * туда же, куда ведёт старт пробного у гостя trial3d («3 дня бесплатно» на
+ * тарифах, src/components/TariffPlans.tsx) — регистрация с токеном воронки,
+ * после неё обычный плеер (GUEST_NEXT).
  */
 export const QUIZ_CTA_PATH = `/register?next=${encodeURIComponent(GUEST_NEXT)}&from=${QUIZ_FROM}`
+
+/** Экран подписки: оформление пробного за 1 ₽ (src/screens/Subscription.tsx). */
+export const QUIZ_SUBSCRIPTION_PATH = '/subscription'
+
+/** Пробный за 1 ₽ включён: гость — регистрация и сразу экран подписки. */
+export const QUIZ_CARD_TRIAL_PATH = `/register?next=${encodeURIComponent(QUIZ_SUBSCRIPTION_PATH)}&from=${QUIZ_FROM}`
+
+let cardTrial: Promise<boolean> | null = null
+
+/**
+ * Включён ли на сервере пробный «3 дня за 1 ₽» (GET /funnel/guest-config,
+ * card_trial; без входа). Один запрос за жизнь страницы. Нет поля, сервер
+ * старый или запрос упал — выключен: кнопка и строка под ней как раньше.
+ * Подходит ли пробный конкретному человеку, решает экран подписки.
+ */
+export function quizCardTrial(): Promise<boolean> {
+  cardTrial ??= api.guestConfig().then(
+    (c) => c.card_trial === true,
+    () => false,
+  )
+  return cardTrial
+}
 
 /**
  * Квиз открыли без токена (/quiz) и токена с прошлых ссылок нет — брать ли
@@ -87,15 +107,26 @@ export const QUIZ_SITE_TOKEN_FALLBACK = true
 
 /**
  * Адрес для кнопки плана. Единственное место, которое решает, куда она ведёт.
+ * cardTrial — пробный за 1 ₽ включён на сервере (quizCardTrial).
  *   • вошёл и доступ оплачен — в тренировку;
- *   • вошёл без оплаты — на тарифы (регистрация ему уже ни к чему);
- *   • не вошёл — QUIZ_CTA_PATH. Токен воронки к этому моменту уже запомнен,
- *     если пришёл по /quiz/<токен> или раньше по /go, /play; иначе — токен
- *     «Сначала гость» (QUIZ_SITE_TOKEN_FALLBACK).
+ *   • вошёл без оплаты — на экран подписки, если пробный включён, иначе на
+ *     тарифы (регистрация ему уже ни к чему);
+ *   • не вошёл — регистрация и потом экран подписки (QUIZ_CARD_TRIAL_PATH),
+ *     если пробный включён, иначе QUIZ_CTA_PATH. Токен воронки к этому
+ *     моменту уже запомнен, если пришёл по /quiz/<токен> или раньше по /go,
+ *     /play; иначе — токен «Сначала гость» (QUIZ_SITE_TOKEN_FALLBACK).
  */
-export function quizCtaPath(opts: { signedIn: boolean; paid: boolean; siteToken: string | null }): string {
+export function quizCtaPath(opts: {
+  signedIn: boolean
+  paid: boolean
+  siteToken: string | null
+  cardTrial: boolean
+}): string {
   markCta()
-  if (opts.signedIn) return opts.paid ? GUEST_NEXT : '/tariffs'
+  if (opts.signedIn) {
+    if (opts.paid) return GUEST_NEXT
+    return opts.cardTrial ? QUIZ_SUBSCRIPTION_PATH : '/tariffs'
+  }
   if (QUIZ_SITE_TOKEN_FALLBACK && opts.siteToken && !readFunnelToken()) saveFunnelToken(opts.siteToken)
-  return QUIZ_CTA_PATH
+  return opts.cardTrial ? QUIZ_CARD_TRIAL_PATH : QUIZ_CTA_PATH
 }

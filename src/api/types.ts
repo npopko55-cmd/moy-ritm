@@ -366,8 +366,12 @@ export type GuestEventBody = {
   kind?: GuestPromptKind
 }
 
-/** «Сначала гость» на лендинге: включено ли и строка для /play/<token>. */
-export type GuestConfig = { enabled: boolean; token: string | null }
+/**
+ * «Сначала гость» на лендинге: включено ли и строка для /play/<token>.
+ * card_trial — на сервере включён пробный «3 дня за 1 ₽» (квиз решает по нему
+ * до входа, куда ведёт кнопка); нет поля (сервер старше 12.11) — выключен.
+ */
+export type GuestConfig = { enabled: boolean; token: string | null; card_trial?: boolean }
 
 /**
  * Отчёт о сбое ролика в плеере (POST /player/faults) — чтобы жалоба «застыло

@@ -36,6 +36,7 @@ import { guestFirstToken } from '../lib/guest'
 import {
   forgetQuiz,
   QUIZ_SITE_TOKEN_FALLBACK,
+  quizCardTrial,
   quizCtaPath,
   saveQuizAnswers,
   savedQuizAnswers,
@@ -101,6 +102,20 @@ export default function Quiz() {
     }
   }, [token, loading, me])
 
+  // Пробный за 1 ₽ на сервере (guest-config, без входа) — тоже заранее: от
+  // него зависят путь кнопки и строка под ней. Пока ответа нет — выключен,
+  // кнопка ведёт как раньше (ждать нельзя: касание запускает тренировку).
+  const [cardTrial, setCardTrial] = useState(false)
+  useEffect(() => {
+    let alive = true
+    void quizCardTrial().then((on) => {
+      if (alive) setCardTrial(on)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
   /* ——— Вопросы ——— */
 
   const [answers, setAnswers] = useState<Partial<QuizAnswers>>(() => savedQuizAnswers() ?? {})
@@ -162,11 +177,11 @@ export default function Quiz() {
 
   const start = useCallback(() => {
     track('quiz_cta')
-    const to = quizCtaPath({ signedIn: Boolean(me), paid: hasAccess(access), siteToken })
+    const to = quizCtaPath({ signedIn: Boolean(me), paid: hasAccess(access), siteToken, cardTrial })
     // В тренировку — через goFlow: касание заодно разблокирует ролики и музыку.
     if (to.startsWith('/player/')) goFlow(to)
     else navigate(to)
-  }, [me, access, siteToken, goFlow, navigate])
+  }, [me, access, siteToken, cardTrial, goFlow, navigate])
 
   if (!valid) return <Navigate to={`/quiz${search}`} replace />
 
@@ -218,6 +233,7 @@ export default function Quiz() {
             plan={buildPlan(answers as QuizAnswers)}
             goal={(answers as QuizAnswers).goal}
             heading={heading}
+            cardTrial={cardTrial}
             onStart={start}
             onRestart={restart}
           />
@@ -316,12 +332,15 @@ function PlanView({
   plan,
   goal,
   heading,
+  cardTrial,
   onStart,
   onRestart,
 }: {
   plan: Plan
   goal: Goal
   heading: React.RefObject<HTMLHeadingElement>
+  /** Пробный за 1 ₽ включён на сервере — под кнопкой строка об автосписании. */
+  cardTrial: boolean
   onStart: () => void
   onRestart: () => void
 }) {
@@ -406,7 +425,7 @@ function PlanView({
             <ArrowRight size={19} />
           </span>
         </button>
-        <p className="quiz__cta-note">{QUIZ_TEXT.ctaNote}</p>
+        {cardTrial && <p className="quiz__cta-note">{QUIZ_TEXT.ctaNote}</p>}
       </div>
 
       <button type="button" className="quiz__restart" onClick={onRestart}>
