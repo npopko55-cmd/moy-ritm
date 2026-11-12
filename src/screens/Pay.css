@@ -234,3 +234,20 @@
 @media (hover: hover) {
   .checkout__oferta a:hover { color: var(--pink-600); }
 }
+
+/* Персональное предложение (12.11.2026): зачёркнутая обычная цена того же
+   срока и отсчёт до конца цены по часам сервера. */
+.checkout__was {
+  margin-right: 10px;
+  font-size: .55em;
+  font-weight: 600;
+  color: var(--gray-400);
+}
+
+.checkout__offer-left {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pink-700);
+  font-variant-numeric: tabular-nums;
+}

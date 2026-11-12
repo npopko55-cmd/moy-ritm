@@ -1,0 +1,296 @@
+/*
+ * Персональные предложения на тарифах (PaywallOffers.tsx): карточка
+ * предложения над тарифами, колесо и окно при уходе. Цвета и шрифты —
+ * токены сайта (styles/tokens.css).
+ */
+
+/* ═══════ Карточка предложения над тарифами ═══════ */
+.offer {
+  --grad-warm: linear-gradient(92deg, var(--pink-500) 0%, var(--orange-500) 100%);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(14px, 2vw, 28px);
+  margin-top: clamp(18px, 2.2vw, 28px);
+  padding: clamp(16px, 1.8vw, 22px) clamp(18px, 2.2vw, 30px);
+  border: 2px solid var(--pink-500);
+  border-radius: 20px;
+  background: linear-gradient(120deg, var(--pink-50) 0%, #fff7f0 100%);
+  box-shadow: 0 12px 30px rgba(255, 45, 142, 0.14);
+}
+
+.offer__title {
+  font-family: var(--font-head);
+  font-size: clamp(15px, 1.4vw, 18px);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.offer__price {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+}
+
+.offer__price b {
+  font-family: var(--font-head);
+  font-size: clamp(28px, 2.8vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--pink-600);
+  white-space: nowrap;
+}
+
+.offer__price s {
+  font-size: clamp(15px, 1.4vw, 18px);
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+.offer__badge {
+  align-self: center;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--pink-500);
+  color: var(--white);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.offer__term {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--gray-600);
+}
+
+.offer__side {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-width: clamp(220px, 22vw, 280px);
+}
+
+.offer__left {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pink-700);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.offer__cta,
+.pwo__cta {
+  min-height: 50px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--grad-warm);
+  color: var(--white);
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(242, 96, 12, 0.3);
+  transition: box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.offer__cta:active,
+.pwo__cta:active { transform: translateY(1px); }
+
+@media (hover: hover) {
+  .offer__cta:hover,
+  .pwo__cta:hover { box-shadow: 0 12px 28px rgba(242, 96, 12, 0.4); }
+}
+
+/* Неделя за 240 — спокойнее: это не скидка, а короткий вход. */
+.offer--week { border-color: var(--violet-500); background: #f6f1ff; box-shadow: none; }
+.offer--week .offer__price b { color: var(--violet-600); }
+.offer--week .offer__left { color: var(--violet-600); }
+
+@media (max-width: 639.98px) {
+  .offer { flex-direction: column; align-items: stretch; text-align: center; }
+  .offer__price { justify-content: center; }
+  .offer__side { min-width: 0; }
+}
+
+/* ═══════ Окна: колесо и уход с тарифов ═══════
+   Телефон — лист снизу во всю ширину; от 600 px — карточка по центру, как
+   окно регистрации гостя (GuestPrompt.css). */
+.pwo {
+  --grad-warm: linear-gradient(92deg, var(--pink-500) 0%, var(--orange-500) 100%);
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(16, 17, 20, 0.55);
+  animation: pwo-fade 0.2s ease-out;
+}
+
+.pwo__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-height: 100dvh;
+  overflow-y: auto;
+  padding: 28px 20px calc(20px + env(safe-area-inset-bottom));
+  background: var(--white);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: 0 -10px 40px rgba(16, 17, 20, 0.18);
+  text-align: center;
+}
+
+@media (min-width: 600px) {
+  .pwo { align-items: center; }
+  .pwo__card { width: 420px; border-radius: var(--r-xl); padding: 32px 28px 24px; }
+}
+
+.pwo__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--gray-400);
+}
+
+.pwo__title {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink-900);
+}
+
+.pwo__lead {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--gray-600);
+  font-variant-numeric: tabular-nums;
+}
+
+.pwo__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px 12px;
+  margin-top: 14px;
+}
+
+.pwo__price b {
+  font-family: var(--font-head);
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--pink-600);
+}
+
+.pwo__price s { font-size: 18px; color: var(--gray-500); }
+.pwo__term { flex-basis: 100%; font-size: 14px; color: var(--gray-600); }
+
+.pwo__cta { margin-top: 20px; }
+
+.pwo__second {
+  margin-top: 8px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pwo__cta:disabled,
+.pwo__second:disabled { opacity: 0.6; }
+
+/* ——— Колесо ———
+   Восемь одинаковых секторов «Скидка» в два тона: приз один, и колесо не
+   рисует призов, которых нет. Стрелка сверху. */
+.wheel {
+  position: relative;
+  width: min(250px, 70vw);
+  aspect-ratio: 1;
+  margin: 18px auto 4px;
+}
+
+.wheel__disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 6px solid var(--white);
+  box-shadow: 0 0 0 2px var(--pink-200), 0 12px 30px rgba(255, 45, 142, 0.25);
+  background: repeating-conic-gradient(var(--pink-500) 0 45deg, var(--orange-500) 45deg 90deg);
+  transition: transform 3.2s cubic-bezier(0.17, 0.67, 0.21, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel__disc { transition: none; }
+}
+
+.wheel__label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 50%;
+  transform-origin: 50% 100%;
+}
+
+.wheel__label span {
+  position: absolute;
+  top: 16%;
+  left: 50%;
+  transform: translateX(-50%) rotate(0deg);
+  color: var(--white);
+  font-family: var(--font-head);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform-origin: center;
+}
+
+.wheel__hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: 0 4px 12px rgba(16, 17, 20, 0.18);
+}
+
+.wheel__pointer {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  z-index: 1;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-top: 24px solid var(--ink-900);
+  filter: drop-shadow(0 2px 3px rgba(16, 17, 20, 0.3));
+}
+
+@keyframes pwo-fade {
+  from { opacity: 0; }
+}

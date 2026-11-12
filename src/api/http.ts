@@ -20,9 +20,11 @@ import {
   type Checkout,
   type Chunk,
   type ChunksResponse,
+  type ExitOfferState,
   type FunnelVisit,
   type Me,
   type MessageResponse,
+  type OffersState,
   type PaymentCheck,
   type PaymentLink,
   type SubscriptionCancel,
@@ -359,6 +361,11 @@ export function createHttpApi(rawBase: string): Api {
     subscriptionCancel: () => request<SubscriptionCancel>('POST', '/subscription/cancel'),
 
     subscriptionUpgrade: () => request<{ page_url: string }>('POST', '/subscription/upgrade'),
+
+    offersPaywall: () => request<OffersState>('POST', '/offers/paywall'),
+    offersSpin: () => request<OffersState>('POST', '/offers/wheel'),
+    offersSkipWheel: () => request<OffersState>('POST', '/offers/wheel/skip'),
+    offersExit: () => request<ExitOfferState>('POST', '/offers/exit'),
 
     /* ——— Плеер и статистика ——— */
 

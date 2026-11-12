@@ -34,6 +34,7 @@ import { api } from '../api/client'
 import { ApiError, type Access } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { DEFAULT_STREAM } from '../data/streams'
+import { trackPurchase } from '../lib/analytics'
 import { formatDate } from '../lib/date'
 import { forgetAccessBefore, paymentArrived, readAccessBefore } from '../lib/payment'
 import { BOT_URL, cameFromMiniApp, forgetMiniAppVisit } from '../lib/telegram'
@@ -166,6 +167,14 @@ export default function PaymentSuccess() {
     // Запускаем один раз: дальше цикл ведёт себя сам.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Цель purchase с суммой, запомненной страницей оплаты, — один раз на новый
+  // срок доступа (src/lib/analytics.ts). В рамке виджета не шлём: этот же
+  // экран сейчас откроется во всё окно.
+  const paidUntil = access?.paid_until ?? sessionAccess?.paid_until ?? null
+  useEffect(() => {
+    if (stage === 'paid' && !framed) trackPurchase(paidUntil)
+  }, [stage, framed, paidUntil])
 
   // Оплата прошла — показали и ушли в поток. Запомненный срок больше не нужен.
   // Пришедшего из мини-апа в поток на сайте не уводим: его ждёт Telegram.

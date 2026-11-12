@@ -363,3 +363,73 @@
   .plan__price { font-size: 38px; }
   .plan__cta { width: 100%; min-height: 50px; }
 }
+
+/* ═══════ Раскладка «год первым» (12.11.2026) ═══════
+   Сервер помечает тариф featured (PAYWALL_FEATURED_TARIFF): он стоит
+   первым и выбран сразу. Выбранная карточка — с рамкой и залитой кнопкой
+   (то, что раньше было у «6 месяцев»); касание другой карточки переносит
+   выбор. У полугода в этой раскладке нет особого вида и короны. */
+.is-featured-layout .plan { cursor: pointer; }
+
+.is-featured-layout .plan--half {
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-card);
+}
+
+.is-featured-layout .plan--half .plan__cta {
+  border-color: var(--tone);
+  background: var(--white);
+  color: var(--tone-ink);
+  box-shadow: none;
+}
+
+.is-featured-layout .plan.is-selected {
+  border: 2px solid var(--orange-500);
+  box-shadow: 0 14px 34px rgba(255, 122, 24, .18);
+}
+
+.is-featured-layout .plan.is-selected .plan__cta {
+  border-color: transparent;
+  background: var(--grad-warm);
+  color: var(--white);
+  box-shadow: 0 8px 20px rgba(242, 96, 12, .30);
+}
+
+@media (hover: hover) {
+  .is-featured-layout .plan:not(.is-selected) .plan__cta:hover {
+    background: var(--tone-soft);
+    box-shadow: none;
+  }
+  .is-featured-layout .plan.is-selected .plan__cta:hover {
+    background: var(--grad-warm);
+    box-shadow: 0 12px 28px rgba(242, 96, 12, .40);
+  }
+}
+
+/* Честная зачёркнутая цена над ценой. Строка есть у всех карточек (у месяца
+   пустая), чтобы цены стояли в один ряд. */
+.plan__was {
+  min-height: 1.4em;
+  margin-top: clamp(6px, .8vw, 10px);
+  font-size: clamp(13px, 1.1vw, 15px);
+  line-height: 1.4;
+  color: var(--gray-400);
+}
+
+.plan__was s { text-decoration-thickness: 1.5px; }
+.is-featured-layout .plan__price { margin-top: 0; }
+
+/* Текст только для экранного диктора. */
+.plan__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 639.98px) {
+  /* Первым — featured: он первый и в разметке, полугоду наверх не надо. */
+  .is-featured-layout .plan--half { order: 0; }
+}

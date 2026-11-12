@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import LegalLinks from '../components/LegalLinks'
 import Logo from '../components/Logo'
+import { ExitOffer, OfferBanner, OfferWheel } from '../components/PaywallOffers'
 import { SubscriptionPromo } from '../components/SubscriptionPromo'
 import TariffPlans from '../components/TariffPlans'
 import WaveBg from '../components/WaveBg'
@@ -15,9 +16,12 @@ import {
   Smile,
   Bolt,
 } from '../components/Icons'
-import { hasAccess } from '../api/types'
+import { hasAccess, type ExitOfferState, type PersonalOffer } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
+import { track, trackOpenTariffs, trackPayClick } from '../lib/analytics'
 import { formatDate } from '../lib/date'
+import { useOffers } from '../lib/offers'
+import { openPayOnSite, useInTelegram } from '../lib/telegram'
 import { RENEW_TITLE_ACCENT, RENEW_TITLE_LEAD } from '../lib/tariffs'
 import { EXTRA_MOVES_LABEL } from '../lib/trial'
 import '../components/Logo.css'
@@ -59,29 +63,97 @@ const FACTS = [
 export default function Tariffs() {
   const navigate = useNavigate()
   const { key } = useLocation()
-  const { access } = useSession()
+  const { me, access } = useSession()
+  const inTelegram = useInTelegram()
 
-  // Владелец не хочет всплывающих окон, поэтому это страница, а не модалка.
-  // Крестик и Escape ведут туда, откуда пришли; при прямом заходе истории
-  // нет (ключ 'default') — тогда на главную.
-  const close = () => (key === 'default' ? navigate('/') : navigate(-1))
+  // Открыли тарифы — цель для Метрики и VK Ads, один раз на открытие.
+  useEffect(() => {
+    trackOpenTariffs()
+  }, [])
+
+  // Персональные предложения (src/lib/offers.ts) — только вошедшему: срок и
+  // цену держит сервер. Гостю и при выключенных на сервере — пусто.
+  const offers = useOffers(Boolean(me))
+  const [exitState, setExitState] = useState<ExitOfferState | null>(null)
+  const leaving = useRef(false)
+  // Окно ухода открыл крестик или Escape (тогда «уйти» уводит со страницы)
+  // или курсор, ушедший за верх окна (тогда «уйти» просто закрывает окно).
+  const exitByClose = useRef(false)
+
+  // Колесо открыто, пока его не закрыли: после вращения сервер уже отвечает
+  // wheel: false, а окно должно показать приз.
+  const [wheelOpen, setWheelOpen] = useState(false)
+  useEffect(() => {
+    if (offers.state?.wheel) setWheelOpen(true)
+  }, [offers.state?.wheel])
+
+  // Владелец не хотел всплывающих окон, поэтому тарифы — страница, а не
+  // модалка. Окна здесь — только колесо и предложение при уходе: их он
+  // попросил 12.11.2026. Крестик и Escape ведут туда, откуда пришли; при
+  // прямом заходе истории нет (ключ 'default') — тогда на главную.
+  const goBack = useCallback(
+    () => (key === 'default' ? navigate('/') : navigate(-1)),
+    [key, navigate],
+  )
+
+  // Уход с тарифов без оплаты: один раз сервер покажет предложение (новое
+  // или напоминание о действующем). Нечего показать — просто уходим.
+  const close = useCallback(async () => {
+    if (!offers.state?.exit || leaving.current) return goBack()
+    leaving.current = true
+    exitByClose.current = true
+    const state = await offers.leave()
+    if (state?.offer) setExitState(state)
+    else goBack()
+  }, [offers, goBack])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
+      if (e.key === 'Escape') void close()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  })
+  }, [close])
+
+  // На компьютере уход — это и курсор, ушедший за верх окна (к вкладкам и
+  // адресной строке). Только пока предложение при уходе вообще положено.
+  useEffect(() => {
+    if (!offers.state?.exit) return
+    const onOut = (e: MouseEvent) => {
+      if (e.relatedTarget === null && e.clientY <= 0 && !leaving.current) {
+        leaving.current = true
+        void offers.leave().then((state) => {
+          if (state?.offer) setExitState(state)
+        })
+      }
+    }
+    document.addEventListener('mouseout', onOut)
+    return () => document.removeEventListener('mouseout', onOut)
+  }, [offers])
+
+  // Оплата по предложению: та же страница оплаты, что у обычных тарифов, но
+  // с кодом скрытого тарифа — сервер пустит туда только с этим предложением.
+  const take = useCallback(
+    (offer: PersonalOffer) => {
+      track('offer_accept', undefined, { kind: offer.kind })
+      trackPayClick()
+      if (inTelegram) openPayOnSite(offer.tariff_code)
+      else navigate(`/pay/${offer.tariff_code}`)
+    },
+    [inTelegram, navigate],
+  )
+
+  const spin = useCallback(async () => (await offers.spin())?.offer ?? null, [offers])
 
   const paid = hasAccess(access)
+  const offer = offers.state?.offer ?? null
 
   return (
     <div className="tariffs">
       <WaveBg opacity={0.85} />
 
       <div className="tariffs__card">
-        <button className="tariffs__close" onClick={close} aria-label="Закрыть и вернуться">
+        <button className="tariffs__close" onClick={() => void close()} aria-label="Закрыть и вернуться">
           <Close size={20} />
         </button>
 
@@ -134,6 +206,10 @@ export default function Tariffs() {
             для подписчика) — плашкой над карточками; выключена — пусто. */}
         <SubscriptionPromo />
 
+        {/* Действующее персональное предложение: цена, честная зачёркнутая
+            и настоящий отсчёт. Срок вышел — карточка уходит, цены обычные. */}
+        {offer && <OfferBanner offer={offer} onTake={take} onExpired={offers.refresh} />}
+
         {/* Карточки, оплата и строка сообщения — общий компонент: те же
             карточки стоят на /offer и /trial-ended. */}
         <TariffPlans />
@@ -155,6 +231,27 @@ export default function Tariffs() {
         {/* Подвал с документами — последней строкой карточки. */}
         <LegalLinks className="tariffs__legal" />
       </div>
+
+      {wheelOpen && !exitState && (
+        <OfferWheel
+          onSpin={spin}
+          onSkip={() => {
+            setWheelOpen(false)
+            offers.skipWheel()
+          }}
+          onTake={take}
+        />
+      )}
+      {exitState && (
+        <ExitOffer
+          state={exitState}
+          onTake={take}
+          onLeave={() => {
+            setExitState(null)
+            if (exitByClose.current) goBack()
+          }}
+        />
+      )}
     </div>
   )
 }

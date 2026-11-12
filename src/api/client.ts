@@ -22,12 +22,14 @@ import type {
   Checkout,
   Chunk,
   ChunksResponse,
+  ExitOfferState,
   FunnelVisit,
   GuestBootstrap,
   GuestConfig,
   GuestEventBody,
   Me,
   MessageResponse,
+  OffersState,
   PaymentCheck,
   PaymentLink,
   PlayerBootstrap,
@@ -129,6 +131,16 @@ export interface Api {
   subscriptionCancel(): Promise<SubscriptionCancel>
   /** Год вместо месячной подписки (upsell): ссылка на разовую оплату года. */
   subscriptionUpgrade(): Promise<{ page_url: string }>
+
+  /* ——— Персональные предложения на тарифах (offer_service на бэкенде) ——— */
+  /** Тарифы показаны: действующее предложение, колесо, предложение при уходе. */
+  offersPaywall(): Promise<OffersState>
+  /** Колесо: приз выбирает сервер. 409 WHEEL_NOT_AVAILABLE — уже было. */
+  offersSpin(): Promise<OffersState>
+  /** Колесо закрыли, не вращая: больше не показываем. */
+  offersSkipWheel(): Promise<OffersState>
+  /** Уход с тарифов без оплаты. 409 EXIT_OFFER_NOT_AVAILABLE — показать нечего. */
+  offersExit(): Promise<ExitOfferState>
 
   /* ——— Плеер и статистика ——— */
   playerBootstrap(): Promise<PlayerBootstrap>

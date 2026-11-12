@@ -145,6 +145,17 @@ export type Tariff = {
   per_month: number
   /** У самого короткого тарифа выгоды нет. */
   savings: number | null
+  /**
+   * Поля раскладки «год первым» (12.11.2026). Сервер старше их не присылает —
+   * поэтому необязательные. per_week — цена недели (год 1990 → 38);
+   * compare_price — честная зачёркнутая цена: те же месяцы помесячной
+   * оплатой (год — 12 × 390 = 4680), пусто — зачёркивать нечего; featured —
+   * тариф стоит первым и выбран сразу (PAYWALL_FEATURED_TARIFF на сервере).
+   * Ни у одного тарифа нет featured — прежняя раскладка.
+   */
+  per_week?: number
+  compare_price?: number | null
+  featured?: boolean
 }
 
 export type PaymentLink = { url: string }
@@ -178,7 +189,53 @@ export type Checkout = {
   widget: CheckoutWidget | null
   prefill: Record<string, string>
   provider?: 'prodamus'
+  /** Только у тарифа персонального предложения: цена, зачёркнутая и срок. */
+  offer?: CheckoutOffer
 }
+
+export type CheckoutOffer = {
+  kind: OfferKind
+  price: number
+  base_price: number | null
+  expires_at: string | null
+}
+
+/* ─────────────────  Персональные предложения на тарифах  ───────────────── */
+
+/**
+ * POST /offers/paywall, /offers/wheel, /offers/wheel/skip, /offers/exit
+ * (backend/app/services/offer_service.py). Срок и цену держит сервер:
+ * отсчёт на экране идёт до expires_at по часам сервера (server_time), а
+ * оплатить скрытый тариф без действующего предложения нельзя.
+ *
+ * wheel — можно крутить колесо; exit — уход с тарифов без оплаты один раз
+ * покажет предложение (новое или напоминание о действующем). Предложения на
+ * сервере выключены — offer пуст, wheel и exit false.
+ */
+export type OfferKind = 'wheel' | 'timer' | 'exit' | 'trained' | 'week'
+
+export type PersonalOffer = {
+  kind: OfferKind
+  tariff_code: string
+  name: string
+  duration_days: number
+  price: number
+  /** Честная зачёркнутая цена: обычная цена того же срока. Пусто — нет. */
+  base_price: number | null
+  currency: string
+  per_week: number
+  saving_percent: number | null
+  expires_at: string
+}
+
+export type OffersState = {
+  offer: PersonalOffer | null
+  wheel: boolean
+  exit: boolean
+  server_time: string
+}
+
+export type ExitOfferState = OffersState & { mode: 'new' | 'reminder' }
 
 export type PaymentCheck = {
   access: Access

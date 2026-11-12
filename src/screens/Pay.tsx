@@ -38,13 +38,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import { ApiError, type Access, type Checkout, type CheckoutTariff } from '../api/types'
+import { ApiError, type Access, type Checkout, type CheckoutOffer, type CheckoutTariff } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import GetCourseWidget, { WidgetSkeleton } from '../components/GetCourseWidget'
 import { Clock } from '../components/Icons'
+import { PAYWALL_TEXT } from '../data/paywall'
 import { VPN_HINT } from '../data/support'
 import { rub } from '../data/tariffs'
+import { rememberPurchase } from '../lib/analytics'
 import { plural } from '../lib/date'
+import { cachedOffer, useCountdown } from '../lib/offers'
 import { paymentArrived, readAccessBefore, rememberAccessBefore } from '../lib/payment'
 import { STANDALONE } from '../lib/standalone'
 import { cachedTariffs, loadTariffs } from '../lib/tariffs'
@@ -58,6 +61,7 @@ type Load =
   | { kind: 'ready'; checkout: Checkout }
   | { kind: 'verify' }
   | { kind: 'missing' }
+  | { kind: 'expired'; text: string }
   | { kind: 'error'; text: string; support: boolean }
 
 export default function Pay() {
@@ -102,6 +106,8 @@ export default function Pay() {
         // поэтому срок доступа запоминаем, как только показываем оплату.
         rememberAccessBefore(accessNow.current)
         rememberPayProvider(checkout.provider ?? 'getcourse')
+        // Код и цена — для цели purchase на «Оплата прошла» (src/lib/analytics.ts).
+        rememberPurchase(checkout.tariff.code, checkout.tariff.price)
         setLoad({ kind: 'ready', checkout })
       },
       (e: unknown) => {
@@ -113,6 +119,10 @@ export default function Pay() {
           void reload()
         } else if (e instanceof ApiError && (e.code === 'TARIFF_NOT_FOUND' || e.status === 422)) {
           setLoad({ kind: 'missing' })
+        } else if (e instanceof ApiError && e.code === 'OFFER_EXPIRED') {
+          // Персональное предложение кончилось (или его не было): цену держит
+          // сервер, по старой ссылке скидку не оплатить.
+          setLoad({ kind: 'expired', text: e.message || PAYWALL_TEXT.payOfferExpired })
         } else if (e instanceof ApiError && e.code === 'OFFER_NOT_CONFIGURED') {
           setLoad({
             kind: 'error',
@@ -146,13 +156,48 @@ export default function Pay() {
   }
 
   const known = tariffs?.find((t) => t.code === code)
-  if (load.kind === 'missing' || (tariffs && !known)) return <Navigate to="/tariffs" replace />
+  // Скрытого тарифа персонального предложения на витрине нет: его код знает
+  // ответ checkout или последнее состояние предложений (src/lib/offers.ts).
+  const offer = cachedOffer()
+  const offerCode = offer?.tariff_code === code
+  const waiting = !inTelegram && (load.kind === 'loading' || load.kind === 'ready' || load.kind === 'expired')
+  if (load.kind === 'missing' || (tariffs && !known && !offerCode && !waiting)) {
+    return <Navigate to="/tariffs" replace />
+  }
 
-  const card: CheckoutTariff | undefined = load.kind === 'ready' ? load.checkout.tariff : known
+  const card: CheckoutTariff | undefined =
+    load.kind === 'ready'
+      ? load.checkout.tariff
+      : (known ??
+        (offer && offerCode
+          ? {
+              code: offer.tariff_code,
+              name: offer.name,
+              price: offer.price,
+              currency: offer.currency,
+              duration_days: offer.duration_days,
+              per_month: offer.duration_days >= 28 ? Math.round(offer.price / 12) : offer.price,
+            }
+          : undefined))
+  const cardOffer: CheckoutOffer | undefined =
+    load.kind === 'ready'
+      ? load.checkout.offer
+      : offer && offerCode
+        ? { kind: offer.kind, price: offer.price, base_price: offer.base_price, expires_at: offer.expires_at }
+        : undefined
 
   let payment
   if (inTelegram) {
     payment = <InTelegram code={code} email={me?.user.email ?? ''} />
+  } else if (load.kind === 'expired') {
+    payment = (
+      <div className="checkout__msg is-bad">
+        <p>{load.text}</p>
+        <Link className="checkout__msg-btn" to="/tariffs">
+          {PAYWALL_TEXT.payOfferBack}
+        </Link>
+      </div>
+    )
   } else if (load.kind === 'verify') {
     payment = <VerifyEmail email={me?.user.email ?? ''} />
   } else if (load.kind === 'error') {
@@ -221,7 +266,7 @@ export default function Pay() {
   return (
     <AccountShell title="Оплата доступа">
       <div className="checkout">
-        {card ? <TariffCard tariff={card} /> : <TariffCardSkeleton />}
+        {card ? <TariffCard tariff={card} offer={load.kind === 'expired' ? undefined : cardOffer} /> : <TariffCardSkeleton />}
 
         <Link className="checkout__back" to="/tariffs">
           ← Другой тариф
@@ -280,7 +325,7 @@ function pageWithName(url: string, name: string): string {
  * Выбранный тариф: название, цена, цена месяца и срок, когда откроется доступ.
  * Строку о разовой оплате владелец убрал 29.09.2026.
  */
-function TariffCard({ tariff }: { tariff: CheckoutTariff }) {
+function TariffCard({ tariff, offer }: { tariff: CheckoutTariff; offer?: CheckoutOffer }) {
   const days = plural(tariff.duration_days, 'день', 'дня', 'дней')
   // У месяца цена месяца — та же цена, повторять её незачем.
   const per =
@@ -291,9 +336,14 @@ function TariffCard({ tariff }: { tariff: CheckoutTariff }) {
     <div className="checkout__tariff">
       <div className="checkout__row">
         <h2 className="checkout__name">{tariff.name}</h2>
-        <p className="checkout__price">{rub(tariff.price)}</p>
+        <p className="checkout__price">
+          {/* Персональное предложение: зачёркнута обычная цена того же срока. */}
+          {offer?.base_price ? <s className="checkout__was">{rub(offer.base_price)}</s> : null}
+          {rub(tariff.price)}
+        </p>
       </div>
       <p className="checkout__per">{per}</p>
+      {offer?.expires_at && <OfferLeft expiresAt={offer.expires_at} />}
       <ul className="checkout__terms">
         <li>
           <Clock size={16} />
@@ -302,6 +352,17 @@ function TariffCard({ tariff }: { tariff: CheckoutTariff }) {
       </ul>
     </div>
   )
+}
+
+/**
+ * Сколько ещё действует цена предложения — честный отсчёт по часам сервера.
+ * Заказ, открытый до конца срока, оплатить можно и чуть позже: сервер
+ * принимает оплату по уже созданной ссылке.
+ */
+function OfferLeft({ expiresAt }: { expiresAt: string }) {
+  const { left, done } = useCountdown(expiresAt)
+  if (done) return null
+  return <p className="checkout__offer-left">{PAYWALL_TEXT.payOfferUntil(left)}</p>
 }
 
 /** Карточка на время загрузки — той же высоты, что и настоящая. */

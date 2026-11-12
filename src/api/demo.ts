@@ -61,8 +61,10 @@ import {
   type GuestConfig,
   type Me,
   type MessageResponse,
+  type OffersState,
   type PaymentCheck,
   type PaymentLink,
+  type PersonalOffer,
   type PlayerBootstrap,
   type PlayerStream,
   type Settings,
@@ -324,8 +326,15 @@ const FEATURES = [
   'Доступ открывается сам после оплаты',
 ]
 
-const demoTariffs = (): Tariff[] =>
-  TARIFFS.map((t) => ({
+/**
+ * Демо показывает раскладку «год первым» (на сервере её включает
+ * PAYWALL_FEATURED_TARIFF): год первым и выбранным, цена в неделю, честная
+ * зачёркнутая цена — те же месяцы помесячной оплатой.
+ */
+const DEMO_FEATURED = 'year'
+
+const demoTariffs = (): Tariff[] => {
+  const list = TARIFFS.map((t) => ({
     code: t.code,
     name: t.name,
     duration_days: t.duration_days,
@@ -337,10 +346,35 @@ const demoTariffs = (): Tariff[] =>
     discount_label: t.discount_label ?? null,
     per_month: t.per_month,
     savings: t.savings ?? null,
+    per_week: Math.round((t.price * 7) / t.duration_days),
+    compare_price: t.savings ? t.price + t.savings : null,
+    featured: t.code === DEMO_FEATURED,
   }))
+  return [...list.filter((t) => t.featured), ...list.filter((t) => !t.featured)]
+}
+
+/**
+ * Скрытые тарифы персональных предложений (на сервере — tariffs.is_offer):
+ * на витрине их нет, оплатить можно только с действующим предложением.
+ */
+const DEMO_OFFER_TARIFFS: Tariff[] = [
+  { code: 'year_1490', name: '12 месяцев', duration_days: 365, price: 1490 },
+  { code: 'year_990', name: '12 месяцев', duration_days: 365, price: 990 },
+  { code: 'week_240', name: '7 дней', duration_days: 7, price: 240 },
+].map((t) => ({
+  ...t,
+  currency: 'RUB',
+  features: FEATURES,
+  is_recommended: false,
+  note: null,
+  discount_label: null,
+  per_month: t.duration_days >= 28 ? Math.round(t.price / Math.round(t.duration_days / 30.4)) : t.price,
+  savings: null,
+  per_week: Math.round((t.price * 7) / t.duration_days),
+}))
 
 function demoTariff(code: string): Tariff {
-  const tariff = demoTariffs().find((t) => t.code === code)
+  const tariff = [...demoTariffs(), ...DEMO_OFFER_TARIFFS].find((t) => t.code === code)
   if (!tariff) throw new ApiError(404, 'TARIFF_NOT_FOUND', 'Такого тарифа нет')
   return tariff
 }
@@ -397,6 +431,53 @@ export function createDemoApi(): Api {
   }
 
   /** Продление считается от текущей даты окончания, а не с нуля. */
+  /* ——— Персональные предложения ——— */
+
+  type DemoOfferRow = { status: string } & Partial<PersonalOffer>
+
+  const offerRows = (email: string) => read<Record<string, DemoOfferRow>>(`offers.${email}`, {})
+
+  function activeOffer(email: string): PersonalOffer | null {
+    if (accessOf(email)) return null
+    const now = Date.now()
+    const row = Object.values(offerRows(email)).find(
+      (r) => r.status === 'active' && r.expires_at && Date.parse(r.expires_at) > now,
+    )
+    return row ? (row as PersonalOffer) : null
+  }
+
+  /** Приветственная скидка на год (колесо или уход): 1490 вместо 1990 на сутки. */
+  function issueOffer(email: string, kind: 'wheel' | 'exit'): void {
+    const tariff = demoTariff('year_1490')
+    const base = demoTariff('year').price
+    const offer: PersonalOffer = {
+      kind,
+      tariff_code: tariff.code,
+      name: tariff.name,
+      duration_days: tariff.duration_days,
+      price: tariff.price,
+      base_price: base,
+      currency: 'RUB',
+      per_week: tariff.per_week ?? 0,
+      saving_percent: Math.floor((1 - tariff.price / base) * 100),
+      expires_at: new Date(Date.now() + DAY_MS).toISOString(),
+    }
+    write(`offers.${email}`, { ...offerRows(email), [kind]: { status: 'active', ...offer } })
+  }
+
+  function offersState(email: string): OffersState {
+    const rows = offerRows(email)
+    const offer = activeOffer(email)
+    const paid = Boolean(accessOf(email))
+    const welcomeFree = !rows.wheel && !rows.timer && !rows.exit
+    return {
+      offer,
+      wheel: !paid && !offer && welcomeFree,
+      exit: !paid && !rows.exit && (Boolean(offer) || welcomeFree),
+      server_time: new Date().toISOString(),
+    }
+  }
+
   function grantAccess(email: string, tariff: Tariff): void {
     const saved = accessOf(email)
     const from = Math.max(Date.now(), saved ? Date.parse(saved.paid_until) : 0)
@@ -919,12 +1000,27 @@ export function createDemoApi(): Api {
 
     // Виджета GetCourse в демо нет: страница оплаты сразу ведёт на page_url —
     // ту же «оплату», что и ссылка. Подтверждённая почта, как и на сервере с
-    // 12.11.2026, не нужна.
+    // 12.11.2026, не нужна. Скрытый тариф — только с действующим
+    // предложением, как на сервере (offer_service.for_checkout).
     async paymentCheckout(tariffCode) {
       const user = requireUser()
       const tariff = demoTariff(tariffCode)
       const prefill = { 'sv[email]': user.email, utm_source: 'site', utm_term: `mr-${user.id}` }
+      let offer: Checkout['offer']
+      if (DEMO_OFFER_TARIFFS.some((t) => t.code === tariffCode)) {
+        const active = activeOffer(user.email)
+        if (!active || active.tariff_code !== tariffCode) {
+          throw new ApiError(409, 'OFFER_EXPIRED', 'Это предложение закончилось — посмотрите обычные тарифы')
+        }
+        offer = {
+          kind: active.kind,
+          price: active.price,
+          base_price: active.base_price,
+          expires_at: active.expires_at,
+        }
+      }
       return {
+        ...(offer ? { offer } : {}),
         tariff: {
           code: tariff.code,
           name: tariff.name,
@@ -956,6 +1052,42 @@ export function createDemoApi(): Api {
 
     async subscriptionUpgrade() {
       throw new ApiError(409, 'UPSELL_NOT_AVAILABLE', 'Это предложение сейчас недоступно')
+    },
+
+    // Персональные предложения — по правилам сервера (offer_service), но в
+    // памяти браузера: колесо при первом заходе на тарифы, при уходе —
+    // напоминание или скидка на сутки. У оплатившего предложений нет.
+    async offersPaywall() {
+      const user = requireUser()
+      return offersState(user.email)
+    },
+
+    async offersSpin() {
+      const user = requireUser()
+      const state = offersState(user.email)
+      if (!state.wheel) throw new ApiError(409, 'WHEEL_NOT_AVAILABLE', 'Колесо уже было')
+      issueOffer(user.email, 'wheel')
+      return offersState(user.email)
+    },
+
+    async offersSkipWheel() {
+      const user = requireUser()
+      if (offersState(user.email).wheel) {
+        write(`offers.${user.email}`, { ...offerRows(user.email), wheel: { status: 'skipped' } })
+      }
+      return offersState(user.email)
+    },
+
+    async offersExit() {
+      const user = requireUser()
+      const state = offersState(user.email)
+      if (!state.exit) throw new ApiError(409, 'EXIT_OFFER_NOT_AVAILABLE', 'Предложения нет')
+      if (state.offer) {
+        write(`offers.${user.email}`, { ...offerRows(user.email), exit: { status: 'shown' } })
+        return { ...offersState(user.email), mode: 'reminder' as const }
+      }
+      issueOffer(user.email, 'exit')
+      return { ...offersState(user.email), mode: 'new' as const }
     },
 
     async paymentCheck() {

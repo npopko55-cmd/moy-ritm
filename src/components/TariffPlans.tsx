@@ -32,7 +32,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { hasAccess, type Tariff } from '../api/types'
 import { nextParam } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
+import { PAYWALL_TEXT } from '../data/paywall'
 import { rub } from '../data/tariffs'
+import { trackPayClick } from '../lib/analytics'
 import { saveFunnelToken } from '../lib/funnel'
 import {
   GUEST_REGISTER_PATH,
@@ -96,7 +98,16 @@ export default function TariffPlans() {
     }
   }, [])
 
+  // Раскладка «год первым» (PAYWALL_FEATURED_TARIFF на сервере): тариф с
+  // featured стоит первым и выбран сразу. Нет такого — прежняя раскладка,
+  // выбора нет, «Популярный выбор» — у is_recommended.
+  const featured = tariffs?.find((t) => t.featured)?.code ?? null
+  const [picked, setPicked] = useState<string | null>(null)
+  const selected = featured ? (picked ?? featured) : null
+
   const choose = (code: string) => {
+    // Цель «пошли платить» — до перехода на /pay (src/lib/analytics.ts).
+    trackPayClick()
     // В мини-апе платить нельзя — страница оплаты сайта во внешнем браузере.
     if (inTelegram) openPayOnSite(code)
     // Гость с токеном воронки: аккаунта нет — на регистрацию, потом оплата.
@@ -118,24 +129,51 @@ export default function TariffPlans() {
 
   return (
     <>
-      <ul className={`tariffs__plans ${freePlan ? 'has-free' : ''}`}>
+      <ul className={`tariffs__plans ${freePlan ? 'has-free' : ''} ${featured ? 'is-featured-layout' : ''}`}>
         {/* Бесплатная — первой: цены ей не нужны, ждать их она не будет. */}
         {freePlan && <FreePlan onTry={tryFree} />}
         {tariffs === null
           ? [0, 1, 2, 3].map((i) => <PlanSkeleton key={i} />)
           : tariffs.map((t) => (
-              <li key={t.code} className={`plan plan--${t.code} ${t.is_recommended ? 'is-top' : ''}`}>
-                {t.is_recommended && (
+              <li
+                key={t.code}
+                className={[
+                  'plan',
+                  `plan--${t.code}`,
+                  !featured && t.is_recommended ? 'is-top' : '',
+                  selected === t.code ? 'is-selected' : '',
+                ].join(' ')}
+                // «Год первым»: касание карточки выбирает её — выбранная
+                // выделена и с залитой кнопкой. Платят кнопкой в карточке.
+                onClick={featured ? () => setPicked(t.code) : undefined}
+              >
+                {/* Пометка — у featured в новой раскладке, у is_recommended в
+                    прежней: двух «популярных» на одной витрине не бывает. */}
+                {(featured ? t.featured : t.is_recommended) && (
                   <span className="plan__crown">
                     <Crown size={13} />
-                    Популярный выбор
+                    {featured ? PAYWALL_TEXT.featured : 'Популярный выбор'}
                   </span>
                 )}
                 {t.discount_label && <span className="plan__badge">{t.discount_label}</span>}
 
                 <h2 className="plan__name">{t.name}</h2>
+                {/* Зачёркнутая — только честная: те же месяцы помесячной
+                    оплатой. Строка есть и у месяца (пустая) — цены в ряд. */}
+                {featured && (
+                  <p className="plan__was">
+                    {t.compare_price ? (
+                      <s title={PAYWALL_TEXT.compareHint(t.compare_price)}>
+                        <span className="plan__sr">{PAYWALL_TEXT.compareHint(t.compare_price)}: </span>
+                        {rub(t.compare_price)}
+                      </s>
+                    ) : null}
+                  </p>
+                )}
                 <p className="plan__price">{rub(t.price)}</p>
-                <p className="plan__per">{rub(t.per_month)} / месяц</p>
+                <p className="plan__per">
+                  {featured && t.per_week ? PAYWALL_TEXT.perWeek(t.per_week) : `${rub(t.per_month)} / месяц`}
+                </p>
 
                 {t.savings ? (
                   <span className="plan__save">Экономия {rub(t.savings)}</span>
@@ -145,7 +183,14 @@ export default function TariffPlans() {
 
                 <p className="plan__note">{t.note}</p>
 
-                <button className="plan__cta" data-tariff={t.code} onClick={() => choose(t.code)}>
+                <button
+                  className="plan__cta"
+                  data-tariff={t.code}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    choose(t.code)
+                  }}
+                >
                   {ctaLabel}
                 </button>
               </li>

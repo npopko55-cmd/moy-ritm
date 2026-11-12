@@ -50,6 +50,12 @@ export type Goal =
   | 'quiz_answer'
   | 'quiz_done'
   | 'quiz_cta'
+  // Персональные предложения на тарифах (src/components/PaywallOffers.tsx):
+  // покрутили колесо, показали предложение при уходе (параметр mode — new
+  // или reminder), нажали «оформить» по предложению (параметр kind).
+  | 'wheel_spin'
+  | 'exit_offer_shown'
+  | 'offer_accept'
 
 /**
  * Параметры цели для Метрики (VK Ads их не принимает). Только числа и
@@ -336,6 +342,54 @@ export const trackOpenTariffs = (): void => void track('open_tariffs')
 
 /** Выбрали тариф и пошли платить. Звать по нажатию, до перехода на /pay. */
 export const trackPayClick = (): void => void track('pay_click')
+
+/*
+ * Покупка — на фронте: страница оплаты запоминает код тарифа и цену, когда
+ * показывает оплату (rememberPurchase), а «Оплата прошла» отправляет цель
+ * purchase с этой суммой один раз на новый срок доступа (trackPurchase).
+ * Номера заказа на экране нет (GetCourse его не возвращает), поэтому ключ
+ * «уже отправляли» — новый paid_until: повторное открытие экрана и
+ * перезагрузка цель не задвоят. Хранилище закрыто — цели нет: без суммы она врала бы.
+ */
+const PURCHASE_KEY = 'moy-ritm.analytics.purchase'
+const PURCHASE_SENT_KEY = 'moy-ritm.analytics.purchase_sent'
+/** Запись старше суток — уже не про эту оплату (как срок доступа в lib/payment). */
+const PURCHASE_MAX_AGE_MS = 24 * 60 * 60_000
+
+type PendingPurchase = { code: string; price: number; at: number }
+
+export function rememberPurchase(code: string, price: number): void {
+  try {
+    const pending: PendingPurchase = { code, price, at: Date.now() }
+    sessionStorage.setItem(PURCHASE_KEY, JSON.stringify(pending))
+  } catch {
+    /* приватный режим — цель purchase не уйдёт: без суммы она бы врала */
+  }
+}
+
+/** Оплата видна: новый срок доступа paidUntil. Один раз на срок. */
+export function trackPurchase(paidUntil: string | null | undefined): void {
+  if (!paidUntil) return
+  let pending: PendingPurchase | null = null
+  let sent: string[] = []
+  try {
+    const raw = sessionStorage.getItem(PURCHASE_KEY)
+    pending = raw ? (JSON.parse(raw) as PendingPurchase) : null
+    sent = JSON.parse(localStorage.getItem(PURCHASE_SENT_KEY) ?? '[]') as string[]
+  } catch {
+    return
+  }
+  if (!pending || typeof pending.price !== 'number' || Date.now() - pending.at > PURCHASE_MAX_AGE_MS) return
+  if (!Array.isArray(sent)) sent = []
+  if (sent.includes(paidUntil)) return
+  if (!track('purchase', pending.price, { tariff: pending.code })) return
+  try {
+    localStorage.setItem(PURCHASE_SENT_KEY, JSON.stringify([...sent, paidUntil].slice(-20)))
+    sessionStorage.removeItem(PURCHASE_KEY)
+  } catch {
+    /* не записалось — в худшем случае цель уйдёт ещё раз при повторном открытии */
+  }
+}
 
 /**
  * Регистрация удалась. Запоминаем id нового человека: его первый пуск
