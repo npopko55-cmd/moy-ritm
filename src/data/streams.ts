@@ -151,8 +151,12 @@ export const WARM_MOVES = 6
  * WARM_MOVES движений этого списка. В предкэш сервис-воркера они не идут —
  * scripts/build-sw.mjs берёт только ALL_MOVES.
  */
+/*
+ * 12.11.2026: сняты «Вращения в плечах» back3-01 (рука за краем вертикального
+ * исходника — при достройке до квадрата растянулась полосой) и пять роликов
+ * с коренастой фигурой (back3-02, back2-03…06). Ждут перегенерации в 1:1.
+ */
 export const BACK_MOVES: Loop[] = pick(
-  'back3-01',
   'back-w-raise',
   'back-pull-downs',
   'back-hip-hinge',
@@ -161,13 +165,8 @@ export const BACK_MOVES: Loop[] = pick(
   'back-neck-turns',
   'back-open-twist',
   'back-chest-opener',
-  'back3-02',
   'back3-03',
   'back2-01',
-  'back2-06',
-  'back2-05',
-  'back2-04',
-  'back2-03',
 )
 
 /*
