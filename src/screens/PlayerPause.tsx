@@ -26,9 +26,9 @@ const BAR_SCALE = 30
 
 /** Отметки на полосе. Проценты считаются от той же шкалы. */
 const MARKS = [
-  { at: 5, text: 'Уже здорово!' },
-  { at: 15, text: 'Вы справляетесь!' },
-  { at: 30, text: 'Вау!' },
+  { at: 5, text: 'Отличное начало!' },
+  { at: 15, text: 'Вы на пути к цели!' },
+  { at: 30, text: 'Круто!' },
 ]
 
 /** Три коротких захода за день — статичный пример, не персональный совет. */
@@ -44,12 +44,21 @@ const WEEKDAYS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']
 const mmss = (total: number) =>
   `${Math.floor(Math.max(0, total) / 60)}:${String(Math.floor(Math.max(0, total) % 60)).padStart(2, '0')}`
 
-/** Что написать рядом с полосой — по минутам за сегодня. */
+/**
+ * Что написать рядом с полосой — по минутам за сегодня (макет Димы 12.11.2026):
+ * «Ещё немного — и будет 15 минут!» до ближайшей отметки.
+ */
 function barNote(minutes: number): string {
-  if (minutes < 5) return 'Каждая минута идёт в копилку'
-  if (minutes < 15) return 'Уже здорово! Ещё немного'
-  if (minutes < 30) return 'Вы справляетесь!'
-  return 'Вау! Это отличный результат!'
+  const next = MARKS.find((m) => minutes < m.at)
+  return next ? `Ещё немного — и будет ${next.at} минут!` : 'Вау! Это отличный результат!'
+}
+
+/** «3 минуты», «45 секунд» — для заголовка и строки под ним, словами целиком. */
+function spoken(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds))
+  if (s < 60) return `${s} ${pluralWord(s, 'секунда', 'секунды', 'секунд')}`
+  const m = Math.round(s / 60)
+  return `${m} ${pluralWord(m, 'минута', 'минуты', 'минут')}`
 }
 
 /** «2026-09-06» по локальному времени браузера — запасной вариант, если сводки нет. */
@@ -78,6 +87,10 @@ type Props = {
   todaySteps: number
   /** Движения этого захода, пройденные до конца, — во всех потоках. */
   sessionMoves: number
+  /** Шаги этого захода — оценка по темпу, печатается с «~». */
+  sessionSteps: number
+  /** Движения за сегодня целиком (src/lib/dayMoves.ts). */
+  todayMoves: number
   /** Сегодня всего, вместе с тем, что сервер ещё не видел. */
   todaySeconds: number
   summary: StatsSummary | null
@@ -95,6 +108,8 @@ export default function PlayerPause({
   sessionSeconds,
   todaySteps,
   sessionMoves,
+  sessionSteps,
+  todayMoves,
   todaySeconds,
   summary,
   locked = false,
@@ -113,6 +128,11 @@ export default function PlayerPause({
   const fill = Math.min(100, (todayMinutes / BAR_SCALE) * 100)
 
   const today = summary?.local_today ?? browserToday()
+  // Заходы — тренировки по сводке сервера. Идущий заход мог ещё не дойти до
+  // сервера, поэтому не меньше одного сегодня и не меньше сегодняшних за неделю.
+  const week = summary?.week ?? []
+  const todayWorkouts = Math.max(1, week.find((d) => d.local_date === today)?.workouts ?? 0)
+  const weekWorkouts = Math.max(todayWorkouts, week.reduce((sum, d) => sum + d.workouts, 0))
   const streak = summary?.current_streak_days ?? 0
   const active = new Set((summary?.week ?? []).filter((d) => d.seconds > 0).map((d) => d.local_date))
 
@@ -138,12 +158,14 @@ export default function PlayerPause({
         <header className="pause__head">
           <div className="pause__intro">
             <Logo />
-            {/* Текст владельца, дословно: без восклицательного знака и эмодзи. */}
-            <h1 className="pause__title">Возвращайтесь сегодня и продвигайтесь еще</h1>
+            {/* Заголовок и строки под ним — по макету Димы 12.11.2026, дословно. */}
+            <h1 className="pause__title">
+              Отлично! Ещё +{spoken(sessionSeconds)} движения сегодня 💛
+            </h1>
             <p className="pause__lead">
-              Вы уже в движении, и это здорово!
+              Сегодня вы уже двигались {spoken(todaySeconds)}.
               <br />
-              Даже несколько минут имеют значение.
+              Каждая минута считается!
             </p>
           </div>
         </header>
@@ -153,44 +175,48 @@ export default function PlayerPause({
           цифрами больше нет: «шагов сегодня» под заголовком «Шагов набрано
           сегодня» повторяло его же. Осталось только число.
         */}
-        <ul className="pause__cards">
-          <li className="sum">
+        <ul className="pause__cards pause__cards--pairs">
+          {/* Макет Димы 12.11.2026: в каждой карточке два числа — «в этом
+              заходе» и «сегодня» (у заходов — «сегодня» и «за неделю»). */}
+          <li className="sum sum--pair sum--pink">
             <span className="sum__icon sum__icon--pink">
               <Clock size={19} />
             </span>
-            <span className="sum__label">Минут в движении в этом заходе</span>
-            {/* Минуты и секунды: за короткий заход «0» выглядело бы так,
-                будто движение не засчиталось. */}
-            <strong className="sum__value">{mmss(sessionSeconds)}</strong>
+            <span className="sum__label">Минуты в движении</span>
+            <span className="sum__pair">
+              <span><strong className="sum__value">{mmss(sessionSeconds)}</strong><small>в этом заходе</small></span>
+              <span><strong className="sum__value sum__value--sm">{todayTime.value} {todayTime.unit}</strong><small>сегодня</small></span>
+            </span>
           </li>
-          {/* Движения и шаги — обе строки во всех потоках (Дима 28.10.2026),
-              как в карточке под кругом. Движения — точный счёт, без «~». */}
-          <li className="sum">
+          <li className="sum sum--pair sum--blue">
+            <span className="sum__icon sum__icon--blue">
+              <Steps size={19} />
+            </span>
+            <span className="sum__label">Шаги</span>
+            <span className="sum__pair">
+              <span><strong className="sum__value">~{sessionSteps}</strong><small>в этом заходе</small></span>
+              <span><strong className="sum__value sum__value--sm">~{todaySteps}</strong><small>сегодня</small></span>
+            </span>
+          </li>
+          <li className="sum sum--pair sum--orange">
             <span className="sum__icon sum__icon--orange">
               <Check size={19} />
             </span>
-            <span className="sum__label">Движений сделано в этом заходе</span>
-            <strong className="sum__value">{sessionMoves}</strong>
-          </li>
-          <li className="sum">
-            <span className="sum__icon sum__icon--orange">
-              <Steps size={19} />
+            <span className="sum__label">Движений</span>
+            <span className="sum__pair">
+              <span><strong className="sum__value">{sessionMoves}</strong><small>в этом заходе</small></span>
+              <span><strong className="sum__value sum__value--sm">{Math.max(todayMoves, sessionMoves)}</strong><small>сегодня</small></span>
             </span>
-            <span className="sum__label">Шагов набрано сегодня</span>
-            {/* «~» здесь и везде: шаги мы оцениваем по темпу движения. */}
-            <strong className="sum__value">~{todaySteps}</strong>
           </li>
-          <li className="sum">
+          <li className="sum sum--pair sum--green">
             <span className="sum__icon sum__icon--green">
               <PulseWave size={20} />
             </span>
-            {/* Единица уехала из подписи к числу: заход короче минуты теперь
-                печатается секундами, и «Минут в движении сегодня — 48 сек» не
-                сходилось бы само с собой. */}
-            <span className="sum__label">В движении сегодня</span>
-            <strong className="sum__value">
-              {todayTime.value} <i className="sum__unit">{todayTime.unit}</i>
-            </strong>
+            <span className="sum__label">Заходы</span>
+            <span className="sum__pair">
+              <span><strong className="sum__value">{todayWorkouts}</strong><small>сегодня</small></span>
+              <span><strong className="sum__value sum__value--sm">{weekWorkouts}</strong><small>за неделю</small></span>
+            </span>
           </li>
         </ul>
 
@@ -202,7 +228,7 @@ export default function PlayerPause({
             порядок фокуса с клавиатуры. */}
         <button ref={resumeButton} className="btn btn--pink-lg pause__cta" onClick={onResume}>
           <Play size={20} />
-          Продолжить сейчас
+          Продолжить двигаться
         </button>
 
         {/* «Вернусь позже» уводит в «Мой прогресс» — к минутам и серии

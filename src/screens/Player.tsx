@@ -2291,6 +2291,8 @@ export default function Player() {
           sessionSeconds={sessionSeconds}
           todaySteps={todaySteps}
           sessionMoves={sessionMoves}
+          sessionSteps={Math.round(stepsRef.current)}
+          todayMoves={todayMoves}
           todaySeconds={todaySeconds}
           summary={summary}
           locked={limited && !guest}

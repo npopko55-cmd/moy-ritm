@@ -465,3 +465,34 @@
 @media (max-width: 359.98px) {
   .pause__cards { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ——— Карточки «два числа» (макет Димы 12.11.2026) ———
+   Сетка 2×2 на всех ширинах, у каждой карточки свой светлый тон. */
+.pause__cards.pause__cards--pairs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.sum--pair { box-shadow: none; }
+.sum--pink   { background: #fff5f8; border-color: #fbe3ec; }
+.sum--blue   { background: #f3f8ff; border-color: #dfeafb; }
+.sum--orange { background: #fff8f1; border-color: #fbe9d6; }
+.sum--green  { background: #f2fbf5; border-color: #d9f1e2; }
+.sum__icon--blue { background: #e3eefd; color: #2f6fe0; }
+
+.sum__pair {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: end;
+  gap: 0 clamp(10px, 1.4vw, 18px);
+  width: 100%;
+  margin-top: 2px;
+}
+.sum__pair > span { display: flex; flex-direction: column; min-width: 0; }
+.sum__pair > span + span { padding-left: clamp(10px, 1.4vw, 18px); border-left: 1px solid var(--gray-200); }
+.sum__pair small { font-size: clamp(11px, 0.9vw, 12.5px); color: var(--gray-500); }
+.sum__value--sm { font-size: clamp(18px, 1.8vw, 24px); }
+
+@media (max-width: 639.98px) {
+  .sum--pair { padding: 12px; }
+  .sum--pair .sum__icon { width: 34px; height: 34px; margin-bottom: 6px; }
+  .sum--pair .sum__value { font-size: 24px; }
+  .sum--pair .sum__value--sm { font-size: 17px; }
+}
