@@ -10,6 +10,7 @@ import {
   type PlayerBootstrap,
   type Settings,
   type StatsSummary,
+  type SubscriptionState,
 } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { days, durationTight, toMinutes, weekdayShort } from '../lib/date'
@@ -34,7 +35,7 @@ import GuestNudge from '../components/GuestNudge'
 import GuestPrompt from '../components/GuestPrompt'
 import TabBar from '../components/TabBar'
 import StreamSwitcher from '../components/StreamSwitcher'
-import Unlock, { GuestUnlock, RenewUnlock } from '../components/Unlock'
+import Unlock, { GuestUnlock, RenewUnlock, SubscriptionFailedUnlock } from '../components/Unlock'
 import { DEFAULT_FREE_TIER, getStream, streamLocked, WARM_MOVES } from '../data/streams'
 import { loopPoster, loopSrc, SECONDS_PER_MOVE, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
@@ -236,12 +237,42 @@ export default function Player() {
 
   // Плашка о конце доступа — не всплывающим окном, а блоком «Продлить» под
   // «Управлением» (RenewUnlock); здесь — её строка-пояснение.
-  const notice =
+  const accessNotice =
     access?.status === 'expiring'
       ? `Доступ заканчивается через ${days(access.days_left)}`
       : access?.status === 'grace'
         ? 'Доступ закончился — продлите, чтобы продолжить завтра'
         : ''
+
+  // Подписка Продамуса (GET /subscription) — спрашиваем, только когда плашка
+  // о конце доступа вообще встала бы. Подписка продлится сама (trial, active)
+  // — «Продлить» не нужно; автосписание не прошло (past_due) — вместо
+  // «Продлить» предупреждение со ссылкой на /subscription. Пока ответа нет —
+  // плашки нет, чтобы «Продлить» не мигнуло подписчику. Подписка на сервере
+  // выключена или запрос упал — всё как раньше.
+  const askSubscription = Boolean(accessNotice) && Boolean(me) && !guest
+  const [subState, setSubState] = useState<SubscriptionState | null | undefined>(undefined)
+  useEffect(() => {
+    if (!askSubscription) return
+    let alive = true
+    api.subscriptionState().then(
+      (s) => {
+        if (alive) setSubState(s)
+      },
+      () => {
+        if (alive) setSubState(null)
+      },
+    )
+    return () => {
+      alive = false
+    }
+  }, [askSubscription])
+  // То же правило, что renewsItself в SubscriptionPromo.tsx (профиль, тарифы);
+  // не импортируем, чтобы не тянуть в плеер стили и Page.
+  const subStatus = subState?.subscription?.status
+  const renewsItself = subStatus === 'trial' || subStatus === 'active'
+  const subFailed = Boolean(subState?.subscription?.payment_failed)
+  const notice = !accessNotice || subState === undefined || renewsItself ? '' : accessNotice
 
   // Настройки: профиль уже загружен обёрткой RequireAuth, поэтому плеер
   // стартует сразу, а bootstrap лишь подтверждает цифры с сервера.
@@ -2264,7 +2295,7 @@ export default function Player() {
             блоком trial3d они не встречаются: тот — без оплаченного доступа. */}
         {notice && (
           <div className="stats__unlock">
-            <RenewUnlock hint={notice} />
+            {subFailed ? <SubscriptionFailedUnlock /> : <RenewUnlock hint={notice} />}
           </div>
         )}
       </aside>
