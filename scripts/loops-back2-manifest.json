@@ -1,0 +1,212 @@
+{
+  "01_091141.mp4": {
+    "n": 1,
+    "source": "01_091141.mp4",
+    "id": "back2-01",
+    "title": "",
+    "size": [
+      940,
+      940
+    ],
+    "i": 136,
+    "j": 188,
+    "frames": 52,
+    "seconds": 2.167,
+    "seam_score": 0.58,
+    "seam": "чисто",
+    "figure_step": 0.05,
+    "mse_ratio": 0.14,
+    "total_frames": 206,
+    "motion_span": 0.79,
+    "best_found": {
+      "i": 136,
+      "j": 188,
+      "seam_score": 0.58
+    },
+    "square_side": 940,
+    "mp4_kb": 78.3,
+    "webp_kb": 3.5,
+    "check": {
+      "frames_x2": 104,
+      "seam_mad": 0.63,
+      "adjacent_mad_median": 0.57,
+      "loop_check": 1.11,
+      "loop_check_p90": 0.44
+    }
+  },
+  "02_091806.mp4": {
+    "n": 2,
+    "source": "02_091806.mp4",
+    "id": "back2-02",
+    "title": "",
+    "size": [
+      940,
+      940
+    ],
+    "i": 155,
+    "j": 232,
+    "frames": 77,
+    "seconds": 3.208,
+    "seam_score": 0.62,
+    "seam": "чисто",
+    "figure_step": 0.07,
+    "mse_ratio": 0.03,
+    "total_frames": 234,
+    "motion_span": 0.97,
+    "best_found": {
+      "i": 155,
+      "j": 232,
+      "seam_score": 0.62
+    },
+    "square_side": 940,
+    "mp4_kb": 123.0,
+    "webp_kb": 4.3,
+    "check": {
+      "frames_x2": 154,
+      "seam_mad": 1.54,
+      "adjacent_mad_median": 1.33,
+      "loop_check": 1.16,
+      "loop_check_p90": 0.95
+    }
+  },
+  "03_095303.mp4": {
+    "n": 3,
+    "source": "03_095303.mp4",
+    "id": "back2-03",
+    "title": "",
+    "size": [
+      940,
+      940
+    ],
+    "i": 98,
+    "j": 192,
+    "frames": 94,
+    "seconds": 3.917,
+    "seam_score": 0.69,
+    "seam": "чисто",
+    "figure_step": 0.15,
+    "mse_ratio": 0.16,
+    "total_frames": 194,
+    "motion_span": 0.95,
+    "best_found": {
+      "i": 98,
+      "j": 192,
+      "seam_score": 0.69
+    },
+    "square_side": 940,
+    "mp4_kb": 151.0,
+    "webp_kb": 4.5,
+    "check": {
+      "frames_x2": 188,
+      "seam_mad": 1.14,
+      "adjacent_mad_median": 0.9,
+      "loop_check": 1.27,
+      "loop_check_p90": 0.55
+    }
+  },
+  "04_112855.mp4": {
+    "n": 4,
+    "source": "04_112855.mp4",
+    "id": "back2-04",
+    "title": "",
+    "size": [
+      940,
+      940
+    ],
+    "i": 13,
+    "j": 67,
+    "frames": 54,
+    "seconds": 2.25,
+    "seam_score": 0.95,
+    "seam": "чисто",
+    "figure_step": 0.51,
+    "mse_ratio": 1.27,
+    "total_frames": 120,
+    "motion_span": 0.95,
+    "best_found": {
+      "i": 13,
+      "j": 67,
+      "seam_score": 0.95
+    },
+    "square_side": 940,
+    "mp4_kb": 128.0,
+    "webp_kb": 4.6,
+    "check": {
+      "frames_x2": 108,
+      "seam_mad": 3.57,
+      "adjacent_mad_median": 1.61,
+      "loop_check": 2.22,
+      "loop_check_p90": 1.2
+    }
+  },
+  "05_113333.mp4": {
+    "n": 5,
+    "source": "05_113333.mp4",
+    "id": "back2-05",
+    "title": "",
+    "size": [
+      940,
+      940
+    ],
+    "i": 1,
+    "j": 106,
+    "frames": 105,
+    "seconds": 4.375,
+    "seam_score": 0.09,
+    "seam": "чисто",
+    "figure_step": 2.02,
+    "mse_ratio": 0.31,
+    "total_frames": 120,
+    "motion_span": 1.01,
+    "best_found": {
+      "i": 1,
+      "j": 106,
+      "seam_score": 0.09
+    },
+    "square_side": 940,
+    "mp4_kb": 178.6,
+    "webp_kb": 3.5,
+    "check": {
+      "frames_x2": 210,
+      "seam_mad": 1.5,
+      "adjacent_mad_median": 1.99,
+      "loop_check": 0.76,
+      "loop_check_p90": 0.39
+    }
+  },
+  "06_113624.mp4": {
+    "n": 6,
+    "source": "06_113624.mp4",
+    "id": "back2-06",
+    "title": "",
+    "size": [
+      940,
+      940
+    ],
+    "i": 37,
+    "j": 119,
+    "frames": 82,
+    "seconds": 3.417,
+    "seam_score": 0.24,
+    "seam": "чисто",
+    "figure_step": 1.03,
+    "mse_ratio": 0.69,
+    "total_frames": 168,
+    "motion_span": 0.9,
+    "best_found": {
+      "i": 37,
+      "j": 119,
+      "seam_score": 0.24
+    },
+    "square_side": 940,
+    "mp4_kb": 206.1,
+    "webp_kb": 5.0,
+    "check": {
+      "frames_x2": 164,
+      "seam_mad": 4.0,
+      "adjacent_mad_median": 3.03,
+      "loop_check": 1.32,
+      "loop_check_p90": 0.92
+    }
+  }
+}

@@ -184,6 +184,21 @@ export const LOOPS: Record<string, Loop> = {
   'back-arm-raises': { id: 'back-arm-raises', title: 'Подъёмы рук вверх', duration: 3.833, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 3 },
 
   /*
+   * Шесть новых движений «Спины» (ролики 06.11.2026, исходники Димы №05, №10,
+   * IMG_5507, IMG_5510, IMG_5511, IMG_5512), собраны 12.11.2026 скриптом
+   * build-loops-back.py с префиксом back2 (scripts/loops-back2-manifest.json),
+   * все стыки чистые (S 0,09–0,95). Три из шести были вертикальными —
+   * дополнены до квадрата растяжкой краёв студии (fillborders smear), без рамки.
+   */
+  'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze' },
+  // На переделку по решению владельца 12.11, в поток не входит:
+  // 'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back2-03': { id: 'back2-03', title: 'Руки вверх и к плечам', duration: 3.917, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back2-04': { id: 'back2-04', title: 'Поочерёдный подъём рук', duration: 2.25, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back2-05': { id: 'back2-05', title: 'Руки в стороны и за голову', duration: 4.375, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
+  'back2-06': { id: 'back2-06', title: 'Боковые наклоны с рукой вверх', duration: 3.417, stepsPerMinute: 0, kind: 'torso', family: 'side-bend' },
+
+  /*
    * Ещё три ролика «Спины» лежат в public/loops/, но в поток не входят —
    * ждут решения владельца (перегенерация 27.10 не помогла). Решит взять —
    * раскомментируйте запись и впишите id в BACK_MOVES (src/data/streams.ts).

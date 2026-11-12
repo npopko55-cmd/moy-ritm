@@ -165,6 +165,11 @@ export const BACK_MOVES: Loop[] = pick(
   'back-palm-turns',
   'back-pelvic-tilt',
   'back-arm-raises',
+  'back2-01',
+  'back2-06',
+  'back2-05',
+  'back2-04',
+  'back2-03',
 )
 
 /*
