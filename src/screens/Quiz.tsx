@@ -420,7 +420,7 @@ function PlanView({
 
       <div className="quiz__cta">
         <button type="button" className="btn btn--pink-lg quiz__cta-btn" onClick={onStart}>
-          {QUIZ_TEXT.cta}
+          {cardTrial ? QUIZ_TEXT.cta : QUIZ_TEXT.ctaFree}
           <span className="quiz__cta-arrow" aria-hidden="true">
             <ArrowRight size={19} />
           </span>
