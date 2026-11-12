@@ -1,0 +1,64 @@
+/* Экран подписки /subscription. Карточки и сообщения — из Pay.css (checkout__*),
+   галочка согласия — из Account.css (consent__*). Здесь только своё. */
+
+.sub { display: flex; flex-direction: column; gap: 18px; }
+
+.sub__current.is-bad { background: var(--orange-100); }
+
+/* Отмена — заметная, но не главная кнопка: текстом, без заливки. Прятать её
+   нельзя (376-ФЗ: отказ должен быть простым), поэтому она сразу видна. */
+.sub__cancel {
+  margin-top: 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--r-md, 12px);
+  background: var(--white);
+  color: var(--ink-700);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.sub__cancel:disabled { opacity: 0.6; cursor: default; }
+@media (hover: hover) {
+  .sub__cancel:not(:disabled):hover { border-color: var(--ink-700); }
+}
+
+.sub__note { margin-top: 10px; color: var(--green-600); font-size: 14px; }
+
+.sub__upsell {
+  padding: 18px;
+  border-radius: var(--r-lg);
+  background: var(--orange-100);
+}
+.sub__upsell-title {
+  margin: 0 0 8px;
+  font-family: var(--font-head);
+  font-size: 20px;
+  color: var(--ink-800);
+}
+.sub__upsell p { margin: 0 0 14px; color: var(--ink-700); font-size: 15px; }
+
+.sub__offer { display: flex; flex-direction: column; gap: 14px; }
+
+.sub__choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sub__option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--r-lg);
+  background: var(--white);
+  color: var(--ink-800);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sub__option span { color: var(--gray-500); font-size: 13px; }
+.sub__option.is-on { border-color: var(--pink-500); background: var(--pink-50); }
+
+.sub__pay:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 380px) {
+  .sub__choice { grid-template-columns: 1fr; }
+}

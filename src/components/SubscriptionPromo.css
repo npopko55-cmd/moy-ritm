@@ -1,0 +1,27 @@
+/* Плашка подписки над карточками тарифов (SubscriptionPromo). */
+
+.subpromo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--grad-pink-diag);
+  color: var(--white);
+  text-decoration: none;
+}
+.subpromo b { font-family: var(--font-head); font-size: 18px; }
+.subpromo span { font-size: 14px; opacity: 0.92; }
+
+.subpromo--year { background: var(--grad-number); }
+
+.subpromo--quiet {
+  background: var(--pink-50);
+  color: var(--ink-800);
+}
+.subpromo--quiet span { color: var(--pink-600); opacity: 1; }
+
+@media (hover: hover) {
+  .subpromo:hover { filter: brightness(1.04); }
+}

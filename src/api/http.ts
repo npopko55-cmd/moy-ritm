@@ -25,6 +25,8 @@ import {
   type MessageResponse,
   type PaymentCheck,
   type PaymentLink,
+  type SubscriptionCancel,
+  type SubscriptionState,
   type PlayerBootstrap,
   type RegisterResponse,
   type SessionRow,
@@ -346,6 +348,17 @@ export function createHttpApi(rawBase: string): Api {
       request<Checkout>('POST', '/payments/checkout', { body: { tariff_code: tariffCode } }),
 
     paymentCheck: () => request<PaymentCheck>('POST', '/payments/check'),
+
+    subscriptionState: () => request<SubscriptionState>('GET', '/subscription'),
+
+    subscriptionCheckout: (trial, consentVersion) =>
+      request<{ page_url: string }>('POST', '/subscription/checkout', {
+        body: { trial, autopay_consent: true, consent_version: consentVersion },
+      }),
+
+    subscriptionCancel: () => request<SubscriptionCancel>('POST', '/subscription/cancel'),
+
+    subscriptionUpgrade: () => request<{ page_url: string }>('POST', '/subscription/upgrade'),
 
     /* ——— Плеер и статистика ——— */
 

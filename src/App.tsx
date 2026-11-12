@@ -30,6 +30,7 @@ import {
   register,
   resetPassword,
   settings,
+  subscription,
   tariffs,
   trialEnded,
 } from './lib/screens'
@@ -50,6 +51,7 @@ const ResetPassword = resetPassword.Screen
 const PaymentSuccess = paymentSuccess.Screen
 const Pay = pay.Screen
 const Profile = profile.Screen
+const Subscription = subscription.Screen
 const Progress = progress.Screen
 const Help = help.Screen
 const TrialEnded = trialEnded.Screen
@@ -212,6 +214,16 @@ export default function App() {
             element={
               <RequireAuth>
                 <Profile />
+              </RequireAuth>
+            }
+          />
+          {/* Подписка через Продамус: оформление с согласием на автосписание,
+              отмена в один клик, переход на год (backend/docs/PRODAMUS.md). */}
+          <Route
+            path="/subscription"
+            element={
+              <RequireAuth>
+                <Subscription />
               </RequireAuth>
             }
           />

@@ -14,6 +14,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api, IS_DEMO } from '../api/client'
 import type { Me, SessionRow } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
+import {
+  SubscriptionRows,
+  renewsItself,
+  useSubscriptionState,
+} from '../components/SubscriptionPromo'
 import { days, duration, durationWord, formatDate, formatWhen, pluralWord } from '../lib/date'
 import { useResendConfirmation } from '../lib/useResendConfirmation'
 import {
@@ -71,6 +76,8 @@ export default function Profile() {
   const { me, setMe, reload, signOut, signOutEverywhere } = useSession()
 
   const [open, setOpen] = useState<Open>('')
+  // Подписка Продамуса: строки в «Доступе», отмена — на /subscription.
+  const subscription = useSubscriptionState()
   const [rows, setRows] = useState<SessionRow[] | null>(null)
   const [rowsError, setRowsError] = useState('')
   const resend = useResendConfirmation()
@@ -199,11 +206,15 @@ export default function Profile() {
                 : `Оплачено до ${paidUntil}${access.days_left ? ` — осталось ${days(access.days_left)}` : ''}`
             }
           >
-            <Link className="page__btn page__btn--pink" to="/tariffs">
-              Продлить
-            </Link>
+            {/* Подписка продлится сама — разовое «Продлить» ей не нужно. */}
+            {!renewsItself(subscription) && (
+              <Link className="page__btn page__btn--pink" to="/tariffs">
+                Продлить
+              </Link>
+            )}
           </Row>
         )}
+        <SubscriptionRows state={subscription} />
       </Card>
 
       <Card title="Итоги">

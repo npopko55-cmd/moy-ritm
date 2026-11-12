@@ -37,6 +37,8 @@ import type {
   Settings,
   StatsProgress,
   StatsSummary,
+  SubscriptionCancel,
+  SubscriptionState,
   Tariff,
   TelegramAuthResponse,
   TokenResponse,
@@ -116,6 +118,17 @@ export interface Api {
   /** Всё для страницы оплаты: карточка тарифа, виджет GetCourse, запасная ссылка. */
   paymentCheckout(tariffCode: string): Promise<Checkout>
   paymentCheck(): Promise<PaymentCheck>
+
+  /* ——— Подписка через Продамус (backend/docs/PRODAMUS.md, «Подписка») ——— */
+  subscriptionState(): Promise<SubscriptionState>
+  /**
+   * Ссылка на оформление. consentVersion — offer.consent_version: без
+   * отмеченной галочки согласия на автосписание экран сюда не зовёт.
+   */
+  subscriptionCheckout(trial: boolean, consentVersion: string): Promise<{ page_url: string }>
+  subscriptionCancel(): Promise<SubscriptionCancel>
+  /** Год вместо месячной подписки (upsell): ссылка на разовую оплату года. */
+  subscriptionUpgrade(): Promise<{ page_url: string }>
 
   /* ——— Плеер и статистика ——— */
   playerBootstrap(): Promise<PlayerBootstrap>

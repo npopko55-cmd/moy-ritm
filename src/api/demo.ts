@@ -918,17 +918,11 @@ export function createDemoApi(): Api {
     },
 
     // Виджета GetCourse в демо нет: страница оплаты сразу ведёт на page_url —
-    // ту же «оплату», что и ссылка. Почту, как и сервер, просит подтвердить.
+    // ту же «оплату», что и ссылка. Подтверждённая почта, как и на сервере с
+    // 12.11.2026, не нужна.
     async paymentCheckout(tariffCode) {
       const user = requireUser()
       const tariff = demoTariff(tariffCode)
-      if (user.verified === false) {
-        throw new ApiError(
-          403,
-          'EMAIL_NOT_VERIFIED',
-          'Сначала подтвердите почту: иначе чек и доступ уедут на адрес, которым вы не владеете',
-        )
-      }
       const prefill = { 'sv[email]': user.email, utm_source: 'site', utm_term: `mr-${user.id}` }
       return {
         tariff: {
@@ -943,6 +937,25 @@ export function createDemoApi(): Api {
         widget: null,
         prefill,
       } satisfies Checkout
+    },
+
+    // Подписки в демо нет: экран подписки покажет «пока недоступна», как
+    // при выключенной подписке на сервере.
+    async subscriptionState() {
+      requireUser()
+      return { offer: null, subscription: null, upsell: null, card_trial_only: false }
+    },
+
+    async subscriptionCheckout() {
+      throw new ApiError(409, 'SUBSCRIPTIONS_DISABLED', 'Подписка пока недоступна')
+    },
+
+    async subscriptionCancel() {
+      throw new ApiError(404, 'NO_SUBSCRIPTION', 'Активной подписки нет')
+    },
+
+    async subscriptionUpgrade() {
+      throw new ApiError(409, 'UPSELL_NOT_AVAILABLE', 'Это предложение сейчас недоступно')
     },
 
     async paymentCheck() {

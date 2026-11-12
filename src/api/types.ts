@@ -187,6 +187,58 @@ export type PaymentCheck = {
   next_check_in: number
 }
 
+/* ─────────────────────────  Подписка (Продамус)  ───────────────────────── */
+
+/**
+ * GET /subscription (backend/docs/PRODAMUS.md, «Подписка»). Пока подписка на
+ * сервере выключена, offer и subscription пустые — экраны ведут себя как
+ * раньше.
+ *
+ * offer — что можно оформить; trial — пробный «N дней за 1 ₽ с привязкой
+ * карты», пусто — не положен. consent_version — редакция текста согласия на
+ * автосписание, её присылаем обратно при оформлении.
+ * subscription — последняя оплаченная подписка: trial (идут пробные дни),
+ * active, past_due (списание не прошло), canceled, ended.
+ * upsell — «перейди на год» после второго оплаченного месяца.
+ * card_trial_only — человеку бесплатного пробного нет, только за 1 ₽.
+ */
+export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'canceled' | 'ended'
+
+export type SubscriptionState = {
+  offer: {
+    tariff: { code: string; name: string; price: number; currency: string; period_days: number }
+    trial: { price: number; days: number } | null
+    consent_version: string
+  } | null
+  subscription: {
+    status: SubscriptionStatus
+    trial: boolean
+    price: number
+    currency: string
+    period_days: number
+    started_at: string | null
+    next_payment_at: string | null
+    paid_until: string | null
+    canceled_at: string | null
+    can_cancel: boolean
+    payment_failed: boolean
+  } | null
+  upsell: {
+    tariff_code: string
+    name: string
+    price: number
+    currency: string
+    months: number
+    monthly_price: number
+    monthly_total: number
+    saving_percent: number
+  } | null
+  card_trial_only: boolean
+}
+
+/** POST /subscription/cancel: отказ принят; synced — Продамус подтвердил сразу. */
+export type SubscriptionCancel = { state: SubscriptionState; synced: boolean }
+
 /* ─────────────────────────  Плеер и статистика  ───────────────────────── */
 
 export type Exercise = {

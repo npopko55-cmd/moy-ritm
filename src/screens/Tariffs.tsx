@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import LegalLinks from '../components/LegalLinks'
 import Logo from '../components/Logo'
+import { SubscriptionPromo } from '../components/SubscriptionPromo'
 import TariffPlans from '../components/TariffPlans'
 import WaveBg from '../components/WaveBg'
 import {
@@ -128,6 +129,10 @@ export default function Tariffs() {
             </li>
           ))}
         </ul>
+
+        {/* Подписка Продамуса (пробный за 1 ₽, месяц с автопродлением, год
+            для подписчика) — плашкой над карточками; выключена — пусто. */}
+        <SubscriptionPromo />
 
         {/* Карточки, оплата и строка сообщения — общий компонент: те же
             карточки стоят на /offer и /trial-ended. */}
