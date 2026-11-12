@@ -27,19 +27,24 @@
   color: var(--gray-300);
 }
 
-.legal-links a {
+.legal-links a,
+.legal-links button {
   display: inline-flex;
   align-items: center;
   min-height: 32px;
+  padding: 0;
+  font: inherit;
   color: var(--gray-400);
   transition: color .15s ease;
 }
 
 @media (hover: hover) {
-  .legal-links a:hover { color: var(--pink-600); }
+  .legal-links a:hover,
+  .legal-links button:hover { color: var(--pink-600); }
 }
 
 /* Палец: ссылки подвала тоже от 44 px. */
 @media (pointer: coarse) {
-  .legal-links a { min-height: 44px; }
+  .legal-links a,
+  .legal-links button { min-height: 44px; }
 }

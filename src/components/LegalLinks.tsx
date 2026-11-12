@@ -7,7 +7,8 @@
  * это подвал, а не призыв, но найти документы должно быть легко с любой
  * открытой страницы. С 22.10.2026 здесь все четыре документа юристов: оба
  * согласия тоже должны быть доступны до регистрации, а не только по ссылке
- * из её галочек.
+ * из её галочек. Строка «Настройки cookies» (с 12.11.2026) снова открывает
+ * баннер выбора про счётчики (ConsentBanner.tsx).
  *
  * Продавец и тарифы (03.11.2026): их требует Продамус при проверке сайта для
  * платёжной страницы — ФИО ИП, ИНН и актуальные цены на виду на каждой
@@ -19,6 +20,8 @@
  */
 
 import { Link } from 'react-router-dom'
+import { analyticsConfigured } from '../lib/analytics'
+import { openCookieSettings } from './ConsentBanner'
 import './LegalLinks.css'
 
 export default function LegalLinks({ className = '' }: { className?: string }) {
@@ -32,6 +35,15 @@ export default function LegalLinks({ className = '' }: { className?: string }) {
         <Link to="/consent">Согласие на обработку данных</Link>
         <span aria-hidden="true">·</span>
         <Link to="/ads-consent">Согласие на рекламу</Link>
+        {/* Строка есть, только если в сборке есть счётчики: иначе менять нечего. */}
+        {analyticsConfigured() && (
+          <>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={openCookieSettings}>
+              Настройки cookies
+            </button>
+          </>
+        )}
       </nav>
       <p className="legal-foot__line">
         ИП Кириченко Дмитрий Павлович · ИНН 222391942312 · ОГРНИП 316222500086383

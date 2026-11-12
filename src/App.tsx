@@ -5,6 +5,7 @@ import Landing from './screens/Landing'
 import GoFunnel from './screens/GoFunnel'
 import PlayGuest from './screens/PlayGuest'
 import TelegramBridge from './components/TelegramBridge'
+import ConsentBanner from './components/ConsentBanner'
 import PageMeta from './components/PageMeta'
 import { SessionProvider } from './auth/SessionProvider'
 import { RequireAuth, RequireTrial } from './auth/guards'
@@ -241,6 +242,9 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>
+        {/* Выбор про счётчики рекламы (src/components/ConsentBanner.tsx). Без
+            id счётчиков, в админке и на тренировке не показывается. */}
+        <ConsentBanner />
         </FlowProvider>
       </MusicProvider>
     </SessionProvider>

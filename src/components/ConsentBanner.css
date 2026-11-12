@@ -1,0 +1,61 @@
+/*
+ * Баннер выбора про счётчики (ConsentBanner.tsx). Карточка внизу экрана,
+ * не затемняет страницу. Две кнопки одинаковые: выбор не подталкиваем.
+ * Выше панели вкладок (20) и мягкого окна гостя (900), ниже полного окна.
+ */
+
+.cc {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 950;
+  box-sizing: border-box;
+  width: min(520px, calc(100% - 24px));
+  padding: 14px 16px 14px;
+  background: var(--white);
+  border-radius: var(--r-xl);
+  box-shadow: 0 12px 40px rgba(16, 17, 20, 0.2);
+  transform: translateX(-50%);
+  animation: cc-rise 0.3s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.cc__title {
+  margin: 0 0 4px;
+  font: 800 15px/1.25 var(--font-head);
+  color: var(--ink-900);
+}
+
+.cc__lead {
+  margin: 0 0 12px;
+  font: 500 13px/1.45 var(--font-body);
+  color: var(--gray-600);
+}
+
+.cc__link {
+  color: var(--pink-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cc__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Обе кнопки — одна и та же btn--ghost, только пониже обычной. */
+.cc__btn {
+  justify-content: center;
+  padding: 10px 12px;
+  min-height: 44px;
+}
+
+.cc__link:focus-visible { outline: 2px solid var(--pink-500); outline-offset: 2px; }
+
+@keyframes cc-rise {
+  from { transform: translate(-50%, 24px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc { animation: none; }
+}
