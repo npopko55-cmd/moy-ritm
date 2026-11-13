@@ -21,11 +21,19 @@ import type { ExitOfferState, OffersState, PersonalOffer } from '../api/types'
 let skewMs = 0
 let cached: OffersState | null = null
 
+/**
+ * Колесо со скидкой выключено на стороне сайта (Дима, 12.11.2026: «не надо
+ * пока скидками манипулировать»): даже если сервер или демо-режим вернут
+ * wheel: true, окно колеса не показывается. Вернуть — true.
+ */
+const WHEEL_ENABLED = false
+
 function remember(state: OffersState): OffersState {
   skewMs = Date.parse(state.server_time) - Date.now()
   if (!Number.isFinite(skewMs)) skewMs = 0
-  cached = state
-  return state
+  const shown = WHEEL_ENABLED ? state : { ...state, wheel: false }
+  cached = shown
+  return shown
 }
 
 /** Сейчас по часам сервера. */
