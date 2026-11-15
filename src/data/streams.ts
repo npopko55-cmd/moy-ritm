@@ -167,6 +167,8 @@ export const BACK_MOVES: Loop[] = pick(
   'back-chest-opener',
   'back3-03',
   'back2-01',
+  'back4-01',
+  'back4-02',
 )
 
 /*

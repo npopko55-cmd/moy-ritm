@@ -200,6 +200,14 @@ export const LOOPS: Record<string, Loop> = {
   'back3-01': { id: 'back3-01', title: 'Вращения в плечах', duration: 5.125, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back3-02': { id: 'back3-02', title: 'Повороты рук в стороны', duration: 3.417, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
   'back3-03': { id: 'back3-03', title: 'Наклоны таза', duration: 3.583, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt' },
+  /*
+   * 15.11.2026: два движения из архива «все 28» (Дима 12.11: «Загружай все,
+   * кроме этих»), смотрят в камеру: «Поочерёдный подъём рук» (IMG_5510) и
+   * «Боковые наклоны с рукой вверх» (IMG_5512). Петли из того архива, стыки
+   * чистые (1,11 и 0,61).
+   */
+  'back4-01': { id: 'back4-01', title: 'Поочерёдный подъём рук', duration: 4.458, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back4-02': { id: 'back4-02', title: 'Боковые наклоны с рукой вверх', duration: 3.458, stepsPerMinute: 0, kind: 'torso', family: 'side-bend' },
   'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze' },
   // На переделку по решению владельца 12.11, в поток не входит:
   // 'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
