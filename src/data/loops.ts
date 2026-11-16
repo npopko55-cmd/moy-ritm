@@ -209,27 +209,28 @@ export const LOOPS: Record<string, Loop> = {
   'back4-01': { id: 'back4-01', title: 'Поочерёдный подъём рук', duration: 4.458, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back4-02': { id: 'back4-02', title: 'Боковые наклоны с рукой вверх', duration: 3.458, stepsPerMinute: 0, kind: 'torso', family: 'side-bend' },
   'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze' },
-  // На переделку по решению владельца 12.11, в поток не входит:
-  // 'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back2-03': { id: 'back2-03', title: 'Руки вверх и к плечам', duration: 3.917, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back2-04': { id: 'back2-04', title: 'Поочерёдный подъём рук', duration: 2.25, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back2-05': { id: 'back2-05', title: 'Руки в стороны и за голову', duration: 4.375, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
   'back2-06': { id: 'back2-06', title: 'Боковые наклоны с рукой вверх', duration: 3.417, stepsPerMinute: 0, kind: 'torso', family: 'side-bend' },
 
+  'back-arms-up-bend': { id: 'back-arms-up-bend', title: 'Наклоны с руками вверх', duration: 4.708, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
+  'back-standing-cat': { id: 'back-standing-cat', title: 'Кошка стоя', duration: 3.375, stepsPerMinute: 0, kind: 'torso', family: 'back-standing-cat' },
+  'back-forward-fold': { id: 'back-forward-fold', title: 'Наклоны к коленям', duration: 1.583, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
   /*
-   * Ещё три ролика «Спины» лежат в public/loops/, но в поток не входят —
-   * ждут решения владельца (перегенерация 27.10 не помогла). Решит взять —
-   * раскомментируйте запись и впишите id в BACK_MOVES (src/data/streams.ts).
-   * Вид и семейство уже подобраны.
-   *
-   * стык рваный (seam 2,31; loop_check 1,73):
-   * 'back-arms-up-bend': { id: 'back-arms-up-bend', title: 'Наклоны с руками вверх', duration: 4.708, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
-   * стык рваный (seam 1,70; loop_check 1,56):
-   * 'back-standing-cat': { id: 'back-standing-cat', title: 'Кошка стоя', duration: 3.375, stepsPerMinute: 0, kind: 'torso', family: 'back-standing-cat' },
-   * не петля — наклон один раз, дальше стоит (seam 26,01):
-   * 'back-forward-fold': { id: 'back-forward-fold', title: 'Наклоны к коленям', duration: 1.583, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
+   * 16.11.2026: Никита попросил выложить все 28 согласованных движений
+   * потока «Спина» из архива «все 28 упражнений». Эти шесть не были в
+   * каталоге — петли из того архива, 640×640.
    */
+  'back-side-hip-bend': { id: 'back-side-hip-bend', title: 'Боковые наклоны с рукой по бедру', duration: 3, stepsPerMinute: 0, kind: 'torso', family: 'side-bend' },
+  'back-arm-side-turn': { id: 'back-arm-side-turn', title: 'Рука в сторону с поворотом', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
+  'back-posture-stand': { id: 'back-posture-stand', title: 'Осанка, стойка вполоборота', duration: 3.667, stepsPerMinute: 0, kind: 'torso', family: 'posture' },
+  'back-forearms-face': { id: 'back-forearms-face', title: 'Предплечья перед лицом — W', duration: 6.5, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back-head-tilts': { id: 'back-head-tilts', title: 'Наклоны головы, руки на поясе', duration: 8.667, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns' },
+  'back-forearms-chest': { id: 'back-forearms-chest', title: 'Предплечья перед грудью', duration: 2.583, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
 }
+
 
 /**
  * Оценка шагов за столько-то секунд этого движения.

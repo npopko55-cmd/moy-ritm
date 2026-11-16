@@ -140,10 +140,8 @@ export const WARM_MOVES = 6
  * записи — в конце src/data/loops.ts. Только движения с чистым стыком
  * петли, в порядке владельца.
  *
- * Шесть роликов того же потока сюда не вошли — стык рваный или на грани,
- * ждут решения владельца: back-palm-turns, back-arm-raises,
- * back-forward-fold, back-arms-up-bend, back-standing-cat, back-pelvic-tilt
- * (их записи закомментированы в loops.ts).
+ * 16.11.2026 в поток вошли все 28 движений из архива; часть петель
+ * со спорным стыком включена по решению владельца.
  *
  * Бесплатного уровня у «Спины» нет: сервер отдаёт его на один поток —
  * free_tier.stream_code, сейчас 'cardio' (см. streamLocked ниже). Поэтому
@@ -152,22 +150,38 @@ export const WARM_MOVES = 6
  * scripts/build-sw.mjs берёт только ALL_MOVES.
  */
 /*
- * 12.11.2026: сняты «Вращения в плечах» back3-01 (рука за краем вертикального
- * исходника — при достройке до квадрата растянулась полосой) и пять роликов
- * с коренастой фигурой (back3-02, back2-03…06). Ждут перегенерации в 1:1.
+ * 16.11.2026: Никита попросил выложить все 28 согласованных движений
+ * потока «Спина» (архив «все 28 упражнений»). Порядок — как в архиве.
+ * Где есть более новая петля (back3 / back4), берём её, а не старую.
  */
 export const BACK_MOVES: Loop[] = pick(
+  'back3-03',
   'back-w-raise',
+  'back3-01',
+  'back3-02',
+  'back2-01',
   'back-pull-downs',
+  'back-arm-raises',
   'back-hip-hinge',
+  'back-side-hip-bend',
+  'back2-02',
   'back-chin-tuck',
   'back-forward-reach',
+  'back-forward-fold',
+  'back-arms-up-bend',
+  'back-elbow-squeeze',
+  'back-arm-side-turn',
   'back-neck-turns',
   'back-open-twist',
+  'back-standing-cat',
   'back-chest-opener',
-  'back3-03',
-  'back2-01',
+  'back-posture-stand',
+  'back-forearms-face',
+  'back2-03',
+  'back-head-tilts',
+  'back-forearms-chest',
   'back4-01',
+  'back2-05',
   'back4-02',
 )
 
