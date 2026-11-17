@@ -162,12 +162,12 @@ export const LOOPS: Record<string, Loop> = {
   'back-w-raise': { id: 'back-w-raise', title: 'Подъём рук из W', duration: 3.583, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back-pull-downs': { id: 'back-pull-downs', title: 'Руки вверх, локти вниз', duration: 5, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back-hip-hinge': { id: 'back-hip-hinge', title: 'Наклоны, руки на пояснице', duration: 4.125, stepsPerMinute: 0, kind: 'torso', family: 'back-hip-hinge' },
-  'back-chin-tuck': { id: 'back-chin-tuck', title: 'Втягивание подбородка', duration: 2.667, stepsPerMinute: 0, kind: 'neck', family: 'back-chin-tuck' },
-  'back-forward-reach': { id: 'back-forward-reach', title: 'Вытяжение рук вперёд', duration: 2.833, stepsPerMinute: 0, kind: 'arms', family: 'back-forward-reach' },
+  'back-chin-tuck': { id: 'back-chin-tuck', title: 'Втягивание подбородка', duration: 2.667, stepsPerMinute: 0, kind: 'neck', family: 'back-chin-tuck', rev: 4 },
+  'back-forward-reach': { id: 'back-forward-reach', title: 'Вытяжение рук вперёд', duration: 2.833, stepsPerMinute: 0, kind: 'arms', family: 'back-forward-reach', rev: 4 },
   'back-elbow-squeeze': { id: 'back-elbow-squeeze', title: 'Сведение локтей за головой', duration: 3.667, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze', rev: 3 },
-  'back-neck-turns': { id: 'back-neck-turns', title: 'Повороты головы', duration: 2.583, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns' },
+  'back-neck-turns': { id: 'back-neck-turns', title: 'Повороты головы', duration: 2.583, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns', rev: 4 },
   'back-open-twist': { id: 'back-open-twist', title: 'Раскрытие с поворотом', duration: 3.5, stepsPerMinute: 0, kind: 'torso', family: 'opener' },
-  'back-chest-opener': { id: 'back-chest-opener', title: 'Раскрытие рук в стороны', duration: 2.667, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
+  'back-chest-opener': { id: 'back-chest-opener', title: 'Раскрытие рук в стороны', duration: 2.667, stepsPerMinute: 0, kind: 'arms', family: 'opener', rev: 4 },
   /*
    * Перегенерированы 27.10.2026 вместо рваных: стык чистый (seam 1,14 / 1,02 /
    * 0,80). loop_check у первых двух 3,42 и 2,51 — кадры на стыке сверены
@@ -199,7 +199,7 @@ export const LOOPS: Record<string, Loop> = {
    */
   'back3-01': { id: 'back3-01', title: 'Вращения в плечах', duration: 5.125, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back3-02': { id: 'back3-02', title: 'Повороты рук в стороны', duration: 3.417, stepsPerMinute: 0, kind: 'arms', family: 'opener' },
-  'back3-03': { id: 'back3-03', title: 'Наклоны таза', duration: 3.583, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt' },
+  'back3-03': { id: 'back3-03', title: 'Наклоны таза', duration: 3.583, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt', rev: 4 },
   /*
    * 15.11.2026: два движения из архива «все 28» (Дима 12.11: «Загружай все,
    * кроме этих»), смотрят в камеру: «Поочерёдный подъём рук» (IMG_5510) и
@@ -208,7 +208,7 @@ export const LOOPS: Record<string, Loop> = {
    */
   'back4-01': { id: 'back4-01', title: 'Поочерёдный подъём рук', duration: 4.458, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back4-02': { id: 'back4-02', title: 'Боковые наклоны с рукой вверх', duration: 3.458, stepsPerMinute: 0, kind: 'torso', family: 'side-bend' },
-  'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze' },
+  'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze', rev: 4 },
   'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back2-03': { id: 'back2-03', title: 'Руки вверх и к плечам', duration: 3.917, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back2-04': { id: 'back2-04', title: 'Поочерёдный подъём рук', duration: 2.25, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
@@ -228,7 +228,7 @@ export const LOOPS: Record<string, Loop> = {
   'back-posture-stand': { id: 'back-posture-stand', title: 'Осанка, стойка вполоборота', duration: 3.667, stepsPerMinute: 0, kind: 'torso', family: 'posture' },
   'back-forearms-face': { id: 'back-forearms-face', title: 'Предплечья перед лицом — W', duration: 6.5, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back-head-tilts': { id: 'back-head-tilts', title: 'Наклоны головы, руки на поясе', duration: 8.667, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns' },
-  'back-forearms-chest': { id: 'back-forearms-chest', title: 'Предплечья перед грудью', duration: 2.583, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back-forearms-chest': { id: 'back-forearms-chest', title: 'Предплечья перед грудью', duration: 2.583, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 4 },
 }
 
 

@@ -154,35 +154,32 @@ export const WARM_MOVES = 6
  * потока «Спина» (архив «все 28 упражнений»). Порядок — как в архиве.
  * Где есть более новая петля (back3 / back4), берём её, а не старую.
  */
+/*
+ * 17.11.2026, аудит «Спины» (Дима: «некачественно», замечания Сони): из 28
+ * оставлены 15. Сняты (ролики лежат в public/loops, вернуть — добавить id):
+ *   back3-01, back3-02 — «палка» у руки на краю кадра;
+ *   back-elbow-squeeze, back4-01, back2-05, back4-02 — «гном», мелкий/большеголовый;
+ *   back-forward-fold — рывок на стыке;
+ *   back-arm-side-turn, back-posture-stand, back-head-tilts, back-side-hip-bend,
+ *   back-open-twist, back-forearms-face — скачок на стыке петли, у части взгляд вбок.
+ * Семь роликов уменьшены до общего роста фигуры (rev: 4 в loops.ts).
+ */
 export const BACK_MOVES: Loop[] = pick(
   'back3-03',
   'back-w-raise',
-  'back3-01',
-  'back3-02',
   'back2-01',
   'back-pull-downs',
   'back-arm-raises',
   'back-hip-hinge',
-  'back-side-hip-bend',
   'back2-02',
   'back-chin-tuck',
   'back-forward-reach',
-  'back-forward-fold',
   'back-arms-up-bend',
-  'back-elbow-squeeze',
-  'back-arm-side-turn',
   'back-neck-turns',
-  'back-open-twist',
   'back-standing-cat',
   'back-chest-opener',
-  'back-posture-stand',
-  'back-forearms-face',
   'back2-03',
-  'back-head-tilts',
   'back-forearms-chest',
-  'back4-01',
-  'back2-05',
-  'back4-02',
 )
 
 /*
