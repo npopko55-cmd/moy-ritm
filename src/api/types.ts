@@ -430,7 +430,13 @@ export type GuestEventBody = {
  * card_trial — на сервере включён пробный «3 дня за 1 ₽» (квиз решает по нему
  * до входа, куда ведёт кнопка); нет поля (сервер старше 12.11) — выключен.
  */
-export type GuestConfig = { enabled: boolean; token: string | null; card_trial?: boolean }
+export type GuestConfig = {
+  enabled: boolean
+  token: string | null
+  card_trial?: boolean
+  /** Бесплатных трёх дней нет, только «3 дня за 1 ₽» (CARD_TRIAL_ONLY, с 18.11.2026). */
+  card_trial_only?: boolean
+}
 
 /**
  * Отчёт о сбое ролика в плеере (POST /player/faults) — чтобы жалоба «застыло

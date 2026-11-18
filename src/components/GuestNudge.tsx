@@ -16,6 +16,7 @@
 import { useId } from 'react'
 import { Close } from './Icons'
 import './GuestNudge.css'
+import { CARD_TRIAL_TEXT, useCardTrialOnly } from '../lib/cardTrial'
 
 type Props = {
   /** Ссылка гостя даёт 3 дня пробного (воронка trial3d). */
@@ -28,6 +29,8 @@ type Props = {
 
 export default function GuestNudge({ trial3d, onClose, onCta }: Props) {
   const titleId = useId()
+  // «3 дня за 1 ₽» вместо бесплатных дней — только когда сервер так говорит (src/lib/cardTrial.ts).
+  const card = useCardTrialOnly()
   return (
     <aside className="gn" role="dialog" aria-modal="false" aria-labelledby={titleId}>
       <div className="gn__text">
@@ -37,14 +40,16 @@ export default function GuestNudge({ trial3d, onClose, onCta }: Props) {
         </p>
         {/* ТЕКСТ: на вычитку */}
         <p className="gn__lead">
-          {trial3d
+          {card
+            ? CARD_TRIAL_TEXT.nudgeLead
+            : trial3d
             ? 'После регистрации перенесём их в аккаунт и откроем все движения на 3 дня бесплатно, без привязки карты.'
             : 'После регистрации перенесём их в аккаунт, а ты вернёшься в тренировку.'}
         </p>
       </div>
       {/* ТЕКСТ: на вычитку */}
       <button type="button" className="btn btn--pink-lg gn__cta" onClick={onCta}>
-        {trial3d ? 'Получить 3 дня бесплатно' : 'Сохранить прогресс'}
+        {card ? CARD_TRIAL_TEXT.nudgeCta : trial3d ? 'Получить 3 дня бесплатно' : 'Сохранить прогресс'}
       </button>
       {/* ТЕКСТ: на вычитку (подпись для экранных читалок) */}
       <button

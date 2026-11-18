@@ -39,6 +39,7 @@ import { openTariffsOnSite, useInTelegram } from '../lib/telegram'
 import { CATALOG_MOVES_TEXT, trialHint, trialOpensAll, useTrialState } from '../lib/trial'
 import { Lock } from './Icons'
 import './Unlock.css'
+import { CARD_TRIAL_TEXT, useCardTrialOnly } from '../lib/cardTrial'
 
 /**
  * Тарифы — заранее, один раз за жизнь страницы, как раньше их грузила цена
@@ -245,6 +246,8 @@ export function SubscriptionFailedUnlock() {
  * вошедших, а prompt_cta бэкенд принимает лишь от окна, с kind full/short.
  */
 export function GuestUnlock({ onCta }: { onCta(): void }) {
+  // «3 дня за 1 ₽» вместо бесплатных дней — только когда сервер так говорит (src/lib/cardTrial.ts).
+  const card = useCardTrialOnly()
   return (
     <div className="unlock-guest">
       <div className="unlock-guest__head">
@@ -258,9 +261,9 @@ export function GuestUnlock({ onCta }: { onCta(): void }) {
       </div>
       <div className="unlock-guest__action">
         <button className="unlock-guest__cta" type="button" onClick={onCta}>
-          Попробовать 3 дня бесплатно →
+          {card ? CARD_TRIAL_TEXT.unlockCta : 'Попробовать 3 дня бесплатно →'}
         </button>
-        <span className="unlock-guest__fine">Без привязки карты</span>
+        <span className="unlock-guest__fine">{card ? CARD_TRIAL_TEXT.unlockNote : 'Без привязки карты'}</span>
       </div>
     </div>
   )

@@ -43,6 +43,8 @@ import {
   savedGuestToken,
 } from '../lib/guest'
 import { cachedTariffs, loadTariffs } from '../lib/tariffs'
+import { CARD_TRIAL_TEXT, useCardTrialOnly } from '../lib/cardTrial'
+import { QUIZ_CARD_TRIAL_PATH } from '../lib/quiz'
 import { openPayOnSite, useInTelegram } from '../lib/telegram'
 import { errorText } from '../screens/Account'
 import { Crown } from './Icons'
@@ -119,10 +121,12 @@ export default function TariffPlans() {
   // «Попробовать бесплатно»: регистрация с токеном воронки и обратно в
   // плеер — тот же адрес, что был у кнопок гостя в плеере. Токен пишем
   // ещё раз: между плеером и этим нажатием его могла стереть другая ссылка.
+  // С CARD_TRIAL_ONLY карточка — «3 дня за 1 ₽»: регистрация и сразу экран подписки.
+  const card = useCardTrialOnly()
   const tryFree = () => {
     if (!trialToken) return
     saveFunnelToken(trialToken, true)
-    navigate(GUEST_REGISTER_PATH)
+    navigate(card ? QUIZ_CARD_TRIAL_PATH : GUEST_REGISTER_PATH)
   }
 
   const ctaLabel = inTelegram ? 'Оформить на сайте' : hasAccess(access) ? 'Продлить' : 'Выбрать'
@@ -131,7 +135,7 @@ export default function TariffPlans() {
     <>
       <ul className={`tariffs__plans ${freePlan ? 'has-free' : ''} ${featured ? 'is-featured-layout' : ''}`}>
         {/* Бесплатная — первой: цены ей не нужны, ждать их она не будет. */}
-        {freePlan && <FreePlan onTry={tryFree} />}
+        {freePlan && <FreePlan onTry={tryFree} card={card} />}
         {tariffs === null
           ? [0, 1, 2, 3].map((i) => <PlanSkeleton key={i} />)
           : tariffs.map((t) => (
@@ -234,21 +238,21 @@ const FREE_POINTS = ['Все движения', 'Прогресс сохраня
  * с короной и залитой кнопкой) и строка пунктов. На широком экране она
  * лежит полосой над четырьмя платными (TariffPlans.css, .plan--free).
  */
-function FreePlan({ onTry }: { onTry(): void }) {
+function FreePlan({ onTry, card }: { onTry(): void; card: boolean }) {
   return (
     <li className="plan plan--free">
-      <h2 className="plan__name">3 дня бесплатно</h2>
-      <p className="plan__price">{rub(0)}</p>
+      <h2 className="plan__name">{card ? '3 дня за 1 ₽' : '3 дня бесплатно'}</h2>
+      <p className="plan__price">{rub(card ? 1 : 0)}</p>
       <p className="plan__per">3 дня</p>
       <span className="plan__rule" aria-hidden="true" />
-      <p className="plan__note">Без привязки карты</p>
+      <p className="plan__note">{card ? CARD_TRIAL_TEXT.unlockNote : 'Без привязки карты'}</p>
       <ul className="plan__points">
         {FREE_POINTS.map((p) => (
           <li key={p}>{p}</li>
         ))}
       </ul>
       <button className="plan__cta" type="button" data-tariff="free" onClick={onTry}>
-        Попробовать бесплатно
+        {card ? CARD_TRIAL_TEXT.shortCta : 'Попробовать бесплатно'}
       </button>
     </li>
   )

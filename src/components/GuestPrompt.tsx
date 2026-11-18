@@ -23,6 +23,7 @@ import type { GuestPromptKind } from '../api/types'
 import { asset } from '../lib/asset'
 import { Bars, Close, InfinityMark, Shield, Sparkle } from './Icons'
 import './GuestPrompt.css'
+import { CARD_TRIAL_TEXT, useCardTrialOnly } from '../lib/cardTrial'
 
 type Props = {
   kind: GuestPromptKind
@@ -58,6 +59,8 @@ export default function GuestPrompt({ kind, onClose, onCta }: Props) {
   const sheet = useRef<HTMLDivElement>(null)
   const cta = useRef<HTMLButtonElement>(null)
   const full = kind === 'full'
+  // «3 дня за 1 ₽» вместо бесплатных дней — только когда сервер так говорит (src/lib/cardTrial.ts).
+  const card = useCardTrialOnly()
 
   // Фокус — на главную кнопку; страница под окном не прокручивается.
   useEffect(() => {
@@ -123,10 +126,14 @@ export default function GuestPrompt({ kind, onClose, onCta }: Props) {
               <h2 id={titleId} className="gp__title">
                 Продолжай двигаться в своём ритме ⚡️
               </h2>
-              <p className="gp__lead">
-                Открой полный доступ к «Моему ритму» на{' '}
-                <span className="gp__pill">3 дня бесплатно</span> без привязки карты после регистрации!
-              </p>
+              {card ? (
+                <p className="gp__lead">{CARD_TRIAL_TEXT.fullLead}</p>
+              ) : (
+                <p className="gp__lead">
+                  Открой полный доступ к «Моему ритму» на{' '}
+                  <span className="gp__pill">3 дня бесплатно</span> без привязки карты после регистрации!
+                </p>
+              )}
               <ul className="gp__perks">
                 {PERKS.map((p) => (
                   <li key={p.title} className="gp__perk">
@@ -141,7 +148,7 @@ export default function GuestPrompt({ kind, onClose, onCta }: Props) {
               <p className="gp__plate">
                 <Shield size={18} />
                 <span>
-                  <span className="gp__phrase">Без привязки карты</span>
+                  <span className="gp__phrase">{card ? CARD_TRIAL_TEXT.fullPlate : 'Без привязки карты'}</span>
                 </span>
               </p>
             </>
@@ -153,10 +160,16 @@ export default function GuestPrompt({ kind, onClose, onCta }: Props) {
               <p className="gp__lead">Открой все движения и продолжай тренировку без ограничений.</p>
               <p className="gp__plate">
                 <Shield size={18} />
-                <span>
-                  <span className="gp__phrase">3 дня бесплатно ·</span>{' '}
-                  <span className="gp__phrase">Без привязки карты</span>
-                </span>
+                {card ? (
+                  <span>
+                    <span className="gp__phrase">{CARD_TRIAL_TEXT.shortPlate}</span>
+                  </span>
+                ) : (
+                  <span>
+                    <span className="gp__phrase">3 дня бесплатно ·</span>{' '}
+                    <span className="gp__phrase">Без привязки карты</span>
+                  </span>
+                )}
               </p>
             </>
           )}
@@ -164,7 +177,13 @@ export default function GuestPrompt({ kind, onClose, onCta }: Props) {
 
         <div className="gp__foot">
           <button ref={cta} type="button" className="btn btn--pink-lg gp__cta" onClick={onCta}>
-            {full ? 'Попробовать 3 дня бесплатно →' : 'Попробовать бесплатно'}
+            {card
+              ? full
+                ? CARD_TRIAL_TEXT.fullCta
+                : CARD_TRIAL_TEXT.shortCta
+              : full
+              ? 'Попробовать 3 дня бесплатно →'
+              : 'Попробовать бесплатно'}
           </button>
           {!full && (
             <button type="button" className="gp__skip" onClick={onClose}>
