@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { describeVideoFault, reportPlayerFault, type FaultContext } from '../api/playerFault'
 import {
@@ -52,6 +52,7 @@ import { saveFunnelToken } from '../lib/funnel'
 import {
   addGuestMoved,
   GUEST_REGISTER_PATH,
+  GUEST_STREAM_PARAM,
   GUEST_TARIFFS_PATH,
   guestFullShown,
   guestMoved,
@@ -192,7 +193,10 @@ const phraseClass = (text: string): string => {
 const moveKind = (move: Loop) => move.kind
 
 export default function Player() {
-  const { streamId, token: guestToken } = useParams()
+  const { streamId: routeStreamId, token: guestToken } = useParams()
+  const [search] = useSearchParams()
+  // Гостю поток — из ?stream= (квиз, src/lib/guest.ts), у вошедшего — из адреса /player/<поток>.
+  const streamId = routeStreamId ?? (guestToken ? search.get(GUEST_STREAM_PARAM) ?? undefined : undefined)
   const navigate = useNavigate()
   // Состояние записи истории: по нему видно, что плеер открыл отсчёт или
   // переключатель потоков (тогда в нём и перенос захода, StreamCarry).
@@ -477,7 +481,10 @@ export default function Player() {
    * (openStream ниже), а ряд потоков над блоком остаётся — вернуться в
    * «Подвигаться» можно одним касанием.
    */
-  const locked = streamLocked(stream.id, limited, freeTier)
+  // Гость из квиза пришёл в свой поток (?stream=, например «Спина»): ему
+  // открыты те же бесплатные движения гостя, только этого потока, — иначе
+  // кнопка плана «Размять спину» вела бы на замок.
+  const locked = guest ? false : streamLocked(stream.id, limited, freeTier)
   const moves = useMemo(
     () => (locked ? [] : limited ? stream.loops.slice(0, freeTier.exercise_limit) : stream.loops),
     [stream, locked, limited, freeTier.exercise_limit],
@@ -1256,10 +1263,10 @@ export default function Player() {
    * больше нет, а старые ссылки ходить не перестают.
    */
   useEffect(() => {
-    if (streamId && streamId !== stream.id) {
+    if (routeStreamId && routeStreamId !== stream.id) {
       navigate(`/player/${stream.id}`, { replace: true })
     }
-  }, [streamId, stream.id, navigate])
+  }, [routeStreamId, stream.id, navigate])
 
   /* ─────────────  Сохранение тренировки  ───────────── */
 

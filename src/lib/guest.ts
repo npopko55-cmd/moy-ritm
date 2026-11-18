@@ -38,11 +38,21 @@ import { anonId, readFunnelGuest, readFunnelToken } from './funnel'
  * трёх экранов её не теряет.
  */
 
+/**
+ * Поток гостя — в адресе ?stream=<id> (квиз 18.11.2026: цель «Спина и
+ * осанка» должна открыть «Размять спину», а не поток по умолчанию). Нет
+ * параметра — поток по умолчанию, как раньше.
+ */
+export const GUEST_STREAM_PARAM = 'stream'
+
+const guestStreamQuery = (streamId?: string) =>
+  streamId && streamId !== DEFAULT_STREAM.id ? `?${GUEST_STREAM_PARAM}=${encodeURIComponent(streamId)}` : ''
+
 /** Отсчёт гостя — сюда ведёт «Включить эфир» на главной в гостевом режиме. */
-export const guestStartPath = (token: string) => `/play/${token}/start`
+export const guestStartPath = (token: string, streamId?: string) => `/play/${token}/start${guestStreamQuery(streamId)}`
 
 /** Плеер гостя — сюда уводит отсчёт. */
-export const guestLivePath = (token: string) => `/play/${token}/live`
+export const guestLivePath = (token: string, streamId?: string) => `/play/${token}/live${guestStreamQuery(streamId)}`
 
 /** Куда вернуть человека после регистрации из окна: в обычный плеер. */
 export const GUEST_NEXT = `/player/${DEFAULT_STREAM.id}`

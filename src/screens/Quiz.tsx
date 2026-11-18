@@ -186,13 +186,12 @@ export default function Quiz() {
       urlToken: token && valid ? token : null,
       siteToken,
       cardTrial,
+      streamId: buildPlan(answers as QuizAnswers).streams[0].id,
     })
     // В тренировку — через goFlow: касание заодно разблокирует ролики и музыку.
-    // null — как «Влиться в поток» на главной: туда, куда ведёт flowTarget.
-    if (to === null) goFlow()
-    else if (to.startsWith('/play/') || to.startsWith('/player/')) goFlow(to)
+    if (/^\/(play|player|start)\//.test(to)) goFlow(to)
     else navigate(to)
-  }, [me, access, token, valid, siteToken, cardTrial, goFlow, navigate])
+  }, [me, access, token, valid, siteToken, cardTrial, answers, goFlow, navigate])
 
   if (!valid) return <Navigate to={`/quiz${search}`} replace />
 

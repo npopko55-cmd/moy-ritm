@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { FloatNote, MusicNote, Sparkle } from '../components/Icons'
 import { getStream, WARM_MOVES } from '../data/streams'
 import { loopPoster, loopSrc } from '../data/loops'
 import { startState, useFlow } from '../flow/FlowSession'
-import { guestLivePath } from '../lib/guest'
+import { GUEST_STREAM_PARAM, guestLivePath } from '../lib/guest'
 import { prefetchFiles, prefetchImages } from '../lib/prefetch'
 import { player } from '../lib/screens'
 import { holdAwake, releaseAwake } from '../media/keepAwake'
@@ -42,7 +42,10 @@ export default function Countdown() {
   const navigate = useNavigate()
   // token — отсчёт гостя (/play/<токен>/start, src/screens/PlayGuest.tsx):
   // поток у него по умолчанию, а уводит отсчёт в плеер гостя.
-  const { streamId, token: guestToken } = useParams()
+  const { streamId: routeStreamId, token: guestToken } = useParams()
+  const [search] = useSearchParams()
+  // Гостю поток — из ?stream= (квиз), у вошедшего — из адреса /start/<поток>.
+  const streamId = routeStreamId ?? (guestToken ? search.get(GUEST_STREAM_PARAM) ?? undefined : undefined)
   const [left, setLeft] = useState(START_FROM)
   const { start, setPlaying: setMusicPlaying, selectStream } = useMusic()
   // Отсчёт дошёл до конца и сам уводит в плеер: музыку тогда не трогаем.
@@ -53,7 +56,7 @@ export default function Countdown() {
   // getStream. Дальше по коду идёт уже существующий идентификатор.
   const stream = getStream(streamId)
   const target = stream.id
-  const playerPath = guestToken ? guestLivePath(guestToken) : `/player/${target}`
+  const playerPath = guestToken ? guestLivePath(guestToken, target) : `/player/${target}`
 
   /**
    * Тренировка этого потока уже идёт — отсчёта не будет.

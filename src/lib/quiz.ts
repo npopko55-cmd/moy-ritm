@@ -105,8 +105,8 @@ export const QUIZ_SITE_TOKEN_FALLBACK = true
 
 /**
  * Адрес для кнопки плана. Единственное место, которое решает, куда она ведёт.
- * null — «как „Влиться в поток“»: экран зовёт старт потока без адреса
- * (useFlowStart → flowTarget: отсчёт /start/<поток> или уже идущий заход).
+ * Вошедшему — отсчёт главного потока плана /start/<поток> (с 18.11.2026 вечер:
+ * раньше — поток по умолчанию через flowTarget, и «Спина» открывала кардио).
  *
  * С 18.11.2026 (Никита: «После этого должен включаться типо поток», «Не 3 дня
  * а просто типо войти в поток») кнопка без пробного за 1 ₽ сразу запускает
@@ -130,13 +130,23 @@ export function quizCtaPath(opts: {
   urlToken: string | null
   siteToken: string | null
   cardTrial: boolean
-}): string | null {
+  /**
+   * Главный поток плана (buildPlan: цель «Спина и осанка» — 'back', остальные
+   * — 'cardio'). 18.11.2026: кнопка открывала поток по умолчанию, и цель
+   * «Спина» попадала в «Подвигаться».
+   */
+  streamId: string
+}): string {
   markCta()
-  if (opts.signedIn) return !opts.paid && opts.cardTrial ? QUIZ_SUBSCRIPTION_PATH : null
+  if (opts.signedIn) {
+    if (!opts.paid && opts.cardTrial) return QUIZ_SUBSCRIPTION_PATH
+    // Отсчёт этого потока; идёт тренировка этого же потока — отсчёт сам пустит в неё.
+    return `/start/${opts.streamId}`
+  }
   if (opts.cardTrial) {
     if (QUIZ_SITE_TOKEN_FALLBACK && opts.siteToken && !readFunnelToken()) saveFunnelToken(opts.siteToken)
     return QUIZ_CARD_TRIAL_PATH
   }
   const token = opts.urlToken ?? readFunnelToken() ?? (QUIZ_SITE_TOKEN_FALLBACK ? opts.siteToken : null)
-  return token ? guestStartPath(token) : QUIZ_CTA_PATH
+  return token ? guestStartPath(token, opts.streamId) : QUIZ_CTA_PATH
 }
