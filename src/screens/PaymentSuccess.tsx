@@ -312,7 +312,7 @@ export default function PaymentSuccess() {
               keepAwake()
             }}
           >
-            Влиться в поток
+            Начать двигаться
           </Link>
           <Link to="/">На главную</Link>
         </nav>

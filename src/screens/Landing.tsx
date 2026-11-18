@@ -258,12 +258,18 @@ export default function Landing({ guestToken }: { guestToken?: string } = {}) {
               на узком экране первая может разойтись на «Бесконечный /
               фитнес-эфир» — тогда четыре. */}
           <h1 className="hero__title">
+            {/* Дима 18.11.2026: «Двигайтесь» — прежним жирным, остальное заметно
+                легче (.hero__title-rest). Строки — по смыслу: «Двигайтесь
+                больше.» / «Без сложных тренировок.»; на телефоне вторая может
+                разойтись на «Без сложных / тренировок.». */}
             <span className="hero__line">
-              <span className="hero__phrase">Бесконечный</span>{' '}
-              <span className="hero__phrase">фитнес-эфир</span>
+              <strong className="hero__accent">Двигайтесь</strong>{' '}
+              <span className="hero__title-rest">больше.</span>
             </span>{' '}
-            <span className="hero__line">с простыми движениями</span>{' '}
-            <span className="hero__line">под музыку</span>
+            <span className="hero__line hero__title-rest">
+              <span className="hero__phrase">Без сложных</span>{' '}
+              <span className="hero__phrase">тренировок.</span>
+            </span>
           </h1>
 
           {/* Строки ломаются только между фразами, по смыслу: внутри фразы
@@ -271,9 +277,10 @@ export default function Landing({ guestToken }: { guestToken?: string } = {}) {
               широком экране две: «…повторяйте за тренером / и набирайте
               больше активности за день.» (max-width в Landing.css). */}
           <p className="hero__lead">
-            <span className="hero__phrase">Включайтесь в любой момент,</span>{' '}
-            <span className="hero__phrase">повторяйте за тренером</span>{' '}
-            <span className="hero__phrase">и набирайте больше активности за день.</span>
+            <span className="hero__phrase">Просто включайте поток движений</span>{' '}
+            <span className="hero__phrase">под музыку.</span>{' '}
+            <span className="hero__phrase">Движения сменяются сами,</span>{' '}
+            <span className="hero__phrase">а сколько двигаться — решаете вы.</span>
           </p>
 
           {/* Кнопка в своём блоке: на планшете он стоит в ячейке сетки, на
@@ -282,7 +289,7 @@ export default function Landing({ guestToken }: { guestToken?: string } = {}) {
               захода остаётся «Влиться в поток». */}
           <div className="hero__start">
             <button className="btn btn--pink-lg hero__cta" onClick={start}>
-              {flow ? flowLabel(flow) : 'Включить эфир'}
+              {flow ? flowLabel(flow) : 'Начать двигаться'}
               <span className="hero__cta-arrow">
                 <ArrowRight size={19} />
               </span>

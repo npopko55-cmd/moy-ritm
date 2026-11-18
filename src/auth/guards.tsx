@@ -73,7 +73,8 @@ function newcomerFromBot(): boolean {
 
 /** Подпись той же кнопки: заход продолжается — значит, «вернуться». */
 export function flowLabel(flow?: FlowSession | null): string {
-  return flow ? 'Вернуться в поток' : 'Влиться в поток'
+  // «Начать двигаться» — Дима 18.11.2026 (было «Влиться в поток»).
+  return flow ? 'Вернуться в поток' : 'Начать двигаться'
 }
 
 /**

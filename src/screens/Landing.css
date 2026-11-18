@@ -168,6 +168,11 @@
 .hero__line { display: block; }
 .hero__line + .hero__line { white-space: nowrap; }
 
+/* Дима 18.11.2026: жирное — только «Двигайтесь», остальное заголовка заметно
+   легче того же шрифта, чтобы выделение было видно. */
+.hero__accent { font-weight: 800; }
+.hero__title-rest { font-family: 'Montserrat Hero', var(--font-head); font-weight: 500; }
+
 .hero__lead {
   font-size: clamp(16px, 1.9vh, 24px);
   line-height: 1.55;
