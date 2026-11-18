@@ -2,7 +2,8 @@
  * Квиз «Ваш план на 30 дней»: /quiz и /quiz/<токен> — сюда ведёт реклама ВК
  * и бот. Четыре вопроса по одному на экран, тап по ответу сразу ведёт
  * дальше; между вопросами — секундная загрузка с фразой под ответ; в конце
- * план из ответов и кнопка пробного периода.
+ * план из ответов и кнопка «Влиться в поток»: сразу тренировка, гостю — без
+ * регистрации (с 18.11.2026). Пробный за 1 ₽ включён — кнопка пробного.
  *
  * Метка воронки — как у /go/<токен> (GoFunnel.tsx): визит уходит в фоне,
  * токен запоминается до регистрации, вошедшему не хранится, на ответ
@@ -17,8 +18,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { hasAccess } from '../api/types'
-import { useFlowStart } from '../auth/guards'
+import { flowLabel, useFlowStart } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
+import { useFlow } from '../flow/FlowSession'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
 import { ArrowRight, Bolt, ChevronRight, Clock, Leaf, PlayCircle, Steps } from '../components/Icons'
@@ -69,6 +71,7 @@ export default function Quiz() {
   const { pathname, search } = useLocation()
   const navigate = useNavigate()
   const goFlow = useFlowStart()
+  const { session: flow } = useFlow()
   const { me, loading, access } = useSession()
   const valid = token === undefined || isFunnelToken(token)
 
@@ -177,11 +180,19 @@ export default function Quiz() {
 
   const start = useCallback(() => {
     track('quiz_cta')
-    const to = quizCtaPath({ signedIn: Boolean(me), paid: hasAccess(access), siteToken, cardTrial })
+    const to = quizCtaPath({
+      signedIn: Boolean(me),
+      paid: hasAccess(access),
+      urlToken: token && valid ? token : null,
+      siteToken,
+      cardTrial,
+    })
     // В тренировку — через goFlow: касание заодно разблокирует ролики и музыку.
-    if (to.startsWith('/player/')) goFlow(to)
+    // null — как «Влиться в поток» на главной: туда, куда ведёт flowTarget.
+    if (to === null) goFlow()
+    else if (to.startsWith('/play/') || to.startsWith('/player/')) goFlow(to)
     else navigate(to)
-  }, [me, access, siteToken, cardTrial, goFlow, navigate])
+  }, [me, access, token, valid, siteToken, cardTrial, goFlow, navigate])
 
   if (!valid) return <Navigate to={`/quiz${search}`} replace />
 
@@ -234,6 +245,7 @@ export default function Quiz() {
             goal={(answers as QuizAnswers).goal}
             heading={heading}
             cardTrial={cardTrial}
+            ctaLabel={flowLabel(flow)}
             onStart={start}
             onRestart={restart}
           />
@@ -333,6 +345,7 @@ function PlanView({
   goal,
   heading,
   cardTrial,
+  ctaLabel,
   onStart,
   onRestart,
 }: {
@@ -341,6 +354,8 @@ function PlanView({
   heading: React.RefObject<HTMLHeadingElement>
   /** Пробный за 1 ₽ включён на сервере — под кнопкой строка об автосписании. */
   cardTrial: boolean
+  /** Подпись кнопки без пробного за 1 ₽ — та же, что у входа в поток на главной (flowLabel). */
+  ctaLabel: string
   onStart: () => void
   onRestart: () => void
 }) {
@@ -420,7 +435,7 @@ function PlanView({
 
       <div className="quiz__cta">
         <button type="button" className="btn btn--pink-lg quiz__cta-btn" onClick={onStart}>
-          {cardTrial ? QUIZ_TEXT.cta : QUIZ_TEXT.ctaFree}
+          {cardTrial ? QUIZ_TEXT.cta : ctaLabel}
           <span className="quiz__cta-arrow" aria-hidden="true">
             <ArrowRight size={19} />
           </span>

@@ -13,7 +13,7 @@
 import { api } from '../api/client'
 import { parseAnswers, type QuizAnswers } from '../data/quiz'
 import { readFunnelToken, saveFunnelToken } from './funnel'
-import { GUEST_NEXT } from './guest'
+import { GUEST_NEXT, guestStartPath } from './guest'
 
 const STORAGE_KEY = 'moy-ritm.quiz'
 
@@ -62,16 +62,14 @@ function markCta(): void {
   if (saved) write({ ...saved, cta_at: new Date().toISOString() })
 }
 
-/* ——— Кнопка «Начать: 3 дня за 1 ₽» ——— */
+/* ——— Кнопка плана: «Влиться в поток» или «Начать: 3 дня за 1 ₽» ——— */
 
 /** Метка в адресе регистрации: человек пришёл из квиза. Регистрация её пока не читает. */
 export const QUIZ_FROM = 'quiz'
 
 /**
- * Куда ведёт кнопка плана гостя, пока пробный за 1 ₽ на сервере выключен:
- * туда же, куда ведёт старт пробного у гостя trial3d («3 дня бесплатно» на
- * тарифах, src/components/TariffPlans.tsx) — регистрация с токеном воронки,
- * после неё обычный плеер (GUEST_NEXT).
+ * Запасной путь кнопки гостя, когда токена воронки нет совсем и гостевой
+ * отсчёт открыть нельзя: регистрация, после неё обычный плеер (GUEST_NEXT).
  */
 export const QUIZ_CTA_PATH = `/register?next=${encodeURIComponent(GUEST_NEXT)}&from=${QUIZ_FROM}`
 
@@ -107,26 +105,38 @@ export const QUIZ_SITE_TOKEN_FALLBACK = true
 
 /**
  * Адрес для кнопки плана. Единственное место, которое решает, куда она ведёт.
- * cardTrial — пробный за 1 ₽ включён на сервере (quizCardTrial).
- *   • вошёл и доступ оплачен — в тренировку;
- *   • вошёл без оплаты — на экран подписки, если пробный включён, иначе на
- *     тарифы (регистрация ему уже ни к чему);
- *   • не вошёл — регистрация и потом экран подписки (QUIZ_CARD_TRIAL_PATH),
- *     если пробный включён, иначе QUIZ_CTA_PATH. Токен воронки к этому
- *     моменту уже запомнен, если пришёл по /quiz/<токен> или раньше по /go,
- *     /play; иначе — токен «Сначала гость» (QUIZ_SITE_TOKEN_FALLBACK).
+ * null — «как „Влиться в поток“»: экран зовёт старт потока без адреса
+ * (useFlowStart → flowTarget: отсчёт /start/<поток> или уже идущий заход).
+ *
+ * С 18.11.2026 (Никита: «После этого должен включаться типо поток», «Не 3 дня
+ * а просто типо войти в поток») кнопка без пробного за 1 ₽ сразу запускает
+ * тренировку:
+ *   • вошёл — в поток, оплачено или нет. Без оплаты пейволл покажет сам плеер:
+ *     правило flowTarget — с кнопки входа в поток на тарифы не уводим (до
+ *     18.11 вошедшего без оплаты кнопка уводила на /tariffs);
+ *   • не вошёл — гостевой отсчёт /play/<токен>/start: тренировка без
+ *     регистрации, три бесплатных дня предложит окно гостя по ходу. Токен —
+ *     из адреса квиза, иначе запомненный (/go, /play), иначе «Сначала гость»
+ *     (QUIZ_SITE_TOKEN_FALLBACK); нет ни одного — регистрация (QUIZ_CTA_PATH).
+ *
+ * cardTrial — пробный за 1 ₽ включён на сервере (quizCardTrial): как раньше,
+ * вошедшему без оплаты — экран подписки, гостю — регистрация и экран подписки
+ * (QUIZ_CARD_TRIAL_PATH).
  */
 export function quizCtaPath(opts: {
   signedIn: boolean
   paid: boolean
+  /** Токен из адреса /quiz/<токен>, если он есть и верного вида. */
+  urlToken: string | null
   siteToken: string | null
   cardTrial: boolean
-}): string {
+}): string | null {
   markCta()
-  if (opts.signedIn) {
-    if (opts.paid) return GUEST_NEXT
-    return opts.cardTrial ? QUIZ_SUBSCRIPTION_PATH : '/tariffs'
+  if (opts.signedIn) return !opts.paid && opts.cardTrial ? QUIZ_SUBSCRIPTION_PATH : null
+  if (opts.cardTrial) {
+    if (QUIZ_SITE_TOKEN_FALLBACK && opts.siteToken && !readFunnelToken()) saveFunnelToken(opts.siteToken)
+    return QUIZ_CARD_TRIAL_PATH
   }
-  if (QUIZ_SITE_TOKEN_FALLBACK && opts.siteToken && !readFunnelToken()) saveFunnelToken(opts.siteToken)
-  return opts.cardTrial ? QUIZ_CARD_TRIAL_PATH : QUIZ_CTA_PATH
+  const token = opts.urlToken ?? readFunnelToken() ?? (QUIZ_SITE_TOKEN_FALLBACK ? opts.siteToken : null)
+  return token ? guestStartPath(token) : QUIZ_CTA_PATH
 }
