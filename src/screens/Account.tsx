@@ -223,12 +223,17 @@ export function Form({ onSubmit, children }: FormProps) {
 /** Сервер пока не ответил, вошёл ли человек, — повторяем сами, форму входа не показываем. */
 export const OFFLINE_WAITING = 'Нет связи с сервером. Пробуем подключиться…'
 
+/** Подсказка под OFFLINE_WAITING: с VPN сервер на .ru часто недоступен. */
+export const OFFLINE_VPN_HINT = 'Выключите VPN и обновите страницу.'
+
 /** Пока приложение выясняет, вошёл ли человек. Секунда-две при первом заходе. */
 export function Waiting({ text = 'Секунду…' }: { text?: string }) {
   return (
     <div className="account account--waiting">
       <WaveBg opacity={0.85} />
       <p className="account__waiting">{text}</p>
+      {/* 18.11.2026: сервер не отвечает — чаще всего из-за VPN (текст через na-pero). */}
+      {text === OFFLINE_WAITING && <p className="account__waiting account__waiting--hint">{OFFLINE_VPN_HINT}</p>}
     </div>
   )
 }

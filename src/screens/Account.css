@@ -301,6 +301,16 @@ a.form__second {
   color: var(--gray-500);
 }
 
+/* Подсказка про VPN под «Нет связи с сервером» — заметнее основной строки. */
+.account__waiting--hint {
+  position: relative;
+  margin-top: 10px;
+  padding: 0 24px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--ink-900, #101114);
+}
+
 /* ——— Телефон ——— */
 @media (max-width: 767.98px) {
   .account__header {

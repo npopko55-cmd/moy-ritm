@@ -113,14 +113,14 @@ export const LOOPS: Record<string, Loop> = {
   'chest-crosses': { id: 'chest-crosses', title: 'Руки крест-накрест', duration: 3.542, stepsPerMinute: 40, kind: 'arms', family: 'crosses' },
   'step-clap': { id: 'step-clap', title: 'Шаг в сторону с хлопком', duration: 3.75, stepsPerMinute: 100, kind: 'steps', family: 'step-clap' },
   'jumping-jacks': { id: 'jumping-jacks', title: 'Прыжки, руки вверх', duration: 3.708, stepsPerMinute: 120, kind: 'legs', family: 'jumping-jacks' },
-  'boxer-bounce': { id: 'boxer-bounce', title: 'Стойка боксёра', duration: 1.75, stepsPerMinute: 80, kind: 'arms', family: 'punches' },
-  'chest-crosses-steps': { id: 'chest-crosses-steps', title: 'Крест-накрест с шагом', duration: 1.75, stepsPerMinute: 100, kind: 'steps', family: 'crosses' },
+  'boxer-bounce': { id: 'boxer-bounce', title: 'Стойка боксёра', duration: 1.75, stepsPerMinute: 80, kind: 'arms', family: 'punches', rev: 2 },
+  'chest-crosses-steps': { id: 'chest-crosses-steps', title: 'Крест-накрест с шагом', duration: 1.75, stepsPerMinute: 100, kind: 'steps', family: 'crosses', rev: 2 },
   'squat-steps': { id: 'squat-steps', title: 'Шаги в полуприседе', duration: 1.792, stepsPerMinute: 100, kind: 'steps', family: 'squat-steps' },
   'jazz-hands': { id: 'jazz-hands', title: 'Джазовые руки', duration: 1.75, stepsPerMinute: 40, kind: 'arms', family: 'jazz-hands' },
   'steps-reach-up': { id: 'steps-reach-up', title: 'Шаги с рукой вверх', duration: 1.792, stepsPerMinute: 100, kind: 'steps', family: 'reach' },
   'side-knee-crunch': { id: 'side-knee-crunch', title: 'Колено к локтю сбоку', duration: 1.833, stepsPerMinute: 110, kind: 'legs', family: 'knee' },
   'side-pushes': { id: 'side-pushes', title: 'Толчки в стороны', duration: 1.917, stepsPerMinute: 80, kind: 'arms', family: 'side-pushes' },
-  'step-arm-out': { id: 'step-arm-out', title: 'Шаг, рука в сторону', duration: 2, stepsPerMinute: 100, kind: 'steps', family: 'stepout' },
+  'step-arm-out': { id: 'step-arm-out', title: 'Шаг, рука в сторону', duration: 2, stepsPerMinute: 100, kind: 'steps', family: 'stepout', rev: 2 },
   march: { id: 'march', title: 'Шаг на месте', duration: 1.917, stepsPerMinute: 110, kind: 'steps', family: 'walk' },
   'alternate-reach': { id: 'alternate-reach', title: 'Руки вверх по очереди', duration: 3.5, stepsPerMinute: 60, kind: 'arms', family: 'reach' },
   'arm-crosses-steps': { id: 'arm-crosses-steps', title: 'Скрещивания рук с шагом', duration: 1.75, stepsPerMinute: 100, kind: 'steps', family: 'crosses' },
@@ -255,8 +255,12 @@ export function stepRate(moveId: string): number {
   return (LOOPS[moveId]?.stepsPerMinute ?? 0) / 60
 }
 
-/** Сколько секунд крутится одно движение, прежде чем сменится следующим. */
-export const SECONDS_PER_MOVE = 30
+/**
+ * Сколько секунд крутится одно движение, прежде чем сменится следующим.
+ * С 18.11.2026 — 15 (Дима на созвоне: смена по умолчанию каждые 15 секунд;
+ * до этого 30). Совпадает с DEFAULT_MOVE_INTERVAL на сервере.
+ */
+export const SECONDS_PER_MOVE = 15
 
 /** «?v=2» для заменённого ролика (Loop.rev), пусто для остальных. */
 function revQuery(id: string): string {
