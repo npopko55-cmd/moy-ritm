@@ -1,3 +1,4 @@
+import { isPlaceholderEmail } from '../lib/vkid'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider'
@@ -232,7 +233,7 @@ export default function Landing({ guestToken }: { guestToken?: string } = {}) {
         </div>
       </header>
 
-      {me && !me.user.email_verified && (
+      {me && !me.user.email_verified && !isPlaceholderEmail(me.user.email) && (
         <p className="verify-note">
           <span>
             {/* ТЕКСТ: на вычитку. Платить можно и без подтверждения (12.11.2026). */}

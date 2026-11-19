@@ -9,6 +9,7 @@
  * каждой перерисовке страницы они пересоздавались бы и теряли набранное.
  */
 
+import { isPlaceholderEmail } from '../lib/vkid'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, IS_DEMO } from '../api/client'
@@ -143,8 +144,10 @@ export default function Profile() {
     navigate('/', { replace: true })
   }
 
+  const noEmail = isPlaceholderEmail(user.email)
+
   return (
-    <PageShell title="Профиль" lead={user.email} tab="profile">
+    <PageShell title="Профиль" lead={noEmail ? undefined : user.email} tab="profile">
       <Card title="Кто вы">
         <NameRow me={me} setMe={setMe} />
 
@@ -153,7 +156,11 @@ export default function Profile() {
         <Row
           label="Почта"
           hint={
-            user.email_verified ? (
+            noEmail ? (
+              // Вошёл через VK, почту VK не отдал: адрес-заглушка, писем на
+              // него нет — предлагаем указать настоящую.
+              'Не указана: ВКонтакте не передал почту. Вход — через ВКонтакте'
+            ) : user.email_verified ? (
               user.email
             ) : (
               <>
@@ -174,7 +181,7 @@ export default function Profile() {
           }
         >
           <div className="profile__email-btns">
-            {!user.email_verified && (
+            {!user.email_verified && !noEmail && (
               <button
                 className="page__btn"
                 type="button"
@@ -184,9 +191,12 @@ export default function Profile() {
                 {resend.label('Отправить письмо ещё раз')}
               </button>
             )}
-            <button className="page__btn" onClick={() => setOpen(open === 'email' ? '' : 'email')}>
-              {open === 'email' ? 'Отменить' : 'Сменить почту'}
-            </button>
+            {/* Смена почты требует пароль, а у аккаунта из VK его нет. */}
+            {!noEmail && (
+              <button className="page__btn" onClick={() => setOpen(open === 'email' ? '' : 'email')}>
+                {open === 'email' ? 'Отменить' : 'Сменить почту'}
+              </button>
+            )}
           </div>
         </Row>
 

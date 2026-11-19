@@ -71,3 +71,11 @@ export function vkErrorText(code: string | null): string {
   if (!code) return ''
   return VK_ERRORS[code] ?? 'Не получилось войти через ВКонтакте. Попробуйте ещё раз или войдите по почте'
 }
+
+/**
+ * Адрес-заглушка аккаунта из VK без почты (бэкенд: VK_PLACEHOLDER_EMAIL_DOMAIN).
+ * На него писем не шлём, поэтому и «подтвердите почту» ему не показываем.
+ */
+export function isPlaceholderEmail(email: string | null | undefined): boolean {
+  return Boolean(email && email.toLowerCase().endsWith('@vk.ritmritm.ru'))
+}
