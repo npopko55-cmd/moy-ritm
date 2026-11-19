@@ -10,7 +10,9 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react
 import { IS_DEMO } from '../api/client'
 import { safeNext } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
+import VkLogin from '../components/VkLogin'
 import { cameFromMiniApp } from '../lib/telegram'
+import { vkErrorText } from '../lib/vkid'
 import {
   AccountShell,
   Field,
@@ -38,7 +40,8 @@ export default function Login() {
   const [email, setEmail] = useState(prefilled)
   const [password, setPassword] = useState('')
   const [bad, setBad] = useState({ email: '', password: '' })
-  const [error, setError] = useState('')
+  // Вход через VK не удался — колбэк вернул сюда с ?vk_error=<код>.
+  const [error, setError] = useState(() => vkErrorText(params.get('vk_error')))
   const [busy, setBusy] = useState(false)
 
   if (loading) return <Waiting text={offline ? OFFLINE_WAITING : undefined} />
@@ -70,6 +73,7 @@ export default function Login() {
       title="Вход"
       lead={fromMiniApp ? 'Та же почта и пароль, что в Telegram.' : 'Почта и пароль — и снова в поток.'}
     >
+      <VkLogin next={next} />
       <Form onSubmit={submit}>
         <Field
           label="Почта"

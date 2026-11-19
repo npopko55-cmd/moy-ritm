@@ -60,6 +60,8 @@ import { finishGuest } from '../lib/guest'
 import { saveMoveInterval } from '../lib/settings'
 import { useSitePaymentWatch } from '../lib/sitePayment'
 import { linkTelegramFromBot } from '../lib/tgLink'
+import { trackRegister } from '../lib/analytics'
+import { takeVkReturn } from '../lib/vkid'
 import { IN_TELEGRAM, telegramInitData, telegramLog } from '../lib/telegram'
 
 /** Паузы между попытками узнать, вошёл ли человек, пока сервер не отвечает; дальше — по последней. */
@@ -292,6 +294,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
         const next = await api.getMe()
         if (!cancelled) {
+          // Вернулись из входа через VK (src/lib/vkid.ts): как после
+          // регистрации и входа паролем — минуты гостя уходят под аккаунт,
+          // токен воронки отработал (его унёс бэкенд в state).
+          const vk = takeVkReturn()
+          if (vk) {
+            finishGuest(next.user.id)
+            forgetFunnelToken()
+            if (vk === 'new') trackRegister(next.user.id)
+          }
           settle(next)
           linkFromBot()
         }

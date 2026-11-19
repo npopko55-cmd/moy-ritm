@@ -35,6 +35,7 @@ import { IS_DEMO } from '../api/client'
 import { ApiError } from '../api/types'
 import { safeNext } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
+import VkLogin from '../components/VkLogin'
 import { trackRegister } from '../lib/analytics'
 import {
   AccountShell,
@@ -169,6 +170,7 @@ export default function Register() {
 
   return (
     <AccountShell title="Регистрация" lead="Почта и пароль — всё, что нужно для начала.">
+      <VkLogin next={safeNext(next) ?? '/'} dividerText="или почтой и паролем" />
       <Form onSubmit={submit}>
         <Field
           label="Почта"

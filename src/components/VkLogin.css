@@ -1,0 +1,53 @@
+.vk-login { margin: 4px 0 18px; }
+
+.vk-login__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 24px;
+  border-radius: var(--r-pill);
+  background: #0077ff;
+  color: #fff;
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgba(0, 119, 255, .28);
+  transition: box-shadow .16s ease, transform .16s ease;
+}
+
+.vk-login__btn:active { transform: translateY(1px); }
+
+@media (hover: hover) {
+  .vk-login__btn:hover { box-shadow: 0 12px 28px rgba(0, 119, 255, .38); }
+}
+
+.vk-login__logo { flex: none; }
+
+.vk-login__note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--gray-500, #8a8a99);
+  text-align: center;
+}
+
+.vk-login__or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--gray-500, #8a8a99);
+}
+
+.vk-login__or::before,
+.vk-login__or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--gray-200, #e6e6ee);
+}
