@@ -37,7 +37,7 @@ import TabBar from '../components/TabBar'
 import StreamSwitcher from '../components/StreamSwitcher'
 import Unlock, { GuestUnlock, RenewUnlock, SubscriptionFailedUnlock } from '../components/Unlock'
 import { DEFAULT_FREE_TIER, getStream, streamLocked, WARM_MOVES } from '../data/streams'
-import { loopPoster, loopSrc, SECONDS_PER_MOVE, stepRate, stepsFor, type Loop } from '../data/loops'
+import { loopPoster, loopSrc, stepRate, stepsFor, type Loop } from '../data/loops'
 import PlayerPause from './PlayerPause'
 import {
   FLOW_RESUME_MINUTES,
@@ -282,11 +282,15 @@ export default function Player() {
   // стартует сразу, а bootstrap лишь подтверждает цифры с сервера.
   const [boot, setBoot] = useState<Settings | null>(null)
   const settings = boot ?? me?.settings ?? null
-  // Гостю — интервал из guest-bootstrap, а до ответа (или без него) — 30 с:
-  // интервал, оставшийся в этом браузере от прошлого входа (хоть 15 с), к
-  // гостю не относится — окно регистрации рассчитано на круг 3 × 30 с.
-  const moveInterval =
-    settings?.move_interval_seconds ?? (guest ? SECONDS_PER_MOVE : loadMoveInterval())
+  // Гость (19.11.2026, Никита: «нет выбора скорости смены упражнений») тоже
+  // выбирает интервал в «Управлении». Настроек на сервере у него нет, выбор
+  // живёт в браузере (src/lib/settings.ts), по умолчанию SECONDS_PER_MOVE.
+  // Окна регистрации считаются по секундам движения, а не по кругам, поэтому
+  // от интервала не зависят.
+  const [guestInterval, setGuestInterval] = useState(loadMoveInterval)
+  const moveInterval = guest
+    ? guestInterval
+    : (settings?.move_interval_seconds ?? loadMoveInterval())
   // Мотивационные фразы — над рядом потоков (Дима 28.10.2026: «вернуть
   // мотивашки сверху»). Выключены в настройках — блок остаётся пустым.
   const motivationOn = settings?.motivation_enabled ?? true
@@ -1891,15 +1895,20 @@ export default function Player() {
    * moveInterval: кольцо пойдёт в новом темпе со следующей секунды, а
    * движение, которое уже дольше нового интервала, сменится сразу.
    *
-   * Гостю переключателя нет: настройки требуют входа, а его окно
-   * регистрации рассчитано на круг 3 × 30 с.
+   * Гостю — тот же переключатель, но только в браузере: на сервер не ходим.
    */
   const [intervalFailed, setIntervalFailed] = useState(false)
   const meRef = useRef(me)
   meRef.current = me
   const changeInterval = useCallback(
     async (seconds: number) => {
-      if (!meRef.current || guestRef.current || seconds === moveInterval) return
+      if (seconds === moveInterval) return
+      if (guestRef.current) {
+        setGuestInterval(seconds)
+        saveMoveInterval(seconds)
+        return
+      }
+      if (!meRef.current) return
       const before = moveInterval
       const apply = (value: number) => {
         setBoot((b) => (b ? { ...b, move_interval_seconds: value } : b))
@@ -2238,7 +2247,7 @@ export default function Player() {
                 </div>
               </div>
             )}
-            {!guest && (
+            {(
               <div className="ctl__interval">
                 <header className="stat__head">
                   <span>Смена движения</span>
@@ -2254,7 +2263,7 @@ export default function Player() {
                   </button>
                 </header>
                 <p id={intervalNoteId} className="stat__note" hidden={!intervalNote}>
-                  Через сколько плеер сменит движение в круге. Это та же настройка, что в «Настройках».
+                  Через сколько плеер сменит движение в круге.{guest ? '' : ' Это та же настройка, что в «Настройках».'}
                 </p>
                 <div className="seg" role="radiogroup" aria-label="Менять движение каждые">
                   {MOVE_INTERVALS.map((i) => {

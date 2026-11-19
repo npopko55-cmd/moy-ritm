@@ -244,7 +244,7 @@ export default function Quiz() {
             goal={(answers as QuizAnswers).goal}
             heading={heading}
             cardTrial={cardTrial}
-            ctaLabel={flowLabel(flow)}
+            ctaLabel={flow ? flowLabel(flow) : QUIZ_TEXT.ctaFree}
             onStart={start}
             onRestart={restart}
           />
