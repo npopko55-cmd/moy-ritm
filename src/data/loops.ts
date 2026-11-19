@@ -160,7 +160,7 @@ export const LOOPS: Record<string, Loop> = {
    */
   /*
    * 19.11.2026: 11 роликов «Спины» пересобраны из архива Никиты spina28.zip
-   * (новые версии роликов; №26 и №28 = back4-01/back4-02 не тронуты, их
+   * (новые версии роликов; №26 и №28 = back4-01/back4-02 в тот раз не трогали, их
    * перегенерирует Матвей). Петля — по лучшему стыку; у семи (back-side-hip-bend,
    * back-forward-fold, back-arm-side-turn, back-open-twist, back-posture-stand,
    * back-forearms-face, back-head-tilts) — «туда-обратно» с разворотом в крайней
@@ -218,8 +218,16 @@ export const LOOPS: Record<string, Loop> = {
    * «Боковые наклоны с рукой вверх» (IMG_5512). Петли из того архива, стыки
    * чистые (1,11 и 0,61).
    */
-  'back4-01': { id: 'back4-01', title: 'Поочерёдный подъём рук', duration: 4.458, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
-  'back4-02': { id: 'back4-02', title: 'Боковые наклоны с рукой вверх', duration: 3.458, stepsPerMinute: 0, kind: 'torso', family: 'side-bend' },
+  /*
+   * 19.11.2026: №26 и №28 — переделки Матвея (исходники 960×960,
+   * _spina-zip-1119/matvey), собраны _1119/tools/build11.py. Фигура в них мельче
+   * остальных, поэтому кадр увеличен (×1,12 и ×1,05), но не до общего роста 0,83:
+   * иначе поднятая рука выходит за круг плеера; рост 0,81 и 0,77. Петли
+   * «туда-обратно» с разворотом между крайними позами (обе руки в петле).
+   * rev: 6 — на сервере лежали старые back4-0x с «гномом» (rev 5 не было).
+   */
+  'back4-01': { id: 'back4-01', title: 'Поочерёдный подъём рук', duration: 2, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 6 },
+  'back4-02': { id: 'back4-02', title: 'Рука вверх, другая к плечу', duration: 6, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 6 },
   'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze', rev: 4 },
   'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back2-03': { id: 'back2-03', title: 'Руки вверх и к плечам', duration: 3.917, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
