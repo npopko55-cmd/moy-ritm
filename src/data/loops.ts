@@ -226,8 +226,15 @@ export const LOOPS: Record<string, Loop> = {
    * «туда-обратно» с разворотом между крайними позами (обе руки в петле).
    * rev: 6 — на сервере лежали старые back4-0x с «гномом» (rev 5 не было).
    */
-  'back4-01': { id: 'back4-01', title: 'Поочерёдный подъём рук', duration: 2, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 6 },
-  'back4-02': { id: 'back4-02', title: 'Рука вверх, другая к плечу', duration: 6, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 6 },
+  /*
+   * 19.11.2026, вечер: в rev 6 №26 был собран из отклонённой версии Матвея
+   * («карлик», hf_…085502), а №28 — из ролика с движением №26. Теперь №26 —
+   * hf_…092927 (одобрен «Топ»; это прежний файл back4-02 rev 6 без изменений),
+   * №28 — hf_…092158 (одобрен «Все к»): ×1,03, петля «туда-обратно» между
+   * верхними позами обеих рук, кадры 2↔58 исходника, 112 кадров.
+   */
+  'back4-01': { id: 'back4-01', title: 'Поочерёдный подъём рук', duration: 6, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 7 },
+  'back4-02': { id: 'back4-02', title: 'Рука вверх, другая к плечу', duration: 4.667, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 7 },
   'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze', rev: 4 },
   'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back2-03': { id: 'back2-03', title: 'Руки вверх и к плечам', duration: 3.917, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
