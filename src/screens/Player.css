@@ -818,6 +818,19 @@
   .player .tabbar__item { padding: 4px 6px; }
 }
 
+/* Гость на десктопе (19.11.2026): в правой колонке у него ещё плашка «Открой
+   весь функционал», а с выбором смены движения колонка на 1280×800 не
+   помещалась — кнопки интервала уходили под низ. Плашку не трогаем, ужимаем
+   отступы карточек, график недели и кнопки «Управления». */
+@media (min-width: 1180px) and (max-height: 899.98px) {
+  .stat--ctl.is-guest .ctrl--main { width: 56px; height: 56px; }
+  .stat--ctl.is-guest .ctrl--sound { width: 46px; height: 46px; }
+  .stat--ctl.is-guest .ctl__interval { margin-top: 8px; padding-top: 8px; }
+  .stat--ctl.is-guest .seg { margin-top: 6px; }
+  .player__stats:has(.stat--ctl.is-guest) .stat { padding: 10px 14px; }
+  .player__stats:has(.stat--ctl.is-guest) .week { height: 88px; }
+}
+
 /* График недели на низком экране: 92 px хватает на галочку, дорожку и три
    строки подписей. */
 @media (max-height: 759.98px) {
