@@ -444,6 +444,15 @@
   .ctrl--sound.is-blocked { animation: none; box-shadow: 0 0 0 4px rgba(255, 122, 24, 0.35); }
 }
 
+/* ——— Отсчёт до смены движения ——— */
+/*
+ * Кружок с секундами (src/components/MoveTimer.tsx). У круга он только на
+ * телефоне в портрете — справа в ряду звука и паузы (правило ниже). В трёх
+ * колонках он в карточке «Управление», в остальных раскладках у круга для
+ * него нет свободного места — там он спрятан.
+ */
+.stage__timer { display: none; }
+
 /* ═══════════════════════════════════════════════════════════════
    Режим «угол»: круг достаточно велик, чтобы кнопка уместилась
    в пустом углу квадрата вокруг него. Пороги подобраны по кругу,
@@ -673,6 +682,14 @@
   font-size: clamp(11.5px, 1.2vh, 13px);
   color: var(--gray-500);
   white-space: nowrap;
+}
+
+/* Отсчёт в «Управлении» — по высоте как звук, на одной линии подписей. */
+.stat--ctl .ctl__timer {
+  width: clamp(48px, 5.6vh, 56px);
+  height: clamp(48px, 5.6vh, 56px);
+  margin-top: calc((clamp(56px, 6.6vh, 68px) - clamp(48px, 5.6vh, 56px)) / 2);
+  margin-bottom: calc((clamp(56px, 6.6vh, 68px) - clamp(48px, 5.6vh, 56px)) / 2);
 }
 
 /* Пауза — большая розовая, в цвет кольца; звук — спокойный серый кружок. */
@@ -1488,6 +1505,16 @@
   .player .stage__sound > span { display: none; }
   .player .ctrl--main { width: 54px; height: 54px; }
   .player .ctrl--sound { width: 46px; height: 46px; }
+
+  /* Отсчёт до смены движения — зеркально звуку, у правого края ряда
+     (Дима, 19.11.2026). Тот же размер 46 px, центр на линии паузы. */
+  .player .stage__timer {
+    position: absolute;
+    right: 0;
+    bottom: 4px;
+    z-index: 3;
+    display: block;
+  }
 
   /* На весь экран из высоты круга вычитается тот же ряд кнопок. */
   .player.player--immersive .player__stage { --pause-row: var(--phone-ctrl-row); }

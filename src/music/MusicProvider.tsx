@@ -12,7 +12,7 @@ import { api } from '../api/client'
 import { ApiError, type Me } from '../api/types'
 import { useSession } from '../auth/SessionProvider'
 import { bumpSettingsRevision, currentSettingsRevision } from '../lib/settings'
-import { LONG_INTRO_SECONDS, TRACKS, type Track, playlistFor, shuffled, trackSrc } from '../data/music'
+import { LONG_INTRO_SECONDS, TRACKS, type Track, entryOffset, pickTrack, playlistFor, trackSrc } from '../data/music'
 import { setMusicUnlock } from '../media/unlock'
 import { isNotAllowed } from '../media/videoPool'
 
@@ -56,6 +56,13 @@ type MusicValue = {
    */
   next: () => void
   /**
+   * Новый заход в поток (отсчёт перед тренировкой): плейлист потока,
+   * случайный трек — не тот, что играл последним, — со случайного места
+   * 20–40 с (entryOffset в src/data/music.ts). Играла музыка — новый трек
+   * встаёт и разгорается сразу, стояла — подставляется и ждёт пуска.
+   */
+  enterStream: (streamId: string) => void
+  /**
    * Музыка потока: у «Размять спину» свой плейлист (playlistFor в
    * src/data/music.ts). Отсчёт и плеер зовут это со своим потоком, а
    * переключатель потоков — прямо в касании, чтобы новый трек встал и
@@ -66,6 +73,25 @@ type MusicValue = {
 }
 
 const MusicContext = createContext<MusicValue | null>(null)
+
+/** Где помним последний звучавший трек: следующий заход начнётся с другого. */
+const LAST_TRACK_KEY = 'moy-ritm.lastTrack'
+
+function readLastTrack(): string | null {
+  try {
+    return localStorage.getItem(LAST_TRACK_KEY)
+  } catch {
+    return null
+  }
+}
+
+function rememberLastTrack(id: string) {
+  try {
+    localStorage.setItem(LAST_TRACK_KEY, id)
+  } catch {
+    // Приватный режим или запрет хранилища — переживём: просто без памяти.
+  }
+}
 
 /** Громкость по умолчанию, пока профиль не загрузился: 0…100 из настроек. */
 const DEFAULT_VOLUME = 100
@@ -126,15 +152,25 @@ function wishHolds(wish: MusicWish | null, me: Me | null): boolean {
 export function MusicProvider({ children }: { children: ReactNode }) {
   /** Плейлист потока как в src/data/music.ts — по нему видно, сменился ли он. */
   const sourceRef = useRef<Track[]>(TRACKS)
-  const [playlist, setPlaylist] = useState(() => shuffled(TRACKS))
-  /** Очередь для обработчиков: смена потока подменяет её сразу, до перерисовки. */
-  const playlistRef = useRef(playlist)
-  const [index, setIndex] = useState(0)
   /**
-   * Номер трека для обработчиков. Меняет его только «следующий» (next) — и
-   * сразу, не дожидаясь перерисовки: новый трек ставится в том же касании.
+   * Музыка «как радио» (Дима, 19.11.2026). Раньше очередь перемешивалась
+   * один раз на загрузку страницы, а новый заход продолжал тот же трек с
+   * места паузы — и человек раз за разом слышал одни и те же 1–2 трека.
+   * Теперь каждый заход (enterStream) берёт случайный трек всего плейлиста
+   * со случайного места, а «следующий» — случайный, кроме только что
+   * звучавшего.
    */
-  const indexRef = useRef(0)
+  const [first] = useState(() => {
+    const t = pickTrack(TRACKS, readLastTrack())
+    return { track: t, from: entryOffset(t) }
+  })
+  const [track, setTrack] = useState<Track>(first.track)
+  /** Трек для обработчиков: меняется сразу, не дожидаясь перерисовки. */
+  const trackRef = useRef<Track>(first.track)
+  /** С какой секунды включить выбранный трек, когда он встанет в проигрыватель. */
+  const pendingFrom = useRef(first.from)
+  /** Последний трек, который ставили в проигрыватель (и в прошлых загрузках). */
+  const lastPlayed = useRef<string | null>(readLastTrack())
   const [playing, setPlayingState] = useState(false)
   const [blocked, setBlocked] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -169,11 +205,14 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   targetRef.current = target
   const on = playing && enabled
 
-  const track = playlist[index % playlist.length]
   /** Трек, который сейчас стоит или встанет следующим пуском. */
-  const currentTrack = useCallback(() => {
-    const list = playlistRef.current
-    return list[indexRef.current % list.length]
+  const currentTrack = useCallback(() => trackRef.current, [])
+
+  /** Выбрать трек и секунду, с которой он пойдёт. Сам не подставляет и не запускает. */
+  const choose = useCallback((t: Track, from: number) => {
+    trackRef.current = t
+    pendingFrom.current = from
+    setTrack(t)
   }, [])
 
   // Состояние для обработчиков касаний — свежее, без пересоздания. Кнопка
@@ -286,15 +325,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // с паузы посреди трека — короткий.
   const fresh = useRef(true)
 
-  /**
-   * Был ли уже переход на следующий трек в этом заходе.
-   *
-   * Флаг, а не сравнение индексов: индекс возвращается к нулю, когда
-   * плейлист доигран по кругу, и «первым» стал бы уже звучавший трек.
-   * Ставится и автопереходом по концу трека, и кнопкой «следующий».
-   */
-  const advanced = useRef(false)
-
   /** Источник уже подставлен: музыку хоть раз запускали. */
   const armed = useRef(false)
 
@@ -303,10 +333,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const a = audioRef.current
     if (!a) return
     armed.current = true
-    // Первый трек захода — с «разгара», чтобы поток начался сразу. Дальше
-    // с начала, кроме треков с долгим вступлением: их разгар слишком далеко.
-    const from = !advanced.current || t.startAt >= LONG_INTRO_SECONDS ? t.startAt : 0
+    // Секунду выбрал тот, кто выбрал трек: заход — случайная 20–40 с,
+    // следующий трек — с начала (или с разгара при долгом вступлении).
+    const from = t.id === trackRef.current.id ? pendingFrom.current : 0
     fromRef.current = from
+    lastPlayed.current = t.id
+    rememberLastTrack(t.id)
     // #t= — медиафрагмент: браузер сам начинает с нужной секунды. Работает
     // и через сервис-воркер, который отдаёт медиа кусками по 206.
     a.src = from > 0 ? `${trackSrc(t.id)}#t=${from}` : trackSrc(t.id)
@@ -326,49 +358,58 @@ export function MusicProvider({ children }: { children: ReactNode }) {
    * придёт в play() и включит «Включить звук».
    */
   const next = useCallback(() => {
-    advanced.current = true
-    const list = playlistRef.current
-    const i = (indexRef.current + 1) % list.length
-    indexRef.current = i
-    setIndex(i)
+    // Случайный трек плейлиста, только не тот, что сейчас доиграл. Посреди
+    // тренировки — с начала (кроме долгих вступлений); если музыку ещё ни
+    // разу не запускали, это первый трек захода — со случайного места.
+    const t = pickTrack(sourceRef.current, trackRef.current.id)
+    const from = !armed.current ? entryOffset(t) : t.startAt >= LONG_INTRO_SECONDS ? t.startAt : 0
+    choose(t, from)
     setBlocked(false)
     // Музыку ещё ни разу не запускали — источник подставит первый пуск.
     if (!armed.current) return
-    load(list[i])
+    load(t)
     if (onRef.current) {
       play(FADE_START)
       fresh.current = false
     }
-  }, [load, play])
+  }, [load, play, choose])
   nextRef.current = next
 
   /**
-   * Сменить плейлист на музыку потока. Тем же путём, что и «следующий»:
-   * играла музыка — новый трек встаёт и разгорается сразу (FADE_START), стояла
-   * — подставляется и ждёт пуска. Новый плейлист — это новый заход в музыку:
-   * свежая перемешанная очередь, и её первый трек снова с «разгара».
+   * Новый заход в музыку потока: случайный трек плейлиста, кроме звучавшего
+   * последним, со случайного места 20–40 с. Тем же путём, что и «следующий»:
+   * играла музыка — новый трек встаёт и разгорается сразу (FADE_START),
+   * стояла — подставляется и ждёт пуска.
    */
-  const selectStream = useCallback(
+  const enterStream = useCallback(
     (streamId: string) => {
       const source = playlistFor(streamId)
-      if (source === sourceRef.current) return
       sourceRef.current = source
-      const list = shuffled(source)
-      playlistRef.current = list
-      indexRef.current = 0
-      setPlaylist(list)
-      setIndex(0)
-      advanced.current = false
+      const t = pickTrack(source, lastPlayed.current ?? trackRef.current.id)
+      choose(t, entryOffset(t))
       failures.current = 0
       setBlocked(false)
       if (!armed.current) return
-      load(list[0])
+      load(t)
       if (onRef.current) {
         play(FADE_START)
         fresh.current = false
       }
     },
-    [load, play],
+    [load, play, choose],
+  )
+
+  /**
+   * Сменить плейлист на музыку потока (переключатель потоков, плеер после
+   * перезагрузки). Тот же плейлист — ничего не меняется, музыка играет
+   * дальше. Другой — это новый заход (enterStream).
+   */
+  const selectStream = useCallback(
+    (streamId: string) => {
+      if (playlistFor(streamId) === sourceRef.current) return
+      enterStream(streamId)
+    },
+    [enterStream],
   )
 
   /**
@@ -633,6 +674,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       start,
       setPlaying,
       next,
+      enterStream,
       selectStream,
     }),
     [
@@ -647,6 +689,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       start,
       setPlaying,
       next,
+      enterStream,
       selectStream,
     ],
   )

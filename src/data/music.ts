@@ -21,8 +21,8 @@ export type Track = {
 /**
  * Порог «долгого вступления», секунды.
  *
- * С «разгара» всегда включается только первый трек захода — чтобы поток
- * начался сразу. Следующие идут с начала: человек уже в движении, разгонять
+ * Первый трек захода включается со случайного места (entryOffset ниже —
+ * «как радио»). Следующие идут с начала: человек уже в движении, разгонять
  * его не надо. Исключение — треки, у которых до разгара больше этого порога:
  * полминуты тихого вступления посреди тренировки слушать незачем, поэтому
  * такие тоже включаются с разгара.
@@ -99,12 +99,27 @@ export function trackSrc(id: string): string {
   return asset(`music/${id}.m4a`)
 }
 
-/** Порядок треков перемешивается на каждый заход, чтобы не приедался. */
-export function shuffled<T>(items: T[]): T[] {
-  const copy = [...items]
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
-  }
-  return copy
+/**
+ * Музыка «как радио» (Дима после кастдева, 19.11.2026): каждый заход в поток
+ * начинается со случайного трека всего плейлиста и не с начала, а с
+ * случайного места между ENTRY_FROM_MIN и ENTRY_FROM_MAX секундой — но не
+ * дальше середины трека. Как будто включил радио, а там уже играет.
+ */
+export const ENTRY_FROM_MIN = 20
+export const ENTRY_FROM_MAX = 40
+
+/** Случайная секунда входа в трек для нового захода: 20–40 с, не дальше середины. */
+export function entryOffset(t: Track, random: () => number = Math.random): number {
+  const hi = Math.min(ENTRY_FROM_MAX, t.duration / 2)
+  const lo = Math.min(ENTRY_FROM_MIN, hi)
+  return Math.round((lo + random() * (hi - lo)) * 10) / 10
+}
+
+/**
+ * Случайный трек плейлиста, кроме exceptId — того, что только что играл.
+ * В плейлисте из одного трека выбирать не из чего — вернётся он сам.
+ */
+export function pickTrack(items: Track[], exceptId: string | null, random: () => number = Math.random): Track {
+  const pool = items.length > 1 ? items.filter((t) => t.id !== exceptId) : items
+  return pool[Math.floor(random() * pool.length)] ?? items[0]
 }

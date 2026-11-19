@@ -47,7 +47,7 @@ export default function Countdown() {
   // Гостю поток — из ?stream= (квиз), у вошедшего — из адреса /start/<поток>.
   const streamId = routeStreamId ?? (guestToken ? search.get(GUEST_STREAM_PARAM) ?? undefined : undefined)
   const [left, setLeft] = useState(START_FROM)
-  const { start, setPlaying: setMusicPlaying, selectStream } = useMusic()
+  const { start, setPlaying: setMusicPlaying, selectStream, enterStream } = useMusic()
   // Отсчёт дошёл до конца и сам уводит в плеер: музыку тогда не трогаем.
   const toPlayer = useRef(false)
   const { session: flow } = useFlow()
@@ -76,9 +76,14 @@ export default function Countdown() {
   // эффекты отсчёта идут после layout-эффектов, и первым пуском встанет уже
   // трек нужного плейлиста. Переключатель потоков в плеере сюда не ведёт:
   // с 28.10.2026 он открывает плеер нового потока сразу, без отсчёта.
+  //
+  // Новый заход — музыка «как радио» (Дима, 19.11.2026): случайный трек
+  // плейлиста со случайного места, а не продолжение прошлого трека. Возврат
+  // в идущую тренировку (resume) музыку не трогает — она продолжится.
   useLayoutEffect(() => {
-    selectStream(target)
-  }, [selectStream, target])
+    if (resume) selectStream(target)
+    else enterStream(target)
+  }, [selectStream, enterStream, target, resume])
 
   // Музыка включается сразу на отсчёте, а не при появлении плеера. Плеер
   // подхватывает её из общего проигрывателя без перезапуска. Ушли с отсчёта

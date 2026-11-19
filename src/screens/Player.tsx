@@ -16,6 +16,7 @@ import { useSession } from '../auth/SessionProvider'
 import { days, durationTight, toMinutes, weekdayShort } from '../lib/date'
 import Logo from '../components/Logo'
 import WaveBg from '../components/WaveBg'
+import MoveTimer from '../components/MoveTimer'
 import {
   Check,
   ChevronRight,
@@ -996,6 +997,8 @@ export default function Player() {
   )
 
   const moveProgress = Math.min(1, inMove / moveInterval)
+  /** Секунды до смены движения — кружок с отсчётом у паузы (MoveTimer). */
+  const moveLeft = Math.max(1, moveInterval - inMove)
 
   // Секундный тик заведён один раз на всю тренировку и не пересоздаётся при
   // смене движения, поэтому темп он берёт не из замыкания, а отсюда.
@@ -2080,6 +2083,15 @@ export default function Player() {
             {playing ? <Pause size={30} /> : <Play size={30} />}
           </button>
         </div>
+
+        {/*
+          Отсчёт до смены движения (Дима, 19.11.2026): на телефоне — справа
+          в ряду со звуком и паузой, зеркально звуку. В остальных раскладках
+          он в карточке «Управление» (ниже) — у круга его прячет Player.css.
+        */}
+        <div className="stage__timer">
+          <MoveTimer left={moveLeft} total={moveInterval} running={playing} />
+        </div>
         </>
         ) : (
           // Бесплатно не открыто ни одного движения или весь поток закрыт
@@ -2244,6 +2256,10 @@ export default function Player() {
                     {soundPlaying ? <SpeakerOn size={24} /> : <SpeakerOff size={24} />}
                   </button>
                   <span>{soundPlaying ? 'Звук' : 'Включить звук'}</span>
+                </div>
+                <div className="ctl__btn">
+                  <MoveTimer left={moveLeft} total={moveInterval} running={playing} className="ctl__timer" />
+                  <span>До смены</span>
                 </div>
               </div>
             )}

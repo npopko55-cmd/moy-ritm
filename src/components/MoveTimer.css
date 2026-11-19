@@ -1,0 +1,43 @@
+/* Обратный отсчёт до смены движения — src/components/MoveTimer.tsx. */
+.move-timer {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--white, #fff);
+  box-shadow: 0 8px 20px rgba(255, 45, 142, 0.22);
+  flex: none;
+}
+
+.move-timer svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.move-timer__track { stroke: #fde3ee; }
+
+.move-timer__arc { transition: stroke-dashoffset .45s linear; }
+.move-timer__arc.is-full { transition: none; }
+
+.move-timer__num {
+  position: relative;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(140deg, #ff2d8e 0%, #ff5ca8 55%, #ff9838 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* На паузе отсчёт стоит — кольцо чуть приглушено. */
+.move-timer.is-paused .move-timer__arc { opacity: .55; }
+
+@media (prefers-reduced-motion: reduce) {
+  .move-timer__arc { transition: none; }
+}
