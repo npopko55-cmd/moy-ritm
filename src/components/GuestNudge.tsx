@@ -13,7 +13,9 @@
  * переходят в аккаунт после регистрации в этом браузере (finishGuest).
  */
 
-import { useId } from 'react'
+import { useEffect, useId } from 'react'
+import { prefetchImages } from '../lib/prefetch'
+import { GUEST_PROMPT_HEROINE } from './GuestPrompt'
 import { Close } from './Icons'
 import './GuestNudge.css'
 import { CARD_TRIAL_TEXT, useCardTrialOnly } from '../lib/cardTrial'
@@ -29,6 +31,8 @@ type Props = {
 
 export default function GuestNudge({ trial3d, onClose, onCta }: Props) {
   const titleId = useId()
+  // Следом через 1:30 придёт короткое окно (GuestPrompt) — его героиню качаем заранее.
+  useEffect(() => prefetchImages([GUEST_PROMPT_HEROINE]), [])
   // «3 дня за 1 ₽» вместо бесплатных дней — только когда сервер так говорит (src/lib/cardTrial.ts).
   const card = useCardTrialOnly()
   return (

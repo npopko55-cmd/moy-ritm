@@ -32,32 +32,36 @@
   animation: gp-rise 0.26s cubic-bezier(0.2, 0.8, 0.25, 1);
 }
 
-/* ——— Героиня на градиенте ——— */
+/*
+ * ——— Героиня над кругом (19.11.2026) ———
+ * Раньше — фиолетово-розовая полоса и героиня в полный рост, которую белая
+ * карточка резала по бёдра (Никита: «Убого выглядит»). Теперь белое окно и
+ * героиня в наушниках над фирменным фиолетовым кругом: картинка сама кончается
+ * дугой круга, поэтому ничего не режется о край. Фон белый: свечение под
+ * кругом даёт тень самой картинки, а подложка-градиент оставляла бы край там,
+ * где кончается полоса. Высота задаётся картинке, полоса подстраивается.
+ */
 
 .gp__hero {
   position: relative;
   flex: none;
   display: flex;
   justify-content: center;
-  height: clamp(118px, 24vh, 196px);
-  overflow: hidden;
-  background:
-    radial-gradient(120% 90% at 50% 110%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 60%),
-    linear-gradient(135deg, var(--violet-600) 0%, var(--violet-500) 38%, var(--pink-500) 100%);
+  align-items: flex-end;
+  padding: 20px 0 0;
 }
 
-.gp__sheet--short .gp__hero { height: clamp(96px, 17vh, 150px); }
-
 .gp__heroine {
-  align-self: flex-end;
-  height: 118%;
+  display: block;
   width: auto;
-  margin-bottom: -14%;
-  object-fit: contain;
-  filter: drop-shadow(0 10px 18px rgba(60, 20, 90, 0.25));
+  height: clamp(150px, 25vh, 200px);
+  aspect-ratio: 537 / 480;
+  filter: drop-shadow(0 12px 20px rgba(127, 78, 224, 0.22));
   pointer-events: none;
   user-select: none;
 }
+
+.gp__sheet--short .gp__heroine { height: clamp(128px, 20vh, 168px); }
 
 /*
  * Крестик — чуть заметный (правка Димы 09.10.2026: «огромный яркий круг… я бы
@@ -80,7 +84,7 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: rgba(236, 232, 244, 0.6);
+  color: var(--gray-400);
   cursor: pointer;
   transition: color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
@@ -88,12 +92,12 @@
 
 .gp__close svg { width: 18px; height: 18px; }
 
-.gp__close:hover { color: rgba(236, 232, 244, 0.9); }
+.gp__close:hover { color: var(--gray-600); }
 
 .gp__close:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline: 2px solid var(--violet-500);
   outline-offset: -4px;
-  color: rgba(236, 232, 244, 0.95);
+  color: var(--gray-600);
 }
 
 /* ——— Текст ——— */
@@ -245,15 +249,16 @@
     box-shadow: 0 24px 60px rgba(16, 17, 20, 0.28);
   }
 
-  .gp__hero { height: 196px; }
-  .gp__sheet--short .gp__hero { height: 150px; }
+  .gp__heroine { height: 200px; }
+  .gp__sheet--short .gp__heroine { height: 168px; }
 }
 
 /* ——— Низкий экран (320×568 и ландшафт): всё мельче, кнопка на месте ——— */
 
 @media (max-height: 640px) {
-  .gp__hero { height: clamp(78px, 15vh, 110px); }
-  .gp__sheet--short .gp__hero { height: clamp(70px, 13vh, 96px); }
+  .gp__hero { padding-top: 12px; }
+  .gp__heroine { height: clamp(96px, 17vh, 120px); }
+  .gp__sheet--short .gp__heroine { height: clamp(88px, 16vh, 110px); }
   .gp__body { padding: 14px 18px 0; }
   .gp__title { font-size: 19px; }
   .gp__lead { margin-top: 6px; font-size: 14px; line-height: 1.4; }
