@@ -7,8 +7,8 @@
  * отмечает его у нового аккаунта.
  */
 
-import { Link } from 'react-router-dom'
-import { VK_LOGIN_AVAILABLE, vkStartUrl } from '../lib/vkid'
+import { Link, useSearchParams } from 'react-router-dom'
+import { VK_LOGIN_AVAILABLE, vkErrorText, vkStartUrl } from '../lib/vkid'
 import './VkLogin.css'
 
 type Props = {
@@ -19,9 +19,18 @@ type Props = {
 }
 
 export default function VkLogin({ next, dividerText = 'или по почте' }: Props) {
+  // Вход через VK не удался — колбэк вернул сюда с ?vk_error=<код>. Текст —
+  // над кнопкой, а не под формой: на телефоне низ формы за краем экрана.
+  const [params] = useSearchParams()
+  const vkError = vkErrorText(params.get('vk_error'))
   if (!VK_LOGIN_AVAILABLE) return null
   return (
     <div className="vk-login">
+      {vkError && (
+        <p className="vk-login__error" role="alert" data-testid="vk-error">
+          {vkError}
+        </p>
+      )}
       <a className="vk-login__btn" href={vkStartUrl(next)} data-testid="vk-login">
         <svg className="vk-login__logo" viewBox="0 0 24 24" aria-hidden="true" width="24" height="24">
           <path

@@ -12,7 +12,6 @@ import { safeNext } from '../auth/guards'
 import { useSession } from '../auth/SessionProvider'
 import VkLogin from '../components/VkLogin'
 import { cameFromMiniApp } from '../lib/telegram'
-import { vkErrorText } from '../lib/vkid'
 import {
   AccountShell,
   Field,
@@ -40,8 +39,7 @@ export default function Login() {
   const [email, setEmail] = useState(prefilled)
   const [password, setPassword] = useState('')
   const [bad, setBad] = useState({ email: '', password: '' })
-  // Вход через VK не удался — колбэк вернул сюда с ?vk_error=<код>.
-  const [error, setError] = useState(() => vkErrorText(params.get('vk_error')))
+  const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   if (loading) return <Waiting text={offline ? OFFLINE_WAITING : undefined} />
