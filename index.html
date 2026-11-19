@@ -312,8 +312,24 @@
           }
         }
 
+        // 19.11.2026: «Обновить» всегда ведёт на живой https-адрес. Если
+        // страница открыта не с сайта (file://, сохранённая копия, превью),
+        // location.reload() давал ERR_FILE_NOT_FOUND — тогда идём на ritmritm.ru
+        // с тем же путём. На сайте — та же страница через replace(), без
+        // записи в историю.
         function reload() {
-          location.reload();
+          var site = 'https://ritmritm.ru';
+          try {
+            if (/^https?:$/.test(location.protocol) && location.host) {
+              location.replace(location.href.split('#')[0]);
+              return;
+            }
+            var path = location.pathname || '/';
+            if (!/^\/(play|quiz|player|live|tariffs|login|register)(\/|$)/.test(path)) path = '/';
+            location.replace(site + path + (location.search || ''));
+          } catch (e) {
+            location.href = site + '/';
+          }
         }
 
         function showNote() {
