@@ -160,7 +160,7 @@ type DemoStats = {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  move_interval_seconds: 30,
+  move_interval_seconds: 15,
   music_enabled: true,
   music_volume: 80,
   motivation_enabled: true,
