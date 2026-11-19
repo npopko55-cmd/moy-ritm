@@ -9,11 +9,16 @@ import { catchInstallPrompt } from './lib/install'
 import { screenWaiting } from './lib/screens'
 import { applyStandaloneLook } from './lib/standalone'
 import { startTelegram } from './lib/telegram'
+import { startVk } from './lib/vkapp'
 import './styles/global.css'
 
 // Открыты внутри Telegram — подключаем его скрипт и настраиваем мини-ап.
 // Обычному посетителю ничего не качается (src/lib/telegram.ts).
 startTelegram()
+
+// Открыты внутри ВКонтакте как мини-приложение — VKWebAppInit сразу, иначе
+// ВК держит заставку. Снаружи ничего не качается (src/lib/vkapp.ts).
+startVk()
 
 // Открыты как приложение с экрана «Домой» — полоса с часами белая, а не
 // розовая, ещё до первой отрисовки (src/lib/standalone.ts).

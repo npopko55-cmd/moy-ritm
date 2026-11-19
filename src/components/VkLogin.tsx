@@ -9,6 +9,7 @@
 
 import { Link, useSearchParams } from 'react-router-dom'
 import { VK_LOGIN_AVAILABLE, vkErrorText, vkStartUrl } from '../lib/vkid'
+import { VK_LINK_TARGET } from '../lib/vkapp'
 import './VkLogin.css'
 
 type Props = {
@@ -31,7 +32,14 @@ export default function VkLogin({ next, dividerText = 'или по почте' }
           {vkError}
         </p>
       )}
-      <a className="vk-login__btn" href={vkStartUrl(next)} data-testid="vk-login">
+      {/* В мини-приложении ВК id.vk.ru в iframe не открывается — новая вкладка. */}
+      <a
+        className="vk-login__btn"
+        href={vkStartUrl(next)}
+        target={VK_LINK_TARGET}
+        rel={VK_LINK_TARGET ? 'noopener' : undefined}
+        data-testid="vk-login"
+      >
         <svg className="vk-login__logo" viewBox="0 0 24 24" aria-hidden="true" width="24" height="24">
           <path
             fill="currentColor"
