@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider'
 import { readFunnelGuest, readFunnelToken } from '../lib/funnel'
-import { guestFirstToken, guestStartPath } from '../lib/guest'
+import { GUEST_STREAM_PARAM, guestFirstToken, guestStartPath } from '../lib/guest'
 import { flowLabel, useFlowStart } from '../auth/guards'
 import { useFlow } from '../flow/FlowSession'
 import LegalLinks from '../components/LegalLinks'
@@ -89,7 +89,11 @@ export default function Landing({ guestToken }: { guestToken?: string } = {}) {
   // там эта же главная. Переход тоже через goFlow — касание разблокирует медиа,
   // и после отсчёта ролик на iPhone пойдёт без нового касания.
   const guest = me ? null : (ownGuest ?? guestEntry)
-  const start = () => goFlow(guest ? guestStartPath(guest) : undefined)
+  // Поток гостя из ссылки /play/<токен>?stream=back доезжает до отсчёта и
+  // плеера: без этого «Начать двигаться» уводило в поток по умолчанию.
+  const { search } = useLocation()
+  const guestStream = new URLSearchParams(search).get(GUEST_STREAM_PARAM) ?? undefined
+  const start = () => goFlow(guest ? guestStartPath(guest, guestStream) : undefined)
 
   /*
    * Почта не подтверждена — тонкая строка под шапкой. Не всплывашка:
