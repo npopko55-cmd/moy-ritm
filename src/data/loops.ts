@@ -170,16 +170,25 @@ export const LOOPS: Record<string, Loop> = {
    * back-open-twist и back2-05 рука в исходнике уходит за верх кадра — они почти
    * не уменьшены (0,94), иначе срез руки встал бы посреди круга. rev: 5 у всех 11.
    */
+  /*
+   * 19.11.2026, 20:xx: весь поток «Спина» приведён к одному росту и центру
+   * (Никита: «кто-то не по центру, кто-то за рамки вылазит — отдалить»).
+   * Рост стоящей фигуры 460 px из 640 (было ~535), земля на y=606, фигура
+   * по центру по горизонтали; вся фигура во всех кадрах внутри круга с
+   * запасом ≥17 px. Пересобрано из прежних петель (кадры петли те же, стык
+   * не менялся), поля добиты размытым продолжением студии своего ролика.
+   * Сборка — /workspace/ritm_fix/build.py (box), план — an/plan.json. rev: 8.
+   */
   'back-shoulder-rotations': { id: 'back-shoulder-rotations', title: 'Вращения в плечах', duration: 4.125, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 3 },
   'back-w-raise': { id: 'back-w-raise', title: 'Подъём рук из W', duration: 3.583, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
-  'back-pull-downs': { id: 'back-pull-downs', title: 'Руки вверх, локти вниз', duration: 5, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
-  'back-hip-hinge': { id: 'back-hip-hinge', title: 'Наклоны, руки на пояснице', duration: 4.125, stepsPerMinute: 0, kind: 'torso', family: 'back-hip-hinge' },
-  'back-chin-tuck': { id: 'back-chin-tuck', title: 'Втягивание подбородка', duration: 2.667, stepsPerMinute: 0, kind: 'neck', family: 'back-chin-tuck', rev: 4 },
-  'back-forward-reach': { id: 'back-forward-reach', title: 'Вытяжение рук вперёд', duration: 2.833, stepsPerMinute: 0, kind: 'arms', family: 'back-forward-reach', rev: 4 },
+  'back-pull-downs': { id: 'back-pull-downs', title: 'Руки вверх, локти вниз', duration: 5, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 8 },
+  'back-hip-hinge': { id: 'back-hip-hinge', title: 'Наклоны, руки на пояснице', duration: 4.125, stepsPerMinute: 0, kind: 'torso', family: 'back-hip-hinge', rev: 8 },
+  'back-chin-tuck': { id: 'back-chin-tuck', title: 'Втягивание подбородка', duration: 2.667, stepsPerMinute: 0, kind: 'neck', family: 'back-chin-tuck', rev: 8 },
+  'back-forward-reach': { id: 'back-forward-reach', title: 'Вытяжение рук вперёд', duration: 2.833, stepsPerMinute: 0, kind: 'arms', family: 'back-forward-reach', rev: 8 },
   'back-elbow-squeeze': { id: 'back-elbow-squeeze', title: 'Сведение локтей за головой', duration: 3.75, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze', rev: 5 },
-  'back-neck-turns': { id: 'back-neck-turns', title: 'Повороты головы', duration: 2.583, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns', rev: 4 },
+  'back-neck-turns': { id: 'back-neck-turns', title: 'Повороты головы', duration: 2.583, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns', rev: 8 },
   'back-open-twist': { id: 'back-open-twist', title: 'Раскрытие с поворотом', duration: 3.667, stepsPerMinute: 0, kind: 'torso', family: 'opener', rev: 5 },
-  'back-chest-opener': { id: 'back-chest-opener', title: 'Раскрытие рук в стороны', duration: 2.667, stepsPerMinute: 0, kind: 'arms', family: 'opener', rev: 4 },
+  'back-chest-opener': { id: 'back-chest-opener', title: 'Раскрытие рук в стороны', duration: 2.667, stepsPerMinute: 0, kind: 'arms', family: 'opener', rev: 8 },
   /*
    * Перегенерированы 27.10.2026 вместо рваных: стык чистый (seam 1,14 / 1,02 /
    * 0,80). loop_check у первых двух 3,42 и 2,51 — кадры на стыке сверены
@@ -209,9 +218,9 @@ export const LOOPS: Record<string, Loop> = {
    * глазами); «Сведение локтей за головой» и «Подъёмы рук вверх» убраны из
    * потока без замены — их движения есть в back2-01 и back2-03.
    */
-  'back3-01': { id: 'back3-01', title: 'Вращения в плечах', duration: 4.042, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 5 },
-  'back3-02': { id: 'back3-02', title: 'Повороты рук в стороны', duration: 2.875, stepsPerMinute: 0, kind: 'arms', family: 'opener', rev: 5 },
-  'back3-03': { id: 'back3-03', title: 'Наклоны таза', duration: 3.583, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt', rev: 4 },
+  'back3-01': { id: 'back3-01', title: 'Вращения в плечах', duration: 4.042, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 8 },
+  'back3-02': { id: 'back3-02', title: 'Повороты рук в стороны', duration: 2.875, stepsPerMinute: 0, kind: 'arms', family: 'opener', rev: 8 },
+  'back3-03': { id: 'back3-03', title: 'Наклоны таза', duration: 3.583, stepsPerMinute: 0, kind: 'torso', family: 'back-pelvic-tilt', rev: 8 },
   /*
    * 15.11.2026: два движения из архива «все 28» (Дима 12.11: «Загружай все,
    * кроме этих»), смотрят в камеру: «Поочерёдный подъём рук» (IMG_5510) и
@@ -233,29 +242,29 @@ export const LOOPS: Record<string, Loop> = {
    * №28 — hf_…092158 (одобрен «Все к»): ×1,03, петля «туда-обратно» между
    * верхними позами обеих рук, кадры 2↔58 исходника, 112 кадров.
    */
-  'back4-01': { id: 'back4-01', title: 'Поочерёдный подъём рук', duration: 6, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 7 },
-  'back4-02': { id: 'back4-02', title: 'Рука вверх, другая к плечу', duration: 4.667, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 7 },
-  'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze', rev: 4 },
-  'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
+  'back4-01': { id: 'back4-01', title: 'Поочерёдный подъём рук', duration: 6, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 8 },
+  'back4-02': { id: 'back4-02', title: 'Рука вверх, другая к плечу', duration: 4.667, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 8 },
+  'back2-01': { id: 'back2-01', title: 'Руки за головой, локти вперёд', duration: 2.167, stepsPerMinute: 0, kind: 'arms', family: 'back-elbow-squeeze', rev: 8 },
+  'back2-02': { id: 'back2-02', title: 'Руки из W вверх', duration: 3.208, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 8 },
   'back2-03': { id: 'back2-03', title: 'Руки вверх и к плечам', duration: 3.917, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back2-04': { id: 'back2-04', title: 'Поочерёдный подъём рук', duration: 2.25, stepsPerMinute: 0, kind: 'arms', family: 'overhead' },
   'back2-05': { id: 'back2-05', title: 'Руки в стороны и за голову', duration: 5.042, stepsPerMinute: 0, kind: 'arms', family: 'opener', rev: 5 },
   'back2-06': { id: 'back2-06', title: 'Боковые наклоны с рукой вверх', duration: 3.417, stepsPerMinute: 0, kind: 'torso', family: 'side-bend' },
 
-  'back-arms-up-bend': { id: 'back-arms-up-bend', title: 'Наклоны с руками вверх', duration: 4.708, stepsPerMinute: 0, kind: 'torso', family: 'fold' },
-  'back-standing-cat': { id: 'back-standing-cat', title: 'Кошка стоя', duration: 3.375, stepsPerMinute: 0, kind: 'torso', family: 'back-standing-cat' },
-  'back-forward-fold': { id: 'back-forward-fold', title: 'Наклоны к коленям', duration: 6, stepsPerMinute: 0, kind: 'torso', family: 'fold', rev: 5 },
+  'back-arms-up-bend': { id: 'back-arms-up-bend', title: 'Наклоны с руками вверх', duration: 4.708, stepsPerMinute: 0, kind: 'torso', family: 'fold', rev: 8 },
+  'back-standing-cat': { id: 'back-standing-cat', title: 'Кошка стоя', duration: 3.375, stepsPerMinute: 0, kind: 'torso', family: 'back-standing-cat', rev: 8 },
+  'back-forward-fold': { id: 'back-forward-fold', title: 'Наклоны к коленям', duration: 6, stepsPerMinute: 0, kind: 'torso', family: 'fold', rev: 8 },
   /*
    * 16.11.2026: Никита попросил выложить все 28 согласованных движений
    * потока «Спина» из архива «все 28 упражнений». Эти шесть не были в
    * каталоге — петли из того архива, 640×640.
    */
-  'back-side-hip-bend': { id: 'back-side-hip-bend', title: 'Боковые наклоны с рукой по бедру', duration: 3.167, stepsPerMinute: 0, kind: 'torso', family: 'side-bend', rev: 5 },
+  'back-side-hip-bend': { id: 'back-side-hip-bend', title: 'Боковые наклоны с рукой по бедру', duration: 3.167, stepsPerMinute: 0, kind: 'torso', family: 'side-bend', rev: 8 },
   'back-arm-side-turn': { id: 'back-arm-side-turn', title: 'Рука в сторону с поворотом', duration: 2.25, stepsPerMinute: 0, kind: 'arms', family: 'opener', rev: 5 },
-  'back-posture-stand': { id: 'back-posture-stand', title: 'Осанка, стойка вполоборота', duration: 6, stepsPerMinute: 0, kind: 'torso', family: 'posture', rev: 5 },
-  'back-forearms-face': { id: 'back-forearms-face', title: 'Предплечья перед лицом — W', duration: 3.667, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 5 },
-  'back-head-tilts': { id: 'back-head-tilts', title: 'Наклоны головы, руки на поясе', duration: 6, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns', rev: 5 },
-  'back-forearms-chest': { id: 'back-forearms-chest', title: 'Предплечья перед грудью', duration: 2.583, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 4 },
+  'back-posture-stand': { id: 'back-posture-stand', title: 'Осанка, стойка вполоборота', duration: 6, stepsPerMinute: 0, kind: 'torso', family: 'posture', rev: 8 },
+  'back-forearms-face': { id: 'back-forearms-face', title: 'Предплечья перед лицом — W', duration: 3.667, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 8 },
+  'back-head-tilts': { id: 'back-head-tilts', title: 'Наклоны головы, руки на поясе', duration: 6, stepsPerMinute: 0, kind: 'neck', family: 'back-neck-turns', rev: 8 },
+  'back-forearms-chest': { id: 'back-forearms-chest', title: 'Предплечья перед грудью', duration: 2.583, stepsPerMinute: 0, kind: 'arms', family: 'overhead', rev: 8 },
 }
 
 
